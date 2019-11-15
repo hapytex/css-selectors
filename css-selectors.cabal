@@ -17,7 +17,6 @@ library
   hs-source-dirs:      src
   exposed-modules:
       Css.Selector
-    , Css.Selector.Arbitrary
     , Css.Selector.Core
     , Css.Selector.Lexer
     , Css.Selector.Parser

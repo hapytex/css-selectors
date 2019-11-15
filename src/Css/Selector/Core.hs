@@ -3,10 +3,21 @@
 module Css.Selector.Core where
 
 import Data.List.NonEmpty(NonEmpty, toList)
+import Data.Function(on)
+import Data.Ord(comparing)
 import Data.String(IsString(fromString))
 import Data.Text(Text, cons, intercalate, pack)
 
-data SelectorSpecificity = SelectorSpecificity { a :: Int, b :: Int, c :: Int }
+import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary))
+import Test.QuickCheck.Gen(Gen, frequency)
+
+data SelectorSpecificity = SelectorSpecificity Int Int Int
+
+instance Eq SelectorSpecificity where
+    (==) = on (==) specificityValue
+
+instance Ord SelectorSpecificity where
+    compare = comparing specificityValue
 
 specificityValue :: SelectorSpecificity -> Int
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
@@ -48,33 +59,72 @@ instance Semigroup Selector where
 
 
 data SelectorSequence =
-      SelectorFilter SelectorFilter
-    | SimpleSelector SimpleSelector
+      SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
 
 addFilters :: SelectorSequence -> [SelectorFilter] -> SelectorSequence
 addFilters = foldl Filter
 
 
-data SimpleSelector = Universal
-                    | Type TypeSelector
-
 data SelectorFilter =
       SHash Hash
     | SClass Class
+    | SAttrib Attrib
+    | SPseudo Pseudo
+    | SNeg Negation
 
+
+data Attrib = Exist AttributeName | Attrib AttributeName AttributeCombinator Text
+
+attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
+attrib = flip Attrib
+
+(.=) :: AttributeName -> Text -> Attrib
+(.=) = attrib Exact
+
+(.~=) :: AttributeName -> Text -> Attrib
+(.~=) = attrib Include
+
+(.|=) :: AttributeName -> Text -> Attrib
+(.|=) = attrib DashMatch
+
+(.^=) :: AttributeName -> Text -> Attrib
+(.^=) = attrib PrefixMatch
+
+(.$=) :: AttributeName -> Text -> Attrib
+(.$=) = attrib SuffixMatch
+
+(.*=) :: AttributeName -> Text -> Attrib
+(.*=) = attrib SubstringMatch
+
+data Pseudo = Pseudo
+data Negation = Negation
 
 instance Semigroup SelectorGroup where
     (SelectorGroup g1) <> (SelectorGroup g2) = SelectorGroup (g1 <> g2)
 
-data Namespace = NAny | Namespace Text
+data Namespace = NAny | NEmpty | Namespace Text
+data ElementName = EAny | ElementName Text
 data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName }
-newtype ElementName = ElementName { unElementName :: Text }
+data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text }
+data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch
 newtype Class = Class { unClass :: Text }
 newtype Hash = Hash { unHash :: Text }
 
+attributeCombinatorText :: AttributeCombinator -> Text
+attributeCombinatorText Exact = "="
+attributeCombinatorText Include = "~="
+attributeCombinatorText DashMatch = "|="
+attributeCombinatorText PrefixMatch = "^="
+attributeCombinatorText SuffixMatch = "$="
+attributeCombinatorText SubstringMatch = "*="
+
+universal :: TypeSelector
+universal = TypeSelector NAny EAny
+
 instance IsString Class where
-    fromString = Class . pack
+    fromString ('.' : s) = Class (pack s)
+    fromString s = Class (pack s)
 
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
@@ -86,8 +136,30 @@ instance ToCssSelector Class where
     toSelectorGroup = toSelectorGroup . SClass
     specificity' = const (SelectorSpecificity 0 1 0)
 
+instance ToCssSelector Attrib where
+    toCssSelector (Exist name) = "[" <> toCssSelector name <> "]"
+    toCssSelector (Attrib name op val) = "[" <> toCssSelector name <> attributeCombinatorText op <> val <> "]"
+    toSelectorGroup = toSelectorGroup . SAttrib
+    specificity' = const (SelectorSpecificity 0 1 0)
+
+instance ToCssSelector AttributeName where
+    toCssSelector (AttributeName NAny e) = e
+    toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> e
+    toSelectorGroup = toSelectorGroup . Exist
+    specificity' = mempty
+
 instance IsString Hash where
-    fromString = Hash . pack
+    fromString ('#' : s) = Hash (pack s)
+    fromString s = Hash (pack s)
+
+instance IsString Namespace where
+    fromString "*" = NAny
+    fromString "" = NEmpty
+    fromString s = Namespace (pack s)
+
+instance IsString ElementName where
+    fromString "*" = EAny
+    fromString s = ElementName (pack s)
 
 instance ToCssSelector Hash where
     toCssSelector = cons '#' . unHash
@@ -96,37 +168,48 @@ instance ToCssSelector Hash where
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
+    toCssSelector NEmpty = ""
     toCssSelector (Namespace t) = t
+    toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
+    specificity' = mempty
 
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
-    toCssSelector (SelectorFilter f) = toCssSelector f
     toCssSelector (Filter s f) = toCssSelector s <> toCssSelector f
+    toSelectorGroup = toSelectorGroup . SelectorSequence
     specificity' (SimpleSelector s) = specificity' s
-    specificity' (SelectorFilter f) = specificity' f
     specificity' (Filter s f) = specificity' s <> specificity' f
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e
     toCssSelector (TypeSelector n e) = toCssSelector n <> "|" <> toCssSelector e
-    specificity' = const (SelectorSpecificity 0 0 1)
+    toSelectorGroup = toSelectorGroup . SimpleSelector
+    specificity' (TypeSelector _ e) = specificity' e
 
 instance ToCssSelector ElementName where
+    toCssSelector EAny = "*"
     toCssSelector (ElementName e) = e
-
-instance ToCssSelector SimpleSelector where
-    toCssSelector Universal = "*"
-    toCssSelector (Type t) = toCssSelector t
-    toSelectorGroup = toSelectorGroup . SimpleSelector
-    specificity' Universal = mempty
-    specificity' (Type t) = specificity' t
+    toSelectorGroup = toSelectorGroup . TypeSelector NAny
+    specificity' EAny = mempty
+    specificity' (ElementName _) = SelectorSpecificity 0 0 1
 
 instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
     toCssSelector (SClass c) = toCssSelector c
-    toSelectorGroup = toSelectorGroup . SelectorFilter
+    toCssSelector (SAttrib a) = toCssSelector a
+    toCssSelector (SPseudo p) = toCssSelector p
+    toCssSelector (SNeg n) = toCssSelector n
+    toSelectorGroup = toSelectorGroup . Filter (SimpleSelector universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
+    specificity' (SAttrib a) = specificity' a
+    specificity' (SPseudo p) = specificity' p
+    specificity' (SNeg n) = specificity' n
+
+instance ToCssSelector Pseudo where
+
+instance ToCssSelector Negation where
+
 
 _selectorCombine :: Text -> SelectorSequence -> Selector -> Text
 _selectorCombine sp sa sb =  toCssSelector sa <> sp <> toCssSelector sb
@@ -147,21 +230,8 @@ instance ToCssSelector Selector where
     specificity' (DirectlyPreceded s1 s2) = _specCombine s1 s2
     specificity' (Preceded s1 s2) = _specCombine s1 s2
 
-{-
-data SelectorModifier
-    = MClass Text
-    | MId Text
-    | 
+arbitraryText :: Gen Text
+arbitraryText = return "a"
 
-data AttributeFilter
-    = AExists Attribute
-    | AEquals Attribute Value
-    | AStarts Attribute Value
-    | AHyphenStarts Attribute Value
-    | 
-
-type Attribute = Text
-type Value = Texta
-
-(.=) :: Attribute -> a
--}
+instance Arbitrary Namespace where
+    arbitrary = frequency [(1, return NAny), (3, Namespace <$> arbitraryText)]

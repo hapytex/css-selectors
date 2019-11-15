@@ -28,11 +28,12 @@ $w        = [ \t\r\n\f]
 
 
 tokens :-
-  "~="      { const Includes }
-  "|="      { const DashMatch }
-  "^="      { const PrefixMatch }
-  "$="      { const SuffixMatch }
-  "*="      { const SubstringMatch }
+  "="       { const TEqual }
+  "~="      { const TIncludes }
+  "|="      { const TDashMatch }
+  "^="      { const TPrefixMatch }
+  "$="      { const TSuffixMatch }
+  "*="      { const TSubstringMatch }
   $w* ","   { const Comma }
   "."       { const Dot }
   "|"       { const Pipe }
@@ -51,12 +52,13 @@ tokens :-
 
 {
 -- The token type:
-data Token
-    = Includes
-    | DashMatch
-    | PrefixMatch
-    | SuffixMatch
-    | SubstringMatch
+data Token =
+      TIncludes
+    | TEqual
+    | TDashMatch
+    | TPrefixMatch
+    | TSuffixMatch
+    | TSubstringMatch
     | Ident String
     | String String
     | THash String

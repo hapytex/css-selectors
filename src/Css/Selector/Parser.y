@@ -14,18 +14,25 @@ import Data.Text(pack)
 %error { fail "Can not parse the CSS selector" }
 
 %token
-    ','   { Comma }
-    '>'   { Greater }
-    '+'   { Plus }
-    '~'   { Tilde }
-    '.'   { Dot }
-    ' '   { Space }
-    '|'   { Pipe }
-    '*'   { Asterisk }
-    '['   { BOpen }
-    ']'   { BClose }
-    ident { Ident $$ }
-    hash  { THash $$ }
+    ','    { Comma }
+    '>'    { Greater }
+    '+'    { Plus }
+    '~'    { Tilde }
+    '.'    { Dot }
+    ' '    { Space }
+    '|'    { Pipe }
+    '*'    { Asterisk }
+    '['    { BOpen }
+    ']'    { BClose }
+    '='    { TEqual }
+    '^='   { TPrefixMatch }
+    '$='   { TSuffixMatch }
+    '*='   { TSubstringMatch }
+    '|='   { TDashMatch }
+    '~='   { TIncludes }
+    ident  { Ident $$ }
+    string { String $$ }
+    hash   { THash $$ }
 
 %%
 
@@ -53,7 +60,7 @@ Combinator
 
 SimpleSelectorSequence
     : Type FilterList             { addFilters (SimpleSelector $1) $2 }
-    | SelectorAddition FilterList { addFilters (SelectorFilter $1) $2 }
+    | SelectorAddition FilterList { addFilters (SimpleSelector universal) ($1:$2) }
     ;
 
 FilterList
@@ -64,11 +71,45 @@ FilterList
 SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
     | Class                       { SClass $1 }
+    | Attrib                      { SAttrib $1 }
+    ;
+
+AttribBox
+    : '[' Sopt Attrib Sopt ']'             { $3 }
+    ;
+
+Attrib
+    : AttribName                           { Exist $1 }
+    | AttribName AttribOpS ident           { Attrib $1 $2 (pack $3) }
+    | AttribName AttribOpS string          { Attrib $1 $2 (pack $3) }
+    ;
+
+AttribName
+    : NamespacePrefix ident       { AttributeName $1 (pack $2) }
+    | ident                       { AttributeName NAny (pack $1) }
+    ;
+
+AttribOpS
+    : Sopt AttribOp Sopt          { $2 }
+    ;
+
+Sopt
+    :                             { () }
+    | ' '                         { () }
+    ;
+
+AttribOp
+    : '='                         { Exact }
+    | '~='                        { Include }
+    | '|='                        { DashMatch }
+    | '^='                        { PrefixMatch }
+    | '$='                        { SuffixMatch }
+    | '*='                        { SubstringMatch }
     ;
 
 Type
-    : TypeSelector                { Type $1 }
-    | '*'                         { Universal }
+    : TypeSelector                { $1 }
+    | '*'                         { universal }
     ;
 
 TypeSelector
@@ -87,7 +128,7 @@ Class
 NamespacePrefix
     : ident '|'    { Namespace (pack $1) }
     | '*' '|'      { NAny }
-    | '|'          { NAny }
+    | '|'          { NEmpty }
     ;
 
 {
