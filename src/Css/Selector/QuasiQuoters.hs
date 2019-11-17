@@ -11,7 +11,8 @@ parseCss = cssselector . alexScanTokens
 csssel :: QuasiQuoter
 csssel = QuasiQuoter {
     quoteExp = undefined,
-    quotePat = undefined,
-    quoteType = undefined,
-    quoteDec = undefined
+    -- TODO: maybe later generate pattern to match CSS selectors
+    quotePat = error "This quasiquoter does not generate patterns.",
+    quoteType = error "This quasiquoter does not generate a type.",
+    quoteDec = error "This quasiquoter does not generate declarations."
   }

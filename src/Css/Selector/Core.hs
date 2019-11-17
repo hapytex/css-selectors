@@ -1,12 +1,15 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskellQuotes #-}
 
 module Css.Selector.Core where
 
-import Data.List.NonEmpty(NonEmpty, toList)
+import Data.List.NonEmpty(NonEmpty((:|)), toList)
 import Data.Function(on)
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
 import Data.Text(Text, cons, intercalate, pack)
+
+import Language.Haskell.TH.Lib(appE, conE)
+import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary))
 import Test.QuickCheck.Gen(Gen, frequency)
@@ -34,25 +37,33 @@ class ToCssSelector a where
     toCssSelector :: a -> Text
     toSelectorGroup :: a -> SelectorGroup
     specificity' :: a -> SelectorSpecificity
-    specificity :: a -> Int
-    specificity = specificityValue . specificity'
+
+
+specificity :: ToCssSelector a => a -> Int
+specificity = specificityValue . specificity'
 
 newtype SelectorGroup = SelectorGroup (NonEmpty Selector)
 
 data Selector =
       SelectorSequence SelectorSequence
-    | Descendant SelectorSequence Selector
-    | Child SelectorSequence Selector
-    | DirectlyPreceded SelectorSequence Selector
-    | Preceded SelectorSequence Selector
+    | Combined SelectorSequence SelectorCombinator Selector
 
-combine :: (SelectorSequence -> Selector -> Selector) -> Selector -> Selector -> Selector
-combine f x0 ys = go x0
-    where go (SelectorSequence x) = f x ys
-          go (Descendant s1 s2) = Descendant s1 (go s2)
-          go (Child s1 s2) = Child s1 (go s2)
-          go (DirectlyPreceded s1 s2) = DirectlyPreceded s1 (go s2)
-          go (Preceded s1 s2) = Preceded s1 (go s2)
+data SelectorCombinator =
+      Descendant
+    | Child
+    | DirectlyPreceded
+    | Preceded
+
+combinatorText :: SelectorCombinator -> Text
+combinatorText Descendant = " "
+combinatorText Child = " > "
+combinatorText DirectlyPreceded = " + "
+combinatorText Preceded = " ~ "
+
+combine :: SelectorCombinator -> Selector -> Selector -> Selector
+combine c0 x0 ys = go x0
+    where go (SelectorSequence x) = Combined x c0 ys
+          go (Combined s1 c s2) = Combined s1 c (go s2)
 
 instance Semigroup Selector where
     (<>) = combine Descendant
@@ -110,6 +121,8 @@ data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeN
 data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch
 newtype Class = Class { unClass :: Text }
 newtype Hash = Hash { unHash :: Text }
+data PseudoElement = PseudoElement Text | FirstLine | FirstLetter | Before | After
+newtype PseudoClass = PseudoClass Text
 
 attributeCombinatorText :: AttributeCombinator -> Text
 attributeCombinatorText Exact = "="
@@ -125,6 +138,18 @@ universal = TypeSelector NAny EAny
 instance IsString Class where
     fromString ('.' : s) = Class (pack s)
     fromString s = Class (pack s)
+
+instance ToCssSelector PseudoClass where
+    toCssSelector (PseudoClass t) = cons ':' t
+    specificity' = const (SelectorSpecificity 0 1 0)
+
+instance ToCssSelector PseudoElement where
+    toCssSelector (PseudoElement t) = "::" <> t
+    toCssSelector FirstLine = ":first-line"
+    toCssSelector FirstLine = ":first-letter"
+    toCssSelector Before = ":before"
+    toCssSelector After = ":after"
+    specificity' = const (SelectorSpecificity 0 0 1)
 
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
@@ -214,22 +239,27 @@ instance ToCssSelector Negation where
 _selectorCombine :: Text -> SelectorSequence -> Selector -> Text
 _selectorCombine sp sa sb =  toCssSelector sa <> sp <> toCssSelector sb
 
-_specCombine :: SelectorSequence -> Selector -> SelectorSpecificity
-_specCombine s1 s2 = specificity' s1 <> specificity' s2
-
 instance ToCssSelector Selector where
     toCssSelector (SelectorSequence s) = toCssSelector s
-    toCssSelector (Descendant s1 s2) = _selectorCombine " " s1 s2
-    toCssSelector (Child s1 s2) = _selectorCombine " > " s1 s2
-    toCssSelector (DirectlyPreceded s1 s2) = _selectorCombine " + " s1 s2
-    toCssSelector (Preceded s1 s2) = _selectorCombine " ~ " s1 s2
+    toCssSelector (Combined s1 c s2) = _selectorCombine (combinatorText c) s1 s2
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (SelectorSequence s) = specificity' s
-    specificity' (Descendant s1 s2) = _specCombine s1 s2
-    specificity' (Child s1 s2) = _specCombine s1 s2
-    specificity' (DirectlyPreceded s1 s2) = _specCombine s1 s2
-    specificity' (Preceded s1 s2) = _specCombine s1 s2
+    specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
 
+
+-- Lift instances
+_apply :: Name -> [Q Exp] -> Q Exp
+_apply n = foldl appE (conE n)
+
+-- instance Lift SelectorGroup where
+--     lift (SelectorGroup sg) = _apply 'SelectorGroup [liftNe sg]
+--         where liftNe (a :| as) = _apply '(:|) [lift a, lift as]
+-- 
+-- instance Lift Selector where
+--     lift (Selector' )
+
+
+--- Arbitrary instances
 arbitraryText :: Gen Text
 arbitraryText = return "a"
 

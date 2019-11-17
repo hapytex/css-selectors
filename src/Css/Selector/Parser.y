@@ -20,6 +20,7 @@ import Data.Text(pack)
     '~'    { Tilde }
     '.'    { Dot }
     ' '    { Space }
+    ':'    { Colon }
     '|'    { Pipe }
     '*'    { Asterisk }
     '['    { BOpen }
@@ -30,6 +31,7 @@ import Data.Text(pack)
     '*='   { TSubstringMatch }
     '|='   { TDashMatch }
     '~='   { TIncludes }
+    'not'  { TNot }
     ident  { Ident $$ }
     string { String $$ }
     hash   { THash $$ }
@@ -47,10 +49,9 @@ SelectorGroupList
 
 Selector
     : SimpleSelectorSequence                      { SelectorSequence $1 }
-    | SimpleSelectorSequence Combinator Selector  { $2 $1 $3 }
+    | SimpleSelectorSequence Combinator Selector  { Combined $1 $2 $3 }
     ;
 
--- Combinator :: SimpleSelector -> Selector -> Selector
 Combinator
     : '+'          { DirectlyPreceded }
     | '>'          { Child }
@@ -72,10 +73,31 @@ SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
     | Class                       { SClass $1 }
     | Attrib                      { SAttrib $1 }
+    | Pseudo                      { SPseudo $1 }
+    | Negation                    { SNeg $1 }
     ;
 
 AttribBox
-    : '[' Sopt Attrib Sopt ']'             { $3 }
+    : '[' Attrib ']'                       { $2 }
+    | '[' ' ' Attrib ']'                   { $3 }
+    | '[' Attrib ' ' ']'                   { $2 }
+    | '[' ' ' Attrib ' ' ']'               { $3 }
+    ;
+
+Pseudo
+    : PseudoElement                        { undefined }
+    | PseudoClass                          { undefined }
+    ;
+
+PseudoElement
+    : ':' ident                            { undefined }
+    ;
+PseudoClass
+    : ':' ':' ident                        { undefined }
+    ;
+
+Negation
+    : 'not'                                { undefined }
     ;
 
 Attrib
@@ -90,12 +112,10 @@ AttribName
     ;
 
 AttribOpS
-    : Sopt AttribOp Sopt          { $2 }
-    ;
-
-Sopt
-    :                             { () }
-    | ' '                         { () }
+    : AttribOp                    { $1 }
+    | ' ' AttribOp                { $2 }
+    | AttribOp ' '                { $1 }
+    | ' ' AttribOp ' '            { $2 }
     ;
 
 AttribOp
