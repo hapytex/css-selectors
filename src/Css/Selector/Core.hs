@@ -1,9 +1,10 @@
-{-# LANGUAGE OverloadedStrings, TemplateHaskellQuotes #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, TemplateHaskellQuotes, UndecidableInstances #-}
 
 module Css.Selector.Core where
 
-import Data.List.NonEmpty(NonEmpty((:|)), toList)
+import Data.Data(Data)
 import Data.Function(on)
+import Data.List.NonEmpty(NonEmpty((:|)), toList)
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
 import Data.Text(Text, cons, intercalate, pack)
@@ -13,6 +14,8 @@ import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary))
 import Test.QuickCheck.Gen(Gen, frequency)
+
+import Text.Blaze(ToMarkup(toMarkup), text)
 
 data SelectorSpecificity = SelectorSpecificity Int Int Int
 
@@ -38,21 +41,26 @@ class ToCssSelector a where
     toSelectorGroup :: a -> SelectorGroup
     specificity' :: a -> SelectorSpecificity
 
+instance ToCssSelector a => ToMarkup a where
+    toMarkup = text . toCssSelector
 
 specificity :: ToCssSelector a => a -> Int
 specificity = specificityValue . specificity'
 
-newtype SelectorGroup = SelectorGroup (NonEmpty Selector)
+newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving Data
 
 data Selector =
       SelectorSequence SelectorSequence
     | Combined SelectorSequence SelectorCombinator Selector
+    deriving Data
+
 
 data SelectorCombinator =
       Descendant
     | Child
     | DirectlyPreceded
     | Preceded
+    deriving Data
 
 combinatorText :: SelectorCombinator -> Text
 combinatorText Descendant = " "
@@ -72,6 +80,7 @@ instance Semigroup Selector where
 data SelectorSequence =
       SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
+    deriving Data
 
 addFilters :: SelectorSequence -> [SelectorFilter] -> SelectorSequence
 addFilters = foldl Filter
@@ -83,9 +92,12 @@ data SelectorFilter =
     | SAttrib Attrib
     | SPseudo Pseudo
     | SNeg Negation
+    deriving Data
 
-
-data Attrib = Exist AttributeName | Attrib AttributeName AttributeCombinator Text
+data Attrib =
+      Exist AttributeName
+    | Attrib AttributeName AttributeCombinator Text
+    deriving Data
 
 attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
 attrib = flip Attrib
@@ -108,21 +120,30 @@ attrib = flip Attrib
 (.*=) :: AttributeName -> Text -> Attrib
 (.*=) = attrib SubstringMatch
 
-data Pseudo = Pseudo
-data Negation = Negation
+(.#) :: SelectorSequence -> Hash -> SelectorSequence
+(.#) = (. SHash) . Filter
+
+(...) :: SelectorSequence -> Class -> SelectorSequence
+(...) = (. SClass) . Filter
+
+(.:) :: SelectorSequence -> Pseudo -> SelectorSequence
+(.:) = (. SPseudo) . Filter
+
+data Pseudo = Pseudo deriving Data
+data Negation = Negation deriving Data
 
 instance Semigroup SelectorGroup where
     (SelectorGroup g1) <> (SelectorGroup g2) = SelectorGroup (g1 <> g2)
 
-data Namespace = NAny | NEmpty | Namespace Text
-data ElementName = EAny | ElementName Text
-data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName }
-data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text }
-data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch
-newtype Class = Class { unClass :: Text }
-newtype Hash = Hash { unHash :: Text }
-data PseudoElement = PseudoElement Text | FirstLine | FirstLetter | Before | After
-newtype PseudoClass = PseudoClass Text
+data Namespace = NAny | NEmpty | Namespace Text deriving Data
+data ElementName = EAny | ElementName Text deriving Data
+data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving Data
+data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving Data
+data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving Data
+newtype Class = Class { unClass :: Text } deriving Data
+newtype Hash = Hash { unHash :: Text } deriving Data
+newtype PseudoElement = PseudoElement Text deriving Data
+newtype PseudoClass = PseudoClass Text deriving Data
 
 attributeCombinatorText :: AttributeCombinator -> Text
 attributeCombinatorText Exact = "="
@@ -145,10 +166,6 @@ instance ToCssSelector PseudoClass where
 
 instance ToCssSelector PseudoElement where
     toCssSelector (PseudoElement t) = "::" <> t
-    toCssSelector FirstLine = ":first-line"
-    toCssSelector FirstLine = ":first-letter"
-    toCssSelector Before = ":before"
-    toCssSelector After = ":after"
     specificity' = const (SelectorSpecificity 0 0 1)
 
 instance ToCssSelector SelectorGroup where
@@ -236,12 +253,9 @@ instance ToCssSelector Pseudo where
 instance ToCssSelector Negation where
 
 
-_selectorCombine :: Text -> SelectorSequence -> Selector -> Text
-_selectorCombine sp sa sb =  toCssSelector sa <> sp <> toCssSelector sb
-
 instance ToCssSelector Selector where
     toCssSelector (SelectorSequence s) = toCssSelector s
-    toCssSelector (Combined s1 c s2) = _selectorCombine (combinatorText c) s1 s2
+    toCssSelector (Combined s1 c s2) = toCssSelector s1 <> (combinatorText c) <> toCssSelector s2
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (SelectorSequence s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
@@ -251,12 +265,17 @@ instance ToCssSelector Selector where
 _apply :: Name -> [Q Exp] -> Q Exp
 _apply n = foldl appE (conE n)
 
--- instance Lift SelectorGroup where
---     lift (SelectorGroup sg) = _apply 'SelectorGroup [liftNe sg]
---         where liftNe (a :| as) = _apply '(:|) [lift a, lift as]
--- 
--- instance Lift Selector where
---     lift (Selector' )
+instance Lift SelectorGroup where
+    lift (SelectorGroup sg) = _apply 'SelectorGroup [liftNe sg]
+        where liftNe (a :| as) = _apply '(:|) [lift a, lift as]
+
+instance Lift Selector
+instance Lift SelectorCombinator
+instance Lift SelectorSequence
+instance Lift SelectorFilter
+instance Lift Attrib
+instance Lift Pseudo
+instance Lift Negation
 
 
 --- Arbitrary instances
