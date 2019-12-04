@@ -73,8 +73,6 @@ SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
     | Class                       { SClass $1 }
     | Attrib                      { SAttrib $1 }
-    | Pseudo                      { SPseudo $1 }
-    | Negation                    { SNeg $1 }
     ;
 
 AttribBox
@@ -82,22 +80,6 @@ AttribBox
     | '[' ' ' Attrib ']'                   { $3 }
     | '[' Attrib ' ' ']'                   { $2 }
     | '[' ' ' Attrib ' ' ']'               { $3 }
-    ;
-
-Pseudo
-    : PseudoElement                        { undefined }
-    | PseudoClass                          { undefined }
-    ;
-
-PseudoElement
-    : ':' ident                            { undefined }
-    ;
-PseudoClass
-    : ':' ':' ident                        { undefined }
-    ;
-
-Negation
-    : 'not'                                { undefined }
     ;
 
 Attrib

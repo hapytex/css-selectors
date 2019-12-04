@@ -90,8 +90,6 @@ data SelectorFilter =
       SHash Hash
     | SClass Class
     | SAttrib Attrib
-    | SPseudo Pseudo
-    | SNeg Negation
     deriving Data
 
 data Attrib =
@@ -126,12 +124,6 @@ attrib = flip Attrib
 (...) :: SelectorSequence -> Class -> SelectorSequence
 (...) = (. SClass) . Filter
 
-(.:) :: SelectorSequence -> Pseudo -> SelectorSequence
-(.:) = (. SPseudo) . Filter
-
-data Pseudo = Pseudo deriving Data
-data Negation = Negation deriving Data
-
 instance Semigroup SelectorGroup where
     (SelectorGroup g1) <> (SelectorGroup g2) = SelectorGroup (g1 <> g2)
 
@@ -142,8 +134,6 @@ data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeN
 data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving Data
 newtype Class = Class { unClass :: Text } deriving Data
 newtype Hash = Hash { unHash :: Text } deriving Data
-newtype PseudoElement = PseudoElement Text deriving Data
-newtype PseudoClass = PseudoClass Text deriving Data
 
 attributeCombinatorText :: AttributeCombinator -> Text
 attributeCombinatorText Exact = "="
@@ -159,14 +149,6 @@ universal = TypeSelector NAny EAny
 instance IsString Class where
     fromString ('.' : s) = Class (pack s)
     fromString s = Class (pack s)
-
-instance ToCssSelector PseudoClass where
-    toCssSelector (PseudoClass t) = cons ':' t
-    specificity' = const (SelectorSpecificity 0 1 0)
-
-instance ToCssSelector PseudoElement where
-    toCssSelector (PseudoElement t) = "::" <> t
-    specificity' = const (SelectorSpecificity 0 0 1)
 
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
@@ -239,19 +221,10 @@ instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
     toCssSelector (SClass c) = toCssSelector c
     toCssSelector (SAttrib a) = toCssSelector a
-    toCssSelector (SPseudo p) = toCssSelector p
-    toCssSelector (SNeg n) = toCssSelector n
     toSelectorGroup = toSelectorGroup . Filter (SimpleSelector universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
-    specificity' (SPseudo p) = specificity' p
-    specificity' (SNeg n) = specificity' n
-
-instance ToCssSelector Pseudo where
-
-instance ToCssSelector Negation where
-
 
 instance ToCssSelector Selector where
     toCssSelector (SelectorSequence s) = toCssSelector s
@@ -274,8 +247,6 @@ instance Lift SelectorCombinator
 instance Lift SelectorSequence
 instance Lift SelectorFilter
 instance Lift Attrib
-instance Lift Pseudo
-instance Lift Negation
 
 
 --- Arbitrary instances
