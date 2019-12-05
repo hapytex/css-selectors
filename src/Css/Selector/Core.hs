@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, OverloadedStrings, TemplateHaskellQuotes, UndecidableInstances #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskellQuotes #-}
 
 module Css.Selector.Core where
 
@@ -40,9 +40,6 @@ class ToCssSelector a where
     toCssSelector :: a -> Text
     toSelectorGroup :: a -> SelectorGroup
     specificity' :: a -> SelectorSpecificity
-
-instance ToCssSelector a => ToMarkup a where
-    toMarkup = text . toCssSelector
 
 specificity :: ToCssSelector a => a -> Int
 specificity = specificityValue . specificity'
@@ -248,6 +245,21 @@ instance Lift SelectorSequence
 instance Lift SelectorFilter
 instance Lift Attrib
 
+-- ToMarkup instances
+instance ToMarkup SelectorGroup where
+    toMarkup = text . toCssSelector
+
+instance ToMarkup Selector where
+    toMarkup = text . toCssSelector
+
+instance ToMarkup SelectorSequence where
+    toMarkup = text . toCssSelector
+
+instance ToMarkup SelectorFilter where
+    toMarkup = text . toCssSelector
+
+instance ToMarkup Attrib where
+    toMarkup = text . toCssSelector
 
 --- Arbitrary instances
 arbitraryText :: Gen Text
