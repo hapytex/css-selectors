@@ -36,4 +36,4 @@ library
 
 source-repository head
   type:     git
-  location: https://github.com/KommuSoft/css-selectors
+  location: https://github.com/hapytex/css-selectors

@@ -13,9 +13,10 @@ import Language.Haskell.TH.Lib(appE, conE)
 import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary))
-import Test.QuickCheck.Gen(Gen, frequency)
+import Test.QuickCheck.Gen(Gen, choose, elements, frequency, listOf, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
+import Text.Blaze.Internal(Markup)
 
 data SelectorSpecificity = SelectorSpecificity Int Int Int
 
@@ -246,24 +247,48 @@ instance Lift SelectorFilter
 instance Lift Attrib
 
 -- ToMarkup instances
+_cssToMarkup :: ToCssSelector a => a -> Markup
+_cssToMarkup = text . toCssSelector
+
 instance ToMarkup SelectorGroup where
-    toMarkup = text . toCssSelector
+    toMarkup = _cssToMarkup
 
 instance ToMarkup Selector where
-    toMarkup = text . toCssSelector
+    toMarkup = _cssToMarkup
 
 instance ToMarkup SelectorSequence where
-    toMarkup = text . toCssSelector
+    toMarkup = _cssToMarkup
 
 instance ToMarkup SelectorFilter where
-    toMarkup = text . toCssSelector
+    toMarkup = _cssToMarkup
 
 instance ToMarkup Attrib where
-    toMarkup = text . toCssSelector
+    toMarkup = _cssToMarkup
 
---- Arbitrary instances
-arbitraryText :: Gen Text
-arbitraryText = return "a"
+-- Arbitrary instances
+type FreqGen a = (Int, Gen a)
+
+_azGen :: FreqGen Char
+_azGen = (52, oneof [choose ('a', 'z'), choose ('A', 'Z')])
+
+_digitGen :: FreqGen Char
+_digitGen = (10, choose ('0', '9'))
+
+_symbolGen :: FreqGen Char
+_symbolGen = (2, elements "-_")
+
+_arbitraryIdent0 :: Gen Char
+_arbitraryIdent0 = snd _azGen
+
+_arbitraryIdentN :: Gen Char
+_arbitraryIdentN = frequency [_azGen, _digitGen, _symbolGen]
+
+_arbitraryIdent :: Gen Text
+_arbitraryIdent = do
+    ident0 <- _arbitraryIdent0
+    identn <- listOf _arbitraryIdentN
+    postpr <- frequency [(1, return (cons '-')), (3, return id)]
+    return (postpr (cons ident0 (pack identn)))
 
 instance Arbitrary Namespace where
-    arbitrary = frequency [(1, return NAny), (3, Namespace <$> arbitraryText)]
+    arbitrary = frequency [(1, return NAny), (3, Namespace <$> _arbitraryIdent)]
