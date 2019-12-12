@@ -12,7 +12,7 @@ import Data.Text(Text, cons, intercalate, pack)
 import Language.Haskell.TH.Lib(appE, conE)
 import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
 
-import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary))
+import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary), arbitraryBoundedEnum)
 import Test.QuickCheck.Gen(Gen, choose, elements, frequency, listOf, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
@@ -58,7 +58,7 @@ data SelectorCombinator =
     | Child
     | DirectlyPreceded
     | Preceded
-    deriving Data
+    deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
 
 combinatorText :: SelectorCombinator -> Text
 combinatorText Descendant = " "
@@ -129,7 +129,7 @@ data Namespace = NAny | NEmpty | Namespace Text deriving Data
 data ElementName = EAny | ElementName Text deriving Data
 data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving Data
 data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving Data
-data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving Data
+data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
 newtype Class = Class { unClass :: Text } deriving Data
 newtype Hash = Hash { unHash :: Text } deriving Data
 
@@ -290,5 +290,23 @@ _arbitraryIdent = do
     postpr <- frequency [(1, return (cons '-')), (3, return id)]
     return (postpr (cons ident0 (pack identn)))
 
+instance Arbitrary Hash where
+    arbitrary = Hash <$> _arbitraryIdent
+
+instance Arbitrary Class where
+    arbitrary = Class <$> _arbitraryIdent
+
 instance Arbitrary Namespace where
     arbitrary = frequency [(1, return NAny), (3, Namespace <$> _arbitraryIdent)]
+
+instance Arbitrary ElementName where
+    arbitrary = frequency [(1, return EAny), (3, ElementName <$> _arbitraryIdent)]
+
+instance Arbitrary TypeSelector where
+    arbitrary = TypeSelector <$> arbitrary <*> arbitrary
+
+instance Arbitrary SelectorCombinator where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary AttributeCombinator where
+    arbitrary = arbitraryBoundedEnum
