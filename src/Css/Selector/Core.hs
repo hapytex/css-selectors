@@ -297,7 +297,7 @@ instance Arbitrary Class where
     arbitrary = Class <$> _arbitraryIdent
 
 instance Arbitrary Namespace where
-    arbitrary = frequency [(1, return NAny), (3, Namespace <$> _arbitraryIdent)]
+    arbitrary = frequency [(3, return NAny), (1, Namespace <$> _arbitraryIdent)]
 
 instance Arbitrary ElementName where
     arbitrary = frequency [(1, return EAny), (3, ElementName <$> _arbitraryIdent)]
@@ -305,8 +305,26 @@ instance Arbitrary ElementName where
 instance Arbitrary TypeSelector where
     arbitrary = TypeSelector <$> arbitrary <*> arbitrary
 
+instance Arbitrary SelectorSequence where
+    arbitrary = addFilters . SimpleSelector <$> arbitrary <*> listOf arbitrary
+
 instance Arbitrary SelectorCombinator where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary AttributeCombinator where
     arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary SelectorFilter where
+    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary]
+
+instance Arbitrary AttributeName where
+    arbitrary = AttributeName <$> arbitrary <*> _arbitraryIdent
+
+instance Arbitrary Attrib where
+    arbitrary = oneof [Exist <$> arbitrary, Attrib <$> arbitrary <*> arbitrary <*> (pack <$> listOf arbitrary)]
+
+instance Arbitrary SelectorGroup where
+    arbitrary = SelectorGroup <$> ((:|) <$> arbitrary <*> arbitrary)
+
+instance Arbitrary Selector where
+    arbitrary = SelectorSequence <$> arbitrary
