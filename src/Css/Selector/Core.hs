@@ -17,6 +17,8 @@ import Test.QuickCheck.Gen(Gen, choose, elements, frequency, listOf, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
 import Text.Blaze.Internal(Markup)
+import Text.Julius(Javascript, ToJavascript(toJavascript))
+
 
 data SelectorSpecificity = SelectorSpecificity Int Int Int
 
@@ -265,6 +267,26 @@ instance ToMarkup SelectorFilter where
 instance ToMarkup Attrib where
     toMarkup = _cssToMarkup
 
+-- ToJavaScript instances
+_cssToJavascript :: ToCssSelector a => a -> Javascript
+_cssToJavascript = toJavascript . toCssSelector
+
+instance ToJavascript SelectorGroup where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript Selector where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript SelectorSequence where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript SelectorFilter where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript Attrib where
+    toJavascript = _cssToJavascript
+
+
 -- Arbitrary instances
 type FreqGen a = (Int, Gen a)
 
@@ -327,4 +349,4 @@ instance Arbitrary SelectorGroup where
     arbitrary = SelectorGroup <$> ((:|) <$> arbitrary <*> arbitrary)
 
 instance Arbitrary Selector where
-    arbitrary = SelectorSequence <$> arbitrary
+    arbitrary = frequency [(3, SelectorSequence <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]

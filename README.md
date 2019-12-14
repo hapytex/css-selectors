@@ -10,3 +10,12 @@ Currently the css grammar is implemented *without* the pseudo-classes,
 pseudo-elements and negations. One can furthermore calculate the specificity of
 a css-selector, and thus perform an analysis over what css-selector will take
 precedence.
+
+## Selector structure
+
+## Selector specificity
+
+
+## `ToMarkup` and `ToJavascript` instances
+
+The
