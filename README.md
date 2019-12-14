@@ -15,7 +15,32 @@ precedence.
 
 ## Selector specificity
 
+The specificity of a selector is defined by three numbers *a*, *b* and *c*.
+Later, one calculates the specificity level with *100 a + 10 b + c*. The higher
+the specificity level, the more it takes precedence. If there are thus two
+selectors and the former selector has *14* as specificity level, and the latter
+has *42* as specificity level, then rules defined in the latter, will "overrule"
+the rules defined in the former, given these rules "clash".
+
+One can calculate the specificity of a item with as type a member of the `ToCssSelector`
+class with:
+
+```haskell
+specificity :: ToCssSelector a => a -> Int
+```
+
+or you can obtain a more detailed result with:
+
+```haskell
+specificity' :: ToCssSelector a => a -> SelectorSpecificity
+```
 
 ## `ToMarkup` and `ToJavascript` instances
 
-The
+The types that are members of the `ToCssSelector` are members of the `ToMarkup`
+and `ToJavascript` type classes as well, such that we can conveniently use these
+in blaze HTML and for example in *Hamlet*.
+
+## Arbitrary css selectors
+
+
