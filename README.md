@@ -41,6 +41,17 @@ The types that are members of the `ToCssSelector` are members of the `ToMarkup`
 and `ToJavascript` type classes as well, such that we can conveniently use these
 in blaze HTML and for example in *Hamlet*.
 
+The `ToMarkup` instance will render the css selector as raw content. So if you
+add this as an attribute, the css selector will appear, unescaped, in the
+rendered page.
+
+The `ToJavascript` will render the content to a javascript *string*. So if you
+use this in hamlet, you generate a string that contains the css-selector. This
+is often useful, since javascript itself has no syntax for css selectors, and
+often strings are used to represent these.
+
 ## Arbitrary css selectors
 
-
+One can generate arbitrary CSS selectors (and their subcomponents). It is
+however not advisable to use this for anything other than for validation
+purposes (like with `QuickCheck`).
