@@ -21,6 +21,7 @@ library
     , Css.Selector.Lexer
     , Css.Selector.Parser
     , Css.Selector.QuasiQuoters
+    , Css.Selector.Utils
   build-depends:
       base >=4.7 && <5
     , array >=0.5.3.0 && <0.5.4.0

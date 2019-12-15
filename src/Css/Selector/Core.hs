@@ -1,13 +1,15 @@
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskellQuotes #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskellQuotes, TypeFamilies #-}
 
 module Css.Selector.Core where
 
 import Data.Data(Data)
 import Data.Function(on)
-import Data.List.NonEmpty(NonEmpty((:|)), toList)
+import Data.List.NonEmpty(NonEmpty((:|)))
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
 import Data.Text(Text, cons, intercalate, pack)
+
+import GHC.Exts(IsList(Item, fromList, toList))
 
 import Language.Haskell.TH.Lib(appE, conE)
 import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
@@ -48,6 +50,14 @@ specificity :: ToCssSelector a => a -> Int
 specificity = specificityValue . specificity'
 
 newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving Data
+
+instance Semigroup SelectorGroup where
+    SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
+
+instance IsList SelectorGroup where
+    type Item SelectorGroup = Selector
+    fromList = SelectorGroup . fromList
+    toList (SelectorGroup ss) = toList ss
 
 data Selector =
       SelectorSequence SelectorSequence
@@ -123,9 +133,6 @@ attrib = flip Attrib
 
 (...) :: SelectorSequence -> Class -> SelectorSequence
 (...) = (. SClass) . Filter
-
-instance Semigroup SelectorGroup where
-    (SelectorGroup g1) <> (SelectorGroup g2) = SelectorGroup (g1 <> g2)
 
 data Namespace = NAny | NEmpty | Namespace Text deriving Data
 data ElementName = EAny | ElementName Text deriving Data

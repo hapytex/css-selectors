@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Css.Selector.QuasiQuoters (
-    csssel
+    csssel, parseCss
   ) where
 
 import Data.Data(Data, cast)

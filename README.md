@@ -13,6 +13,12 @@ precedence.
 
 ## Selector structure
 
+A css selector has the following structure:
+
+ 1. a `SelectorGroup` is a group of one or more `Selector`s, these are
+    *comma-separated*;
+ 2. ...
+
 ## Selector specificity
 
 The specificity of a selector is defined by three numbers *a*, *b* and *c*.
