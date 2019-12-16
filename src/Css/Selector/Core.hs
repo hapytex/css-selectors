@@ -2,6 +2,8 @@
 
 module Css.Selector.Core where
 
+import Css.Selector.Utils(encodeText)
+
 import Data.Data(Data)
 import Data.Function(on)
 import Data.List.NonEmpty(NonEmpty((:|)))
@@ -49,7 +51,7 @@ class ToCssSelector a where
 specificity :: ToCssSelector a => a -> Int
 specificity = specificityValue . specificity'
 
-newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving Data
+newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq)
 
 instance Semigroup SelectorGroup where
     SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
@@ -62,7 +64,7 @@ instance IsList SelectorGroup where
 data Selector =
       SelectorSequence SelectorSequence
     | Combined SelectorSequence SelectorCombinator Selector
-    deriving Data
+    deriving (Data, Eq)
 
 
 data SelectorCombinator =
@@ -90,22 +92,21 @@ instance Semigroup Selector where
 data SelectorSequence =
       SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
-    deriving Data
+    deriving (Data, Eq)
 
 addFilters :: SelectorSequence -> [SelectorFilter] -> SelectorSequence
 addFilters = foldl Filter
-
 
 data SelectorFilter =
       SHash Hash
     | SClass Class
     | SAttrib Attrib
-    deriving Data
+    deriving (Data, Eq)
 
 data Attrib =
       Exist AttributeName
     | Attrib AttributeName AttributeCombinator Text
-    deriving Data
+    deriving (Data, Eq)
 
 attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
 attrib = flip Attrib
@@ -134,13 +135,13 @@ attrib = flip Attrib
 (...) :: SelectorSequence -> Class -> SelectorSequence
 (...) = (. SClass) . Filter
 
-data Namespace = NAny | NEmpty | Namespace Text deriving Data
-data ElementName = EAny | ElementName Text deriving Data
-data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving Data
-data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving Data
+data Namespace = NAny | NEmpty | Namespace Text deriving (Data, Eq)
+data ElementName = EAny | ElementName Text deriving (Data, Eq)
+data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq)
+data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq)
 data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
-newtype Class = Class { unClass :: Text } deriving Data
-newtype Hash = Hash { unHash :: Text } deriving Data
+newtype Class = Class { unClass :: Text } deriving (Data, Eq)
+newtype Hash = Hash { unHash :: Text } deriving (Data, Eq)
 
 attributeCombinatorText :: AttributeCombinator -> Text
 attributeCombinatorText Exact = "="
@@ -169,7 +170,7 @@ instance ToCssSelector Class where
 
 instance ToCssSelector Attrib where
     toCssSelector (Exist name) = "[" <> toCssSelector name <> "]"
-    toCssSelector (Attrib name op val) = "[" <> toCssSelector name <> attributeCombinatorText op <> val <> "]"
+    toCssSelector (Attrib name op val) = "[" <> toCssSelector name <> attributeCombinatorText op <> encodeText '"' val <> "]"
     toSelectorGroup = toSelectorGroup . SAttrib
     specificity' = const (SelectorSpecificity 0 1 0)
 

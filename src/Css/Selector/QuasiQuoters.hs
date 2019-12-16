@@ -14,7 +14,9 @@ import Css.Selector.Core(SelectorGroup)
 import Css.Selector.Lexer(alexScanTokens)
 import Css.Selector.Parser(cssselector)
 
-parseCss :: String -> SelectorGroup
+-- | Parse the string to a 'SelectorGroup'.
+parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
+    -> SelectorGroup -- ^ The selectorgroup that is the equivalent of the given 'String'.
 parseCss = cssselector . alexScanTokens
 
 liftText :: Text -> Q Exp
@@ -23,6 +25,9 @@ liftText = (AppE (VarE 'pack) <$>) . lift . unpack
 liftDataWithText :: Data a => a -> Q Exp
 liftDataWithText = dataToExpQ ((liftText <$>) . cast)
 
+-- | A quasiquoter that can be used to construct a 'SelectorGroup' for the given
+-- css selector. In case the css selector is invalid. A compiler error will be
+-- thrown (at compile time).
 csssel :: QuasiQuoter
 csssel = QuasiQuoter {
     quoteExp = liftDataWithText . parseCss,
