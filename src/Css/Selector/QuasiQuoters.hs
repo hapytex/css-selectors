@@ -5,7 +5,7 @@ module Css.Selector.QuasiQuoters (
   ) where
 
 import Data.Data(Data, cast)
-import Data.Text(Text, pack, unpack)
+import Data.Text(pack, unpack)
 
 import Language.Haskell.TH.Quote(QuasiQuoter(QuasiQuoter, quoteExp, quotePat, quoteType, quoteDec))
 import Language.Haskell.TH.Syntax(Exp(AppE, VarE), Q, dataToExpQ, lift)
@@ -19,11 +19,8 @@ parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
     -> SelectorGroup -- ^ The selectorgroup that is the equivalent of the given 'String'.
 parseCss = cssselector . alexScanTokens
 
-liftText :: Text -> Q Exp
-liftText = (AppE (VarE 'pack) <$>) . lift . unpack
-
 liftDataWithText :: Data a => a -> Q Exp
-liftDataWithText = dataToExpQ ((liftText <$>) . cast)
+liftDataWithText = dataToExpQ ((((AppE (VarE 'pack) <$>) . lift . unpack) <$>) . cast)
 
 -- | A quasiquoter that can be used to construct a 'SelectorGroup' for the given
 -- css selector. In case the css selector is invalid. A compiler error will be
