@@ -23,7 +23,11 @@ import Text.Blaze(ToMarkup(toMarkup), text)
 import Text.Blaze.Internal(Markup)
 import Text.Julius(Javascript, ToJavascript(toJavascript))
 
-
+-- | A datastructure that specifies the selectivity of a css selector. The
+-- specificity is calculated based on three integers: @a@, @b@ and @c@.
+--
+-- The specificity is calculated with @100*a+10*b+c@ where @a@, @b@ and @c@
+-- count certain elements of the css selector.
 data SelectorSpecificity = SelectorSpecificity Int Int Int
 
 instance Eq SelectorSpecificity where
@@ -236,7 +240,7 @@ instance ToCssSelector SelectorFilter where
 
 instance ToCssSelector Selector where
     toCssSelector (SelectorSequence s) = toCssSelector s
-    toCssSelector (Combined s1 c s2) = toCssSelector s1 <> (combinatorText c) <> toCssSelector s2
+    toCssSelector (Combined s1 c s2) = toCssSelector s1 <> combinatorText c <> toCssSelector s2
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (SelectorSequence s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
