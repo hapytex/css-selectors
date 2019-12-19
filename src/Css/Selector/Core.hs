@@ -7,6 +7,7 @@ module Css.Selector.Core where
 import Css.Selector.Utils(encodeText)
 
 import Data.Data(Data)
+import Data.Default(Default(def))
 import Data.Function(on)
 import Data.List.NonEmpty(NonEmpty((:|)))
 import Data.Ord(comparing)
@@ -132,17 +133,25 @@ data SelectorFilter =
     | SAttrib Attrib
     deriving (Data, Eq)
 
+-- | A css attribute can come in two flavors: either a constraint that the
+-- attribute should exists, or a constraint that a certain attribute should have
+-- a certain value (prefix, suffix, etc.).
 data Attrib =
-      Exist AttributeName
-    | Attrib AttributeName AttributeCombinator Text
+      Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
+    | Attrib AttributeName AttributeCombinator Text -- A constraint about the value associated with the given 'AttributeName'.
     deriving (Data, Eq)
 
+-- | A flipped version of the 'Attrib' data constructor, where one first
+-- specifies the conbinator, then the 'AttributeName' and finally the value.
 attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
 attrib = flip Attrib
 
+-- | Create a 'Attrib' where the given 'AttributeName' is constrained to be
+-- exactly the given value.
 (.=) :: AttributeName -> Text -> Attrib
 (.=) = attrib Exact
 
+-- | 
 (.~=) :: AttributeName -> Text -> Attrib
 (.~=) = attrib Include
 
@@ -172,6 +181,7 @@ data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMat
 newtype Class = Class { unClass :: Text } deriving (Data, Eq)
 newtype Hash = Hash { unHash :: Text } deriving (Data, Eq)
 
+-- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
 attributeCombinatorText :: AttributeCombinator -> Text
 attributeCombinatorText Exact = "="
 attributeCombinatorText Include = "~="
@@ -270,6 +280,21 @@ instance ToCssSelector Selector where
     specificity' (SelectorSequence s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
 
+-- Default instances
+instance Default SelectorGroup where
+    def = SelectorGroup (pure def)
+
+instance Default Selector where
+    def = SelectorSequence def
+
+instance Default SelectorSequence where
+    def = SimpleSelector def
+
+instance Default TypeSelector where
+    def = universal
+
+instance Default SelectorSpecificity where
+    def = mempty
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
