@@ -2,6 +2,8 @@
 
 module Css.Selector.Core where
 
+-- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
+
 import Css.Selector.Utils(encodeText)
 
 import Data.Data(Data)
@@ -36,7 +38,9 @@ instance Eq SelectorSpecificity where
 instance Ord SelectorSpecificity where
     compare = comparing specificityValue
 
-specificityValue :: SelectorSpecificity -> Int
+-- | Calculate the specificity value of the 'SelectorSpecificity'
+specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
+    -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css-selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 
 instance Semigroup SelectorSpecificity where
@@ -45,16 +49,27 @@ instance Semigroup SelectorSpecificity where
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
 
--- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
-
+-- | A class that defines that the given type can be converted to a css-selector
+-- value, and has a certain specificity.
 class ToCssSelector a where
+    -- | Convert the given element to a 'Text' object that contains the css
+    -- selector.
     toCssSelector :: a -> Text
+    -- | Lift the given 'ToCssSelector' type object to a 'SelectorGroup', which
+    -- is the "root type" of the css selector hierarchy.
     toSelectorGroup :: a -> SelectorGroup
+    -- | Calculate the specificity of the css selector by returing a
+    -- 'SelectorSpecificity' object.
     specificity' :: a -> SelectorSpecificity
 
+-- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
+-- calculating the 'SelectorSpecificity' object, and then calculating the value
+-- of that object.
 specificity :: ToCssSelector a => a -> Int
 specificity = specificityValue . specificity'
 
+-- | The root type of a css-selector. This is a comma-separated list of
+-- selectors.
 newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq)
 
 instance Semigroup SelectorGroup where
@@ -65,25 +80,32 @@ instance IsList SelectorGroup where
     fromList = SelectorGroup . fromList
     toList (SelectorGroup ss) = toList ss
 
+-- The type of a single selector. This is a sequence of 'SelectorSequence's that
+-- are combined with a 'SelectorCombinator'.
 data Selector =
       SelectorSequence SelectorSequence
     | Combined SelectorSequence SelectorCombinator Selector
     deriving (Data, Eq)
 
 
+-- A type that contains the possible ways to combine 'SelectorSequence's.
 data SelectorCombinator =
-      Descendant
-    | Child
-    | DirectlyPreceded
-    | Preceded
+      Descendant -- ^ The second tag is a descendant of the first one, denoted in css with a space.
+    | Child -- ^ The second tag is the (direct) child of the first one, denoted with a @>@ in css.
+    | DirectlyPreceded -- ^ The second tag is directly preceded by the first one, denoted with a @+@ in css.
+    | Preceded -- ^ The second tag is preceded by the first one, denoted with a @~@ in css.
     deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
 
+-- | Convert the 'SelectorCombinator' to the equivalent css-selector text. A
+-- space for 'Descendant', a @>@ for 'Child', a @+@ for 'DirectlyPreceded', and
+-- a @~@ for 'Preceded'
 combinatorText :: SelectorCombinator -> Text
 combinatorText Descendant = " "
 combinatorText Child = " > "
 combinatorText DirectlyPreceded = " + "
 combinatorText Preceded = " ~ "
 
+-- | Combines two 'Selector's with the given 'SelectorCombinator'.
 combine :: SelectorCombinator -> Selector -> Selector -> Selector
 combine c0 x0 ys = go x0
     where go (SelectorSequence x) = Combined x c0 ys
@@ -92,15 +114,18 @@ combine c0 x0 ys = go x0
 instance Semigroup Selector where
     (<>) = combine Descendant
 
-
 data SelectorSequence =
       SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
     deriving (Data, Eq)
 
+-- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
+-- filters are applied left-to-right.
 addFilters :: SelectorSequence -> [SelectorFilter] -> SelectorSequence
 addFilters = foldl Filter
 
+-- | A type that sums up the different ways to filter a type selector: with an
+-- id (hash), a class, and an attribute.
 data SelectorFilter =
       SHash Hash
     | SClass Class

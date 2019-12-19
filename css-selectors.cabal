@@ -18,10 +18,11 @@ library
   exposed-modules:
       Css.Selector
     , Css.Selector.Core
-    , Css.Selector.Lexer
-    , Css.Selector.Parser
     , Css.Selector.QuasiQuoters
     , Css.Selector.Utils
+  other-modules:
+       Css.Selector.Lexer
+     , Css.Selector.Parser
   build-depends:
       base >=4.7 && <5
     , array >=0.5.3.0 && <0.5.4.0
