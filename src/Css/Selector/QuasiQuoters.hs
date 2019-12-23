@@ -1,5 +1,14 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
+{-|
+Module      : Css.Selector.QuasiQuoters
+Description : A module that defines a quasiquoter to parse a string to a css selector.
+Maintainer  : vanonsem.willem@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+A module that defines a quasiquoter to parse a string to a css selector.
+-}
 module Css.Selector.QuasiQuoters (
     csssel, parseCss
   ) where

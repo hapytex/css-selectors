@@ -1,3 +1,12 @@
+{-|
+Module      : Css.Selector
+Description : Css selectors in Haskell.
+Maintainer  : vanonsem.willem@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+A module to define css selectors by making use of a quasiquoter, and manipulating these css-selectors.
+-}
 module Css.Selector (
     module Css.Selector.Core,
     module Css.Selector.QuasiQuoters,

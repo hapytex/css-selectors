@@ -1,5 +1,14 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskellQuotes, TypeFamilies #-}
 
+{-|
+Module      : Css.Selector.Core
+Description : A module where we define the tree of types to represent and maniplate a css selector.
+Maintainer  : vanonsem.willem@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+A module that defines the tree of types to represent and manipulate a css selector. These data types are members of several typeclasses to make these more useful.
+-}
 module Css.Selector.Core where
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
@@ -71,7 +80,7 @@ specificity = specificityValue . specificity'
 
 -- | The root type of a css-selector. This is a comma-separated list of
 -- selectors.
-newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq)
+newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq, Show)
 
 instance Semigroup SelectorGroup where
     SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
@@ -86,7 +95,7 @@ instance IsList SelectorGroup where
 data Selector =
       SelectorSequence SelectorSequence
     | Combined SelectorSequence SelectorCombinator Selector
-    deriving (Data, Eq)
+    deriving (Data, Eq, Show)
 
 
 -- A type that contains the possible ways to combine 'SelectorSequence's.
@@ -118,7 +127,7 @@ instance Semigroup Selector where
 data SelectorSequence =
       SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
-    deriving (Data, Eq)
+    deriving (Data, Eq, Show)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
 -- filters are applied left-to-right.
@@ -131,7 +140,7 @@ data SelectorFilter =
       SHash Hash
     | SClass Class
     | SAttrib Attrib
-    deriving (Data, Eq)
+    deriving (Data, Eq, Show)
 
 -- | A css attribute can come in two flavors: either a constraint that the
 -- attribute should exists, or a constraint that a certain attribute should have
@@ -139,7 +148,7 @@ data SelectorFilter =
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
     | Attrib AttributeName AttributeCombinator Text -- A constraint about the value associated with the given 'AttributeName'.
-    deriving (Data, Eq)
+    deriving (Data, Eq, Show)
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
@@ -173,13 +182,13 @@ attrib = flip Attrib
 (...) :: SelectorSequence -> Class -> SelectorSequence
 (...) = (. SClass) . Filter
 
-data Namespace = NAny | NEmpty | Namespace Text deriving (Data, Eq)
-data ElementName = EAny | ElementName Text deriving (Data, Eq)
-data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq)
-data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq)
+data Namespace = NAny | NEmpty | Namespace Text deriving (Data, Eq, Show)
+data ElementName = EAny | ElementName Text deriving (Data, Eq, Show)
+data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq, Show)
+data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq, Show)
 data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
-newtype Class = Class { unClass :: Text } deriving (Data, Eq)
-newtype Hash = Hash { unHash :: Text } deriving (Data, Eq)
+newtype Class = Class { unClass :: Text } deriving (Data, Eq, Show)
+newtype Hash = Hash { unHash :: Text } deriving (Data, Eq, Show)
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
 attributeCombinatorText :: AttributeCombinator -> Text
@@ -295,6 +304,12 @@ instance Default TypeSelector where
 
 instance Default SelectorSpecificity where
     def = mempty
+
+instance Default Namespace where
+    def = NAny
+
+instance Default ElementName where
+    def = EAny
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
