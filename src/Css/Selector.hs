@@ -1,7 +1,7 @@
 {-|
 Module      : Css.Selector
 Description : Css selectors in Haskell.
-Maintainer  : vanonsem.willem@gmail.com
+Maintainer  : hapytexeu+gh@gmail.com
 Stability   : experimental
 Portability : POSIX
 

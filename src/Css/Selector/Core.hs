@@ -3,7 +3,7 @@
 {-|
 Module      : Css.Selector.Core
 Description : A module where we define the tree of types to represent and maniplate a css selector.
-Maintainer  : vanonsem.willem@gmail.com
+Maintainer  : hapytexeu+gh@gmail.com
 Stability   : experimental
 Portability : POSIX
 
@@ -42,22 +42,10 @@ import Text.Julius(Javascript, ToJavascript(toJavascript))
 -- count certain elements of the css selector.
 data SelectorSpecificity = SelectorSpecificity Int Int Int
 
-instance Eq SelectorSpecificity where
-    (==) = on (==) specificityValue
-
-instance Ord SelectorSpecificity where
-    compare = comparing specificityValue
-
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
     -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css-selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
-
-instance Semigroup SelectorSpecificity where
-    SelectorSpecificity a1 b1 c1 <> SelectorSpecificity a2 b2 c2 = SelectorSpecificity (a1+a2) (b1+b2) (c1+c2)
-
-instance Monoid SelectorSpecificity where
-    mempty = SelectorSpecificity 0 0 0
 
 -- | A class that defines that the given type can be converted to a css-selector
 -- value, and has a certain specificity.
@@ -81,14 +69,6 @@ specificity = specificityValue . specificity'
 -- | The root type of a css-selector. This is a comma-separated list of
 -- selectors.
 newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq, Show)
-
-instance Semigroup SelectorGroup where
-    SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
-
-instance IsList SelectorGroup where
-    type Item SelectorGroup = Selector
-    fromList = SelectorGroup . fromList
-    toList (SelectorGroup ss) = toList ss
 
 -- The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
@@ -120,9 +100,6 @@ combine :: SelectorCombinator -> Selector -> Selector -> Selector
 combine c0 x0 ys = go x0
     where go (SelectorSequence x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
-
-instance Semigroup Selector where
-    (<>) = combine Descendant
 
 data SelectorSequence =
       SimpleSelector TypeSelector
@@ -202,10 +179,44 @@ attributeCombinatorText SubstringMatch = "*="
 universal :: TypeSelector
 universal = TypeSelector NAny EAny
 
+-- Semigroup and Monoid instances
+instance Semigroup SelectorSpecificity where
+    SelectorSpecificity a1 b1 c1 <> SelectorSpecificity a2 b2 c2 = SelectorSpecificity (a1+a2) (b1+b2) (c1+c2)
+
+instance Semigroup SelectorGroup where
+    SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
+
+instance Semigroup Selector where
+    (<>) = combine Descendant
+
+instance Monoid SelectorSpecificity where
+    mempty = SelectorSpecificity 0 0 0
+
+-- IsString instances
 instance IsString Class where
     fromString ('.' : s) = Class (pack s)
     fromString s = Class (pack s)
 
+instance IsString Hash where
+    fromString ('#' : s) = Hash (pack s)
+    fromString s = Hash (pack s)
+
+instance IsString Namespace where
+    fromString "*" = NAny
+    fromString "" = NEmpty
+    fromString s = Namespace (pack s)
+
+instance IsString ElementName where
+    fromString "*" = EAny
+    fromString s = ElementName (pack s)
+
+-- IsList instances
+instance IsList SelectorGroup where
+    type Item SelectorGroup = Selector
+    fromList = SelectorGroup . fromList
+    toList (SelectorGroup ss) = toList ss
+
+-- ToCssSelector instances
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
     toSelectorGroup = id
@@ -228,18 +239,6 @@ instance ToCssSelector AttributeName where
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
 
-instance IsString Hash where
-    fromString ('#' : s) = Hash (pack s)
-    fromString s = Hash (pack s)
-
-instance IsString Namespace where
-    fromString "*" = NAny
-    fromString "" = NEmpty
-    fromString s = Namespace (pack s)
-
-instance IsString ElementName where
-    fromString "*" = EAny
-    fromString s = ElementName (pack s)
 
 instance ToCssSelector Hash where
     toCssSelector = cons '#' . unHash
@@ -288,6 +287,13 @@ instance ToCssSelector Selector where
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (SelectorSequence s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
+
+-- Custom Eq and Ord instances
+instance Eq SelectorSpecificity where
+    (==) = on (==) specificityValue
+
+instance Ord SelectorSpecificity where
+    compare = comparing specificityValue
 
 -- Default instances
 instance Default SelectorGroup where

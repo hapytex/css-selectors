@@ -3,7 +3,7 @@
 {-|
 Module      : Css.Selector.QuasiQuoters
 Description : A module that defines a quasiquoter to parse a string to a css selector.
-Maintainer  : vanonsem.willem@gmail.com
+Maintainer  : hapytexeu+gh@gmail.com
 Stability   : experimental
 Portability : POSIX
 
