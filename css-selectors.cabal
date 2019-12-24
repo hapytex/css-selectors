@@ -1,12 +1,12 @@
 name:                css-selectors
-version:             0.1.0.0
+version:             0.1.1.0
 -- synopsis:
 -- description:
 homepage:            https://github.com/KommuSoft/css-selectors#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Willem Van Onsem
-maintainer:          hapytexeu@gmail.com
+maintainer:          hapytexeu+gh@gmail.com
 copyright:           2019 Willem Van Onsem
 category:            webdevelopment
 build-type:          Simple
@@ -18,16 +18,20 @@ library
   exposed-modules:
       Css.Selector
     , Css.Selector.Core
-    , Css.Selector.Lexer
-    , Css.Selector.Parser
     , Css.Selector.QuasiQuoters
+    , Css.Selector.Utils
+  other-modules:
+       Css.Selector.Lexer
+     , Css.Selector.Parser
   build-depends:
       base >=4.7 && <5
     , array >=0.5.3.0 && <0.5.4.0
     , blaze-markup >=0.8 && <0.9
+    , data-default >=0.7 && <0.8
     , Decimal >=0.5.1 && <0.5.2
     , QuickCheck >=2.13 && <2.14
     , template-haskell >=2.14.0 && <2.16.0
+    , shakespeare >=2.0 && <3.0
     , text >=1.1 && <1.3
   build-tools:
       alex
@@ -36,4 +40,4 @@ library
 
 source-repository head
   type:     git
-  location: https://github.com/KommuSoft/css-selectors
+  location: https://github.com/hapytex/css-selectors

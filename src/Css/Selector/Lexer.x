@@ -3,6 +3,7 @@
 module Css.Selector.Lexer(Token(..), alexScanTokens) where
 
 import Data.Decimal(Decimal)
+import Css.Selector.Utils(readCssString)
 }
 
 %wrapper "basic"
@@ -51,7 +52,7 @@ tokens :-
   "|"       { const Pipe }
   "*"       { const Asterisk }
   @ident    { Ident }
-  @string   { String }
+  @string   { String . readCssString }
   "#" @name { THash }
   $w+       { const Space }
   @float    { Decimal . read }
