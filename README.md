@@ -61,3 +61,8 @@ often strings are used to represent these.
 One can generate arbitrary CSS selectors (and their subcomponents). It is
 however not advisable to use this for anything other than for validation
 purposes (like with `QuickCheck`).
+
+---
+
+This package is dedicated in loving memory to my mother, Veerle Dumon, in the
+hope that eventually it will be as stylish as she was.
