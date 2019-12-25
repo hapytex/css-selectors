@@ -25,6 +25,7 @@ library
      , Css.Selector.Parser
   build-depends:
       base >=4.7 && <5
+    , aeson >=1.0 && <2
     , array >=0.5.3.0 && <0.5.4.0
     , blaze-markup >=0.8 && <0.9
     , data-default >=0.7 && <0.8

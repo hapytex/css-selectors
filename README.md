@@ -41,15 +41,18 @@ or you can obtain a more detailed result with:
 specificity' :: ToCssSelector a => a -> SelectorSpecificity
 ```
 
-## `ToMarkup` and `ToJavascript` instances
+## `ToMarkup`, `ToJSON` and `ToJavascript` instances
 
-The types that are members of the `ToCssSelector` are members of the `ToMarkup`
-and `ToJavascript` type classes as well, such that we can conveniently use these
-in blaze HTML and for example in *Hamlet*.
+The types that are members of the `ToCssSelector` are members of the `ToMarkup`,
+`ToJSON`, and `ToJavascript` type classes as well, such that we can conveniently
+use these in blaze HTML and for example in *Hamlet*.
 
 The `ToMarkup` instance will render the css selector as raw content. So if you
 add this as an attribute, the css selector will appear, unescaped, in the
 rendered page.
+
+The `ToJSON` instance will convert the given object in a JSON string that
+contains the css selector.
 
 The `ToJavascript` will render the content to a javascript *string*. So if you
 use this in hamlet, you generate a string that contains the css-selector. This

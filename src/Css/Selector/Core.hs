@@ -15,6 +15,7 @@ module Css.Selector.Core where
 
 import Css.Selector.Utils(encodeText)
 
+import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
@@ -40,7 +41,7 @@ import Text.Julius(Javascript, ToJavascript(toJavascript))
 --
 -- The specificity is calculated with @100*a+10*b+c@ where @a@, @b@ and @c@
 -- count certain elements of the css selector.
-data SelectorSpecificity = SelectorSpecificity Int Int Int
+data SelectorSpecificity = SelectorSpecificity Int Int Int deriving (Data, Show)
 
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
@@ -76,7 +77,7 @@ newtype SelectorGroup = SelectorGroup {
 -- The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
-      SelectorSequence SelectorSequence
+      SelectorSequence SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'
     | Combined SelectorSequence SelectorCombinator Selector
     deriving (Data, Eq, Show)
 
@@ -92,7 +93,8 @@ data SelectorCombinator =
 -- | Convert the 'SelectorCombinator' to the equivalent css-selector text. A
 -- space for 'Descendant', a @>@ for 'Child', a @+@ for 'DirectlyPreceded', and
 -- a @~@ for 'Preceded'
-combinatorText :: SelectorCombinator -> Text
+combinatorText :: SelectorCombinator -- ^ The given 'SelectorCombinator' to retrieve the css token for.
+    -> Text -- ^ The css selector token that is used for the given 'SelectorCombinator'.
 combinatorText Descendant = " "
 combinatorText Child = " > "
 combinatorText DirectlyPreceded = " + "
@@ -197,12 +199,12 @@ data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeN
 -- | The possible ways to match an attribute with a given value in a css
 -- selector.
 data AttributeCombinator =
-      Exact
-    | Include
-    | DashMatch
-    | PrefixMatch
-    | SuffixMatch
-    | SubstringMatch
+      Exact -- ^ The attribute has exactly the value of the value, denoted with @=@ in css.
+    | Include -- ^ The attribute has a whitespace separated list of items, one of these items is the value, denoted with @~=@ in css.
+    | DashMatch -- ^ The attribute has a hyphen separated list of items, the first item is the value, denoted with @|=@ in css.
+    | PrefixMatch -- ^ The value is a prefix of the value in the attribute, denoted with @^=@ in css.
+    | SuffixMatch -- ^ The value is a suffix of the value in the attribute, denoted with @$=@ in css.
+    | SubstringMatch -- ^The value is a substring of the value in the attribute, denoted with @*=@ in css.
     deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
 
 -- | A css class, this is wrapped in a data type. The type only wraps the class
@@ -407,9 +409,12 @@ instance ToMarkup SelectorFilter where
 instance ToMarkup Attrib where
     toMarkup = _cssToMarkup
 
--- ToJavaScript instances
+-- ToJavaScript and ToJson instances
 _cssToJavascript :: ToCssSelector a => a -> Javascript
 _cssToJavascript = toJavascript . toCssSelector
+
+_cssToJson :: ToCssSelector a => a -> Value
+_cssToJson = String . toCssSelector
 
 instance ToJavascript SelectorGroup where
     toJavascript = _cssToJavascript
@@ -425,6 +430,21 @@ instance ToJavascript SelectorFilter where
 
 instance ToJavascript Attrib where
     toJavascript = _cssToJavascript
+
+instance ToJSON SelectorGroup where
+    toJSON = _cssToJson
+
+instance ToJSON Selector where
+    toJSON = _cssToJson
+
+instance ToJSON SelectorSequence where
+    toJSON = _cssToJson
+
+instance ToJSON SelectorFilter where
+    toJSON = _cssToJson
+
+instance ToJSON Attrib where
+    toJSON = _cssToJson
 
 
 -- Arbitrary instances
