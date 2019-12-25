@@ -175,15 +175,47 @@ attrib = flip Attrib
 data Namespace =
       NAny -- A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
     | NEmpty -- A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
-    | Namespace Text
+    | Namespace Text -- A typselector part that specifies that we accept a certain namespace name.
     deriving (Data, Eq, Show)
 
-data ElementName = EAny | ElementName Text deriving (Data, Eq, Show)
-data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq, Show)
+-- | The element name of a css selector tag. The element name can be 'EAny' (all
+-- possible tag names), or an element name with a given text.
+data ElementName =
+      EAny -- ^ A typeselector part that specifies that we accept all element names, in css denoted with @*@.
+    | ElementName Text -- ^ A typeselector part that specifies that we accept a certain element name.
+    deriving (Data, Eq, Show)
+
+-- | A typeselector is a combination of a selector for a namespace, and a
+-- selector for an element name. One, or both can be a wildcard.
+data TypeSelector = TypeSelector {
+    selectorNamespace :: Namespace, -- ^ The selector for the namespace.
+    elementName :: ElementName -- ^ The selector for the element name.
+  } deriving (Data, Eq, Show)
+
 data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq, Show)
-data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
-newtype Class = Class { unClass :: Text } deriving (Data, Eq, Show)
-newtype Hash = Hash { unHash :: Text } deriving (Data, Eq, Show)
+
+-- | The possible ways to match an attribute with a given value in a css
+-- selector.
+data AttributeCombinator =
+      Exact
+    | Include
+    | DashMatch
+    | PrefixMatch
+    | SuffixMatch
+    | SubstringMatch
+    deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
+
+-- | A css class, this is wrapped in a data type. The type only wraps the class
+-- name, not the dot prefix.
+newtype Class = Class {
+    unClass :: Text -- ^ Obtain the name from the class.
+  } deriving (Data, Eq, Show)
+
+-- | A css hash (used to match an element with a given id). The type only wraps
+-- the hash name, not the hash (@#@) prefix.
+newtype Hash = Hash {
+    unHash :: Text -- ^ Obtain the name from the hash.
+  } deriving (Data, Eq, Show)
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
