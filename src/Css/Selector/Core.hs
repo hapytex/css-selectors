@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskellQuotes, TypeFamilies #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
 
 {-|
 Module      : Css.Selector.Core
@@ -63,12 +63,13 @@ class ToCssSelector a where
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
 -- of that object.
-specificity :: ToCssSelector a => a -> Int
+specificity :: ToCssSelector a => a -- ^ The object for which we evaluate the specificity.
+    -> Int -- ^ The specificity level as an 'Int' value.
 specificity = specificityValue . specificity'
 
 -- | The root type of a css-selector. This is a comma-separated list of
 -- selectors.
-newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq, Show)
+newtype SelectorGroup = SelectorGroup { unSelectorGroup :: NonEmpty Selector } deriving (Data, Eq, Show)
 
 -- The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
@@ -132,12 +133,13 @@ data Attrib =
 attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
 attrib = flip Attrib
 
--- | Create a 'Attrib' where the given 'AttributeName' is constrained to be
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
 -- exactly the given value.
 (.=) :: AttributeName -> Text -> Attrib
 (.=) = attrib Exact
 
--- | 
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
+--
 (.~=) :: AttributeName -> Text -> Attrib
 (.~=) = attrib Include
 
@@ -159,6 +161,12 @@ attrib = flip Attrib
 (...) :: SelectorSequence -> Class -> SelectorSequence
 (...) = (. SClass) . Filter
 
+-- | Construct a 'TypeSelector' with a given 'Namespace' and 'ElementName'.
+(.|) :: Namespace -- ^ The 'Namespace' for the 'TypeSelector'.
+    -> ElementName -- ^ The 'ElementName' for the 'TypeSelector'.
+    -> TypeSelector -- ^ A 'TypeSelector' object constructed with the 'Namespace' and 'ElementName'.
+(.|) = TypeSelector
+
 data Namespace = NAny | NEmpty | Namespace Text deriving (Data, Eq, Show)
 data ElementName = EAny | ElementName Text deriving (Data, Eq, Show)
 data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq, Show)
@@ -176,8 +184,10 @@ attributeCombinatorText PrefixMatch = "^="
 attributeCombinatorText SuffixMatch = "$="
 attributeCombinatorText SubstringMatch = "*="
 
-universal :: TypeSelector
-universal = TypeSelector NAny EAny
+-- | The universal type selector: a selector that matches all types in all
+--   namespaces (including the empty namespace)
+pattern Universal :: TypeSelector
+pattern Universal = TypeSelector NAny EAny
 
 -- Semigroup and Monoid instances
 instance Semigroup SelectorSpecificity where
@@ -187,7 +197,7 @@ instance Semigroup SelectorGroup where
     SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
 
 instance Semigroup Selector where
-    (<>) = combine Descendant
+    (<>) = combine def
 
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
@@ -276,7 +286,7 @@ instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
     toCssSelector (SClass c) = toCssSelector c
     toCssSelector (SAttrib a) = toCssSelector a
-    toSelectorGroup = toSelectorGroup . Filter (SimpleSelector universal)
+    toSelectorGroup = toSelectorGroup . Filter (SimpleSelector Universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
@@ -306,7 +316,7 @@ instance Default SelectorSequence where
     def = SimpleSelector def
 
 instance Default TypeSelector where
-    def = universal
+    def = Universal
 
 instance Default SelectorSpecificity where
     def = mempty
@@ -316,6 +326,9 @@ instance Default Namespace where
 
 instance Default ElementName where
     def = EAny
+
+instance Default SelectorCombinator where
+    def = Descendant
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp

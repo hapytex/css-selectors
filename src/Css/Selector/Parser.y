@@ -61,7 +61,7 @@ Combinator
 
 SimpleSelectorSequence
     : Type FilterList             { addFilters (SimpleSelector $1) $2 }
-    | SelectorAddition FilterList { addFilters (SimpleSelector universal) ($1:$2) }
+    | SelectorAddition FilterList { addFilters (SimpleSelector Universal) ($1:$2) }
     ;
 
 FilterList
@@ -111,7 +111,7 @@ AttribOp
 
 Type
     : TypeSelector                { $1 }
-    | '*'                         { universal }
+    | '*'                         { Universal }
     ;
 
 TypeSelector
