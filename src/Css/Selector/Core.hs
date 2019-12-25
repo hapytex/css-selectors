@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, TemplateHaskellQuotes, TypeFamilies #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
 
 {-|
 Module      : Css.Selector.Core
@@ -15,6 +15,7 @@ module Css.Selector.Core where
 
 import Css.Selector.Utils(encodeText)
 
+import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
@@ -40,7 +41,7 @@ import Text.Julius(Javascript, ToJavascript(toJavascript))
 --
 -- The specificity is calculated with @100*a+10*b+c@ where @a@, @b@ and @c@
 -- count certain elements of the css selector.
-data SelectorSpecificity = SelectorSpecificity Int Int Int
+data SelectorSpecificity = SelectorSpecificity Int Int Int deriving (Data, Show)
 
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
@@ -52,33 +53,39 @@ specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 class ToCssSelector a where
     -- | Convert the given element to a 'Text' object that contains the css
     -- selector.
-    toCssSelector :: a -> Text
+    toCssSelector :: a -- ^ The given object for which we calculate the css selector.
+        -> Text -- ^ The css selector text for the given object.
     -- | Lift the given 'ToCssSelector' type object to a 'SelectorGroup', which
     -- is the "root type" of the css selector hierarchy.
-    toSelectorGroup :: a -> SelectorGroup
+    toSelectorGroup :: a -- ^ The item to lift to a 'SelectorGroup'
+        -> SelectorGroup -- ^ The value of a 'SelectorGroup' of which the object is the selective part.
     -- | Calculate the specificity of the css selector by returing a
     -- 'SelectorSpecificity' object.
-    specificity' :: a -> SelectorSpecificity
+    specificity' :: a -- ^ The item for which we calculate the specificity level.
+        -> SelectorSpecificity -- ^ The specificity level of the given item.
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
 -- of that object.
-specificity :: ToCssSelector a => a -> Int
+specificity :: ToCssSelector a => a -- ^ The object for which we evaluate the specificity.
+    -> Int -- ^ The specificity level as an 'Int' value.
 specificity = specificityValue . specificity'
 
 -- | The root type of a css-selector. This is a comma-separated list of
 -- selectors.
-newtype SelectorGroup = SelectorGroup (NonEmpty Selector) deriving (Data, Eq, Show)
+newtype SelectorGroup = SelectorGroup {
+    unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
+  } deriving (Data, Eq, Show)
 
--- The type of a single selector. This is a sequence of 'SelectorSequence's that
+-- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
-      SelectorSequence SelectorSequence
-    | Combined SelectorSequence SelectorCombinator Selector
+      SelectorSequence SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
+    | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
     deriving (Data, Eq, Show)
 
 
--- A type that contains the possible ways to combine 'SelectorSequence's.
+-- | A type that contains the possible ways to combine 'SelectorSequence's.
 data SelectorCombinator =
       Descendant -- ^ The second tag is a descendant of the first one, denoted in css with a space.
     | Child -- ^ The second tag is the (direct) child of the first one, denoted with a @>@ in css.
@@ -89,7 +96,8 @@ data SelectorCombinator =
 -- | Convert the 'SelectorCombinator' to the equivalent css-selector text. A
 -- space for 'Descendant', a @>@ for 'Child', a @+@ for 'DirectlyPreceded', and
 -- a @~@ for 'Preceded'
-combinatorText :: SelectorCombinator -> Text
+combinatorText :: SelectorCombinator -- ^ The given 'SelectorCombinator' to retrieve the css token for.
+    -> Text -- ^ The css selector token that is used for the given 'SelectorCombinator'.
 combinatorText Descendant = " "
 combinatorText Child = " > "
 combinatorText DirectlyPreceded = " + "
@@ -101,6 +109,9 @@ combine c0 x0 ys = go x0
     where go (SelectorSequence x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
 
+-- | A 'SelectorSequence' is a 'TypeSelector' (that can be 'Universal') followed
+-- by zero, one or more 'SelectorFilter's these filter the selector further, for
+-- example with a 'Hash', a 'Class', or an 'Attrib'.
 data SelectorSequence =
       SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
@@ -124,51 +135,138 @@ data SelectorFilter =
 -- a certain value (prefix, suffix, etc.).
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
-    | Attrib AttributeName AttributeCombinator Text -- A constraint about the value associated with the given 'AttributeName'.
+    | Attrib AttributeName AttributeCombinator AttributeValue -- A constraint about the value associated with the given 'AttributeName'.
     deriving (Data, Eq, Show)
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
-attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
+attrib :: AttributeCombinator -- ^ The 'AttributeCombiantor' that specifies the required relation between the attribute and a value.
+    -> AttributeName -- ^ The name of an attribute to filter.
+    -> AttributeValue -- ^ The value of the attribute to filter.
+    -> Attrib -- ^ The result is an 'Attrib' object that will filter the given 'AttributeName' with the given 'AttributeCombinator'.
 attrib = flip Attrib
 
--- | Create a 'Attrib' where the given 'AttributeName' is constrained to be
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
 -- exactly the given value.
-(.=) :: AttributeName -> Text -> Attrib
+(.=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.=) = attrib Exact
 
--- | 
-(.~=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute is a whitespace seperated list of items, and the value is
+-- one of these items.
+(.~=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.~=) = attrib Include
 
-(.|=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute is a dash seperated list of items, and the value is
+-- the first of these items.
+(.|=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.|=) = attrib DashMatch
 
-(.^=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute has as prefix the given 'AttributeValue'.
+(.^=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.^=) = attrib PrefixMatch
 
-(.$=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute has as suffix the given 'AttributeValue'.
+(.$=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.$=) = attrib SuffixMatch
 
-(.*=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute has as substring the given 'AttributeValue'.
+(.*=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.*=) = attrib SubstringMatch
 
-(.#) :: SelectorSequence -> Hash -> SelectorSequence
+-- | Filter a given 'SelectorSequence' with a given 'Hash'.
+(.#) :: SelectorSequence -- ^ The given 'SelectorSequence' to filter.
+    -> Hash -- ^ The given 'Hash' to filter the 'SelectorSequence' further.
+    -> SelectorSequence -- ^ A 'SelectorSequence' that is filtered additionally with the given 'Hash'.
 (.#) = (. SHash) . Filter
 
-(...) :: SelectorSequence -> Class -> SelectorSequence
+-- | Filter a given 'SelectorSequence' with a given 'Class'.
+(...) :: SelectorSequence -- ^ The given 'SelectorSequence to filter.
+    -> Class -- ^ The given 'Class' to filter the 'SelectorSequence' further.
+    -> SelectorSequence -- ^ A 'SelectorSequence' that is filtered additionally with the given 'Class'.
 (...) = (. SClass) . Filter
 
-data Namespace = NAny | NEmpty | Namespace Text deriving (Data, Eq, Show)
-data ElementName = EAny | ElementName Text deriving (Data, Eq, Show)
-data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq, Show)
-data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq, Show)
-data AttributeCombinator = Exact | Include | DashMatch | PrefixMatch | SuffixMatch | SubstringMatch deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
-newtype Class = Class { unClass :: Text } deriving (Data, Eq, Show)
-newtype Hash = Hash { unHash :: Text } deriving (Data, Eq, Show)
+-- | Construct a 'TypeSelector' with a given 'Namespace' and 'ElementName'.
+(.|) :: Namespace -- ^ The 'Namespace' for the 'TypeSelector'.
+    -> ElementName -- ^ The 'ElementName' for the 'TypeSelector'.
+    -> TypeSelector -- ^ A 'TypeSelector' object constructed with the 'Namespace' and 'ElementName'.
+(.|) = TypeSelector
+
+-- | The namespace of a css selector tag. The namespace can be 'NAny' (all
+-- possible namespaces), 'NEmpty' (the empty namespace), or a namespace with a
+-- given text.
+data Namespace =
+      NAny -- A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
+    | NEmpty -- A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
+    | Namespace Text -- A typselector part that specifies that we accept a certain namespace name.
+    deriving (Data, Eq, Show)
+
+-- | The element name of a css selector tag. The element name can be 'EAny' (all
+-- possible tag names), or an element name with a given text.
+data ElementName =
+      EAny -- ^ A typeselector part that specifies that we accept all element names, in css denoted with @*@.
+    | ElementName Text -- ^ A typeselector part that specifies that we accept a certain element name.
+    deriving (Data, Eq, Show)
+
+-- | A typeselector is a combination of a selector for a namespace, and a
+-- selector for an element name. One, or both can be a wildcard.
+data TypeSelector = TypeSelector {
+    selectorNamespace :: Namespace, -- ^ The selector for the namespace.
+    elementName :: ElementName -- ^ The selector for the element name.
+  } deriving (Data, Eq, Show)
+
+-- | An attribute name is a name that optionally has a namespace, and the name
+-- of the attribute.
+data AttributeName = AttributeName {
+    attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' or 'NEmpty' as well.
+    attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
+  } deriving (Data, Eq, Show)
+
+-- | We use 'Text' as the type to store an attribute value.
+type AttributeValue = Text
+
+-- | The possible ways to match an attribute with a given value in a css
+-- selector.
+data AttributeCombinator =
+      Exact -- ^ The attribute has exactly the value of the value, denoted with @=@ in css.
+    | Include -- ^ The attribute has a whitespace separated list of items, one of these items is the value, denoted with @~=@ in css.
+    | DashMatch -- ^ The attribute has a hyphen separated list of items, the first item is the value, denoted with @|=@ in css.
+    | PrefixMatch -- ^ The value is a prefix of the value in the attribute, denoted with @^=@ in css.
+    | SuffixMatch -- ^ The value is a suffix of the value in the attribute, denoted with @$=@ in css.
+    | SubstringMatch -- ^The value is a substring of the value in the attribute, denoted with @*=@ in css.
+    deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
+
+-- | A css class, this is wrapped in a data type. The type only wraps the class
+-- name, not the dot prefix.
+newtype Class = Class {
+    unClass :: Text -- ^ Obtain the name from the class.
+  } deriving (Data, Eq, Show)
+
+-- | A css hash (used to match an element with a given id). The type only wraps
+-- the hash name, not the hash (@#@) prefix.
+newtype Hash = Hash {
+    unHash :: Text -- ^ Obtain the name from the hash.
+  } deriving (Data, Eq, Show)
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
-attributeCombinatorText :: AttributeCombinator -> Text
+attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
+    -> AttributeValue -- ^ The css selector text for the given 'AttributeCombinator'.
 attributeCombinatorText Exact = "="
 attributeCombinatorText Include = "~="
 attributeCombinatorText DashMatch = "|="
@@ -176,8 +274,11 @@ attributeCombinatorText PrefixMatch = "^="
 attributeCombinatorText SuffixMatch = "$="
 attributeCombinatorText SubstringMatch = "*="
 
-universal :: TypeSelector
-universal = TypeSelector NAny EAny
+-- | The universal type selector: a selector that matches all types in all
+--   namespaces (including the empty namespace). This pattern is bidirectional
+--   and thus can be used in expressions as well.
+pattern Universal :: TypeSelector
+pattern Universal = TypeSelector NAny EAny
 
 -- Semigroup and Monoid instances
 instance Semigroup SelectorSpecificity where
@@ -187,7 +288,7 @@ instance Semigroup SelectorGroup where
     SelectorGroup g1 <> SelectorGroup g2 = SelectorGroup (g1 <> g2)
 
 instance Semigroup Selector where
-    (<>) = combine Descendant
+    (<>) = combine def
 
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
@@ -276,7 +377,7 @@ instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
     toCssSelector (SClass c) = toCssSelector c
     toCssSelector (SAttrib a) = toCssSelector a
-    toSelectorGroup = toSelectorGroup . Filter (SimpleSelector universal)
+    toSelectorGroup = toSelectorGroup . Filter (SimpleSelector Universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
@@ -306,7 +407,7 @@ instance Default SelectorSequence where
     def = SimpleSelector def
 
 instance Default TypeSelector where
-    def = universal
+    def = Universal
 
 instance Default SelectorSpecificity where
     def = mempty
@@ -316,6 +417,12 @@ instance Default Namespace where
 
 instance Default ElementName where
     def = EAny
+
+instance Default SelectorCombinator where
+    def = Descendant
+
+instance Default AttributeCombinator where
+    def = Exact
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
@@ -350,9 +457,12 @@ instance ToMarkup SelectorFilter where
 instance ToMarkup Attrib where
     toMarkup = _cssToMarkup
 
--- ToJavaScript instances
+-- ToJavaScript and ToJson instances
 _cssToJavascript :: ToCssSelector a => a -> Javascript
 _cssToJavascript = toJavascript . toCssSelector
+
+_cssToJson :: ToCssSelector a => a -> Value
+_cssToJson = String . toCssSelector
 
 instance ToJavascript SelectorGroup where
     toJavascript = _cssToJavascript
@@ -368,6 +478,21 @@ instance ToJavascript SelectorFilter where
 
 instance ToJavascript Attrib where
     toJavascript = _cssToJavascript
+
+instance ToJSON SelectorGroup where
+    toJSON = _cssToJson
+
+instance ToJSON Selector where
+    toJSON = _cssToJson
+
+instance ToJSON SelectorSequence where
+    toJSON = _cssToJson
+
+instance ToJSON SelectorFilter where
+    toJSON = _cssToJson
+
+instance ToJSON Attrib where
+    toJSON = _cssToJson
 
 
 -- Arbitrary instances
