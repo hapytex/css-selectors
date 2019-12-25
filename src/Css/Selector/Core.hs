@@ -77,7 +77,7 @@ newtype SelectorGroup = SelectorGroup {
     unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
   } deriving (Data, Eq, Show)
 
--- The type of a single selector. This is a sequence of 'SelectorSequence's that
+-- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
       SelectorSequence SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
@@ -85,7 +85,7 @@ data Selector =
     deriving (Data, Eq, Show)
 
 
--- A type that contains the possible ways to combine 'SelectorSequence's.
+-- | A type that contains the possible ways to combine 'SelectorSequence's.
 data SelectorCombinator =
       Descendant -- ^ The second tag is a descendant of the first one, denoted in css with a space.
     | Child -- ^ The second tag is the (direct) child of the first one, denoted with a @>@ in css.
@@ -109,6 +109,9 @@ combine c0 x0 ys = go x0
     where go (SelectorSequence x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
 
+-- | A 'SelectorSequence' is a 'TypeSelector' (that can be 'Universal') followed
+-- by zero, one or more 'SelectorFilter's these filter the selector further, for
+-- example with a 'Hash', a 'Class', or an 'Attrib'.
 data SelectorSequence =
       SimpleSelector TypeSelector
     | Filter SelectorSequence SelectorFilter
@@ -150,27 +153,53 @@ attrib = flip Attrib
     -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.=) = attrib Exact
 
--- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
--- 
-(.~=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute is a whitespace seperated list of items, and the value is
+-- one of these items.
+(.~=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.~=) = attrib Include
 
-(.|=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute is a dash seperated list of items, and the value is
+-- the first of these items.
+(.|=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.|=) = attrib DashMatch
 
-(.^=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute has as prefix the given 'AttributeValue'.
+(.^=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.^=) = attrib PrefixMatch
 
-(.$=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute has as suffix the given 'AttributeValue'.
+(.$=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.$=) = attrib SuffixMatch
 
-(.*=) :: AttributeName -> Text -> Attrib
+-- | Create an 'Attrib' where the given 'AttributeName' is constrainted such
+-- that the attribute has as substring the given 'AttributeValue'.
+(.*=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.*=) = attrib SubstringMatch
 
-(.#) :: SelectorSequence -> Hash -> SelectorSequence
+-- | Filter a given 'SelectorSequence' with a given 'Hash'.
+(.#) :: SelectorSequence -- ^ The given 'SelectorSequence' to filter.
+    -> Hash -- ^ The given 'Hash' to filter the 'SelectorSequence' further.
+    -> SelectorSequence -- ^ A 'SelectorSequence' that is filtered additionally with the given 'Hash'.
 (.#) = (. SHash) . Filter
 
-(...) :: SelectorSequence -> Class -> SelectorSequence
+-- | Filter a given 'SelectorSequence' with a given 'Class'.
+(...) :: SelectorSequence -- ^ The given 'SelectorSequence to filter.
+    -> Class -- ^ The given 'Class' to filter the 'SelectorSequence' further.
+    -> SelectorSequence -- ^ A 'SelectorSequence' that is filtered additionally with the given 'Class'.
 (...) = (. SClass) . Filter
 
 -- | Construct a 'TypeSelector' with a given 'Namespace' and 'ElementName'.
@@ -209,7 +238,7 @@ data AttributeName = AttributeName {
     attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
   } deriving (Data, Eq, Show)
 
--- We use 'Text' as the type to store an attribute value.
+-- | We use 'Text' as the type to store an attribute value.
 type AttributeValue = Text
 
 -- | The possible ways to match an attribute with a given value in a css
