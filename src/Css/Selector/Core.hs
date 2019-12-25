@@ -53,13 +53,16 @@ specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 class ToCssSelector a where
     -- | Convert the given element to a 'Text' object that contains the css
     -- selector.
-    toCssSelector :: a -> Text
+    toCssSelector :: a -- ^ The given object for which we calculate the css selector.
+        -> Text -- ^ The css selector text for the given object.
     -- | Lift the given 'ToCssSelector' type object to a 'SelectorGroup', which
     -- is the "root type" of the css selector hierarchy.
-    toSelectorGroup :: a -> SelectorGroup
+    toSelectorGroup :: a -- ^ The item to lift to a 'SelectorGroup'
+        -> SelectorGroup -- ^ The value of a 'SelectorGroup' of which the object is the selective part.
     -- | Calculate the specificity of the css selector by returing a
     -- 'SelectorSpecificity' object.
-    specificity' :: a -> SelectorSpecificity
+    specificity' :: a -- ^ The item for which we calculate the specificity level.
+        -> SelectorSpecificity -- ^ The specificity level of the given item.
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
@@ -77,8 +80,8 @@ newtype SelectorGroup = SelectorGroup {
 -- The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
-      SelectorSequence SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'
-    | Combined SelectorSequence SelectorCombinator Selector
+      SelectorSequence SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
+    | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
     deriving (Data, Eq, Show)
 
 
@@ -129,17 +132,22 @@ data SelectorFilter =
 -- a certain value (prefix, suffix, etc.).
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
-    | Attrib AttributeName AttributeCombinator Text -- A constraint about the value associated with the given 'AttributeName'.
+    | Attrib AttributeName AttributeCombinator AttributeValue -- A constraint about the value associated with the given 'AttributeName'.
     deriving (Data, Eq, Show)
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
-attrib :: AttributeCombinator -> AttributeName -> Text -> Attrib
+attrib :: AttributeCombinator -- ^ The 'AttributeCombiantor' that specifies the required relation between the attribute and a value.
+    -> AttributeName -- ^ The name of an attribute to filter.
+    -> AttributeValue -- ^ The value of the attribute to filter.
+    -> Attrib -- ^ The result is an 'Attrib' object that will filter the given 'AttributeName' with the given 'AttributeCombinator'.
 attrib = flip Attrib
 
 -- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
 -- exactly the given value.
-(.=) :: AttributeName -> Text -> Attrib
+(.=) :: AttributeName -- ^ The name of the attribute to constraint.
+    -> AttributeValue -- ^ The value that constraints the attribute.
+    -> Attrib -- ^ The 'Attrib' object we construct with the given name and value.
 (.=) = attrib Exact
 
 -- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
@@ -194,7 +202,15 @@ data TypeSelector = TypeSelector {
     elementName :: ElementName -- ^ The selector for the element name.
   } deriving (Data, Eq, Show)
 
-data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq, Show)
+-- | An attribute name is a name that optionally has a namespace, and the name
+-- of the attribute.
+data AttributeName = AttributeName {
+    attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' or 'NEmpty' as well.
+    attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
+  } deriving (Data, Eq, Show)
+
+-- We use 'Text' as the type to store an attribute value.
+type AttributeValue = Text
 
 -- | The possible ways to match an attribute with a given value in a css
 -- selector.
@@ -221,7 +237,7 @@ newtype Hash = Hash {
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
-    -> Text -- ^ The css selector text for the given 'AttributeCombinator'.
+    -> AttributeValue -- ^ The css selector text for the given 'AttributeCombinator'.
 attributeCombinatorText Exact = "="
 attributeCombinatorText Include = "~="
 attributeCombinatorText DashMatch = "|="
@@ -375,6 +391,9 @@ instance Default ElementName where
 
 instance Default SelectorCombinator where
     def = Descendant
+
+instance Default AttributeCombinator where
+    def = Exact
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
