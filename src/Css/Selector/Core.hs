@@ -69,7 +69,9 @@ specificity = specificityValue . specificity'
 
 -- | The root type of a css-selector. This is a comma-separated list of
 -- selectors.
-newtype SelectorGroup = SelectorGroup { unSelectorGroup :: NonEmpty Selector } deriving (Data, Eq, Show)
+newtype SelectorGroup = SelectorGroup {
+    unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
+  } deriving (Data, Eq, Show)
 
 -- The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
@@ -139,7 +141,7 @@ attrib = flip Attrib
 (.=) = attrib Exact
 
 -- | Create an 'Attrib' where the given 'AttributeName' is constrainted to be
---
+-- 
 (.~=) :: AttributeName -> Text -> Attrib
 (.~=) = attrib Include
 
@@ -167,7 +169,15 @@ attrib = flip Attrib
     -> TypeSelector -- ^ A 'TypeSelector' object constructed with the 'Namespace' and 'ElementName'.
 (.|) = TypeSelector
 
-data Namespace = NAny | NEmpty | Namespace Text deriving (Data, Eq, Show)
+-- | The namespace of a css selector tag. The namespace can be 'NAny' (all
+-- possible namespaces), 'NEmpty' (the empty namespace), or a namespace with a
+-- given text.
+data Namespace =
+      NAny -- A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
+    | NEmpty -- A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
+    | Namespace Text
+    deriving (Data, Eq, Show)
+
 data ElementName = EAny | ElementName Text deriving (Data, Eq, Show)
 data TypeSelector = TypeSelector { selectorNameSpace :: Namespace, elementName :: ElementName } deriving (Data, Eq, Show)
 data AttributeName = AttributeName { attributeNamespace :: Namespace, attributeName :: Text } deriving (Data, Eq, Show)
@@ -176,7 +186,8 @@ newtype Class = Class { unClass :: Text } deriving (Data, Eq, Show)
 newtype Hash = Hash { unHash :: Text } deriving (Data, Eq, Show)
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
-attributeCombinatorText :: AttributeCombinator -> Text
+attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
+    -> Text -- ^ The css selector text for the given 'AttributeCombinator'.
 attributeCombinatorText Exact = "="
 attributeCombinatorText Include = "~="
 attributeCombinatorText DashMatch = "|="
@@ -185,7 +196,8 @@ attributeCombinatorText SuffixMatch = "$="
 attributeCombinatorText SubstringMatch = "*="
 
 -- | The universal type selector: a selector that matches all types in all
---   namespaces (including the empty namespace)
+--   namespaces (including the empty namespace). This pattern is bidirectional
+--   and thus can be used in expressions as well.
 pattern Universal :: TypeSelector
 pattern Universal = TypeSelector NAny EAny
 

@@ -56,7 +56,7 @@ use this in hamlet, you generate a string that contains the css-selector. This
 is often useful, since javascript itself has no syntax for css selectors, and
 often strings are used to represent these.
 
-## Arbitrary css selectors
+## `Arbitrary` css selectors
 
 One can generate arbitrary CSS selectors (and their subcomponents). It is
 however not advisable to use this for anything other than for validation
@@ -64,5 +64,5 @@ purposes (like with `QuickCheck`).
 
 ---
 
-This package is dedicated in loving memory to my mother, Veerle Dumon, in the
-hope that eventually it will be as stylish as she was.
+This package is dedicated in loving memory to my mother, Veerle Dumon
+(1958-2019), in the hope that eventually it will be as stylish as she was.
