@@ -9,7 +9,21 @@ Portability : POSIX
 
 A module that defines the tree of types to represent and manipulate a css selector. These data types are members of several typeclasses to make these more useful.
 -}
-module Css.Selector.Core where
+module Css.Selector.Core (
+    -- Classes
+    ToCssSelector(..)
+    -- Types
+    , Attrib(..), AttributeCombinator(..), AttributeName(..), AttributeValue
+    , Class(..), ElementName(..), Hash(..), Namespace(..), Selector(..)
+    , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
+    , SelectorSequence(..), SelectorSpecificity(..), TypeSelector(..)
+    -- Functions
+    , addFilters, attrib, attributeCombinatorText, combinatorText, combine
+    , specificity, specificityValue, (.=), (.~=), (.|=), (.^=), (.$=), (.*=)
+    , (.#), (...), (.|)
+    -- Patterns
+    , pattern Universal
+  ) where
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
@@ -80,7 +94,7 @@ newtype SelectorGroup = SelectorGroup {
 -- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
-      SelectorSequence SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
+      Selector SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
     | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
     deriving (Data, Eq, Show)
 
@@ -106,15 +120,15 @@ combinatorText Preceded = " ~ "
 -- | Combines two 'Selector's with the given 'SelectorCombinator'.
 combine :: SelectorCombinator -> Selector -> Selector -> Selector
 combine c0 x0 ys = go x0
-    where go (SelectorSequence x) = Combined x c0 ys
+    where go (Selector x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
 
 -- | A 'SelectorSequence' is a 'TypeSelector' (that can be 'Universal') followed
 -- by zero, one or more 'SelectorFilter's these filter the selector further, for
 -- example with a 'Hash', a 'Class', or an 'Attrib'.
 data SelectorSequence =
-      SimpleSelector TypeSelector
-    | Filter SelectorSequence SelectorFilter
+      SimpleSelector TypeSelector -- Convert a 'TypeSelector' into a 'SimpleSelector'.
+    | Filter SelectorSequence SelectorFilter -- Apply an additional 'SelectorFilter' to the 'SelectorSequence'.
     deriving (Data, Eq, Show)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
@@ -140,7 +154,7 @@ data Attrib =
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
-attrib :: AttributeCombinator -- ^ The 'AttributeCombiantor' that specifies the required relation between the attribute and a value.
+attrib :: AttributeCombinator -- ^ The 'AttributeCombinator' that specifies the required relation between the attribute and a value.
     -> AttributeName -- ^ The name of an attribute to filter.
     -> AttributeValue -- ^ The value of the attribute to filter.
     -> Attrib -- ^ The result is an 'Attrib' object that will filter the given 'AttributeName' with the given 'AttributeCombinator'.
@@ -356,7 +370,7 @@ instance ToCssSelector Namespace where
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
     toCssSelector (Filter s f) = toCssSelector s <> toCssSelector f
-    toSelectorGroup = toSelectorGroup . SelectorSequence
+    toSelectorGroup = toSelectorGroup . Selector
     specificity' (SimpleSelector s) = specificity' s
     specificity' (Filter s f) = specificity' s <> specificity' f
 
@@ -383,10 +397,10 @@ instance ToCssSelector SelectorFilter where
     specificity' (SAttrib a) = specificity' a
 
 instance ToCssSelector Selector where
-    toCssSelector (SelectorSequence s) = toCssSelector s
+    toCssSelector (Selector s) = toCssSelector s
     toCssSelector (Combined s1 c s2) = toCssSelector s1 <> combinatorText c <> toCssSelector s2
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
-    specificity' (SelectorSequence s) = specificity' s
+    specificity' (Selector s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
 
 -- Custom Eq and Ord instances
@@ -401,7 +415,7 @@ instance Default SelectorGroup where
     def = SelectorGroup (pure def)
 
 instance Default Selector where
-    def = SelectorSequence def
+    def = Selector def
 
 instance Default SelectorSequence where
     def = SimpleSelector def
@@ -557,4 +571,4 @@ instance Arbitrary SelectorGroup where
     arbitrary = SelectorGroup <$> ((:|) <$> arbitrary <*> arbitrary)
 
 instance Arbitrary Selector where
-    arbitrary = frequency [(3, SelectorSequence <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]
+    arbitrary = frequency [(3, Selector <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]

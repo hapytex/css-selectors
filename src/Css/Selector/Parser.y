@@ -48,7 +48,7 @@ SelectorGroupList
     ;
 
 Selector
-    : SimpleSelectorSequence                      { SelectorSequence $1 }
+    : SimpleSelectorSequence                      { Selector $1 }
     | SimpleSelectorSequence Combinator Selector  { Combined $1 $2 $3 }
     ;
 
