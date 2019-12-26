@@ -55,7 +55,9 @@ import Text.Julius(Javascript, ToJavascript(toJavascript))
 --
 -- The specificity is calculated with @100*a+10*b+c@ where @a@, @b@ and @c@
 -- count certain elements of the css selector.
-data SelectorSpecificity = SelectorSpecificity Int Int Int deriving (Data, Show)
+data SelectorSpecificity =
+      SelectorSpecificity Int Int Int -- ^ Create a 'SelectorSpecificity' object with a given value for @a@, @b@, and @c@.
+    deriving (Data, Show)
 
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
@@ -69,10 +71,12 @@ class ToCssSelector a where
     -- selector.
     toCssSelector :: a -- ^ The given object for which we calculate the css selector.
         -> Text -- ^ The css selector text for the given object.
+
     -- | Lift the given 'ToCssSelector' type object to a 'SelectorGroup', which
     -- is the "root type" of the css selector hierarchy.
     toSelectorGroup :: a -- ^ The item to lift to a 'SelectorGroup'
         -> SelectorGroup -- ^ The value of a 'SelectorGroup' of which the object is the selective part.
+
     -- | Calculate the specificity of the css selector by returing a
     -- 'SelectorSpecificity' object.
     specificity' :: a -- ^ The item for which we calculate the specificity level.
@@ -127,8 +131,8 @@ combine c0 x0 ys = go x0
 -- by zero, one or more 'SelectorFilter's these filter the selector further, for
 -- example with a 'Hash', a 'Class', or an 'Attrib'.
 data SelectorSequence =
-      SimpleSelector TypeSelector -- Convert a 'TypeSelector' into a 'SimpleSelector'.
-    | Filter SelectorSequence SelectorFilter -- Apply an additional 'SelectorFilter' to the 'SelectorSequence'.
+      SimpleSelector TypeSelector -- ^ Convert a 'TypeSelector' into a 'SimpleSelector'.
+    | Filter SelectorSequence SelectorFilter -- ^ Apply an additional 'SelectorFilter' to the 'SelectorSequence'.
     deriving (Data, Eq, Show)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
@@ -139,9 +143,9 @@ addFilters = foldl Filter
 -- | A type that sums up the different ways to filter a type selector: with an
 -- id (hash), a class, and an attribute.
 data SelectorFilter =
-      SHash Hash
-    | SClass Class
-    | SAttrib Attrib
+      SHash Hash -- ^ A 'Hash' object as filter.
+    | SClass Class -- ^ A 'Class' object as filter.
+    | SAttrib Attrib -- ^ An 'Attrib' object as filter.
     deriving (Data, Eq, Show)
 
 -- | A css attribute can come in two flavors: either a constraint that the
@@ -149,7 +153,7 @@ data SelectorFilter =
 -- a certain value (prefix, suffix, etc.).
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
-    | Attrib AttributeName AttributeCombinator AttributeValue -- A constraint about the value associated with the given 'AttributeName'.
+    | Attrib AttributeName AttributeCombinator AttributeValue -- ^ A constraint about the value associated with the given 'AttributeName'.
     deriving (Data, Eq, Show)
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
@@ -226,9 +230,9 @@ attrib = flip Attrib
 -- possible namespaces), 'NEmpty' (the empty namespace), or a namespace with a
 -- given text.
 data Namespace =
-      NAny -- A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
-    | NEmpty -- A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
-    | Namespace Text -- A typselector part that specifies that we accept a certain namespace name.
+      NAny -- ^ A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
+    | NEmpty -- ^ A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
+    | Namespace Text -- ^ A typselector part that specifies that we accept a certain namespace name.
     deriving (Data, Eq, Show)
 
 -- | The element name of a css selector tag. The element name can be 'EAny' (all
