@@ -1,6 +1,6 @@
 name:                css-selectors
 version:             0.1.1.0
--- synopsis:
+synopsis:            Parsing, rendering and manipulating css selectors in Haskell.
 -- description:
 homepage:            https://github.com/KommuSoft/css-selectors#readme
 license:             BSD3
