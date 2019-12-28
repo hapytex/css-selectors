@@ -24,3 +24,8 @@ cabal.project.local~
 .ghc.environment.*
 *.sw?
 *.lock
+
+samples
+samples/
+samples/*
+samples/**
