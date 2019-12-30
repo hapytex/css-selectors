@@ -109,6 +109,7 @@ TypeSelector
 
 ElementName
     : Ident        { ElementName $1 }
+    | '*'          { EAny }
     ;
 
 Class
