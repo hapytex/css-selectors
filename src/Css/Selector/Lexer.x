@@ -41,29 +41,27 @@ $tl       = [\~]
 
 
 tokens :-
-  "="       { const TEqual }
-  ":"       { const Colon }
-  "~="      { const TIncludes }
-  "|="      { const TDashMatch }
-  "^="      { const TPrefixMatch }
-  "$="      { const TSuffixMatch }
-  "*="      { const TSubstringMatch }
-  @wo ","   { const Comma }
-  "."       { const Dot }
-  "|"       { const Pipe }
-  "*"       { const Asterisk }
-  @ident    { Ident }
-  @string   { String . readCssString }
-  "#" @name { THash }
-  @float    { Decimal . read }
-  @int      { Integer . read }
-  @wo "+"   { const Plus }
-  @wo ">"   { const Greater }
-  @wo $tl   { const Tilde }
-  "["       { const BOpen }
-  "]"       { const BClose }
-  ":" @n @o @t "(" { const TNot }
-  $w @wo    { const Space }
+  @wo "="  @wo     { const TEqual }
+  @wo "~=" @wo     { const TIncludes }
+  @wo "|=" @wo     { const TDashMatch }
+  @wo "^=" @wo     { const TPrefixMatch }
+  @wo "$=" @wo     { const TSuffixMatch }
+  @wo "*=" @wo     { const TSubstringMatch }
+  @wo ","          { const Comma }
+  "."              { const Dot }
+  "|"              { const Pipe }
+  "*"              { const Asterisk }
+  @ident           { Ident }
+  @string          { String . readCssString }
+  "#" @name        { THash }
+  @float           { Decimal . read }
+  @int             { Integer . read }
+  @wo "+"          { const Plus }
+  @wo ">"          { const Greater }
+  @wo $tl          { const Tilde }
+  "[" @wo          { const BOpen }
+  @wo "]"          { const BClose }
+  $w @wo           { const Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {
@@ -81,9 +79,7 @@ data Token =
     | Decimal Decimal
     | Integer Integer
     | Comma
-    | Colon
     | Plus
-    | TNot
     | Greater
     | Tilde
     | Dot
