@@ -9,18 +9,19 @@ import Css.Selector.Utils(readCssString)
 %wrapper "basic"
 
 $nonascii = [^\0-\177]
-$w        = [ \t\r\n\f]
+$w        = [\ \t\r\n\f]
 $nostar   = [^\*]
 $nostars  = [^\/\*]
+$tl       = [\~]
 
 @nl       = \r|\n|\r\n|\f
-@unicode  = \\[0-9a-f]{1,6}(\r\n|[ \n\r\t\f])?
-@escape   = @unicode | \\[^\n\r\f0-9a-f]
+@unicode  = \\[0-9a-fA-F]{1,6}(\r\n|[ \n\r\t\f])?
+@escape   = @unicode | \\[^\n\r\f0-9a-fA-F]
 
-@wopt = $w*
+@wo = $w*
 @nonaesc = $nonascii | @escape
-@nmstart = [_a-z] | @nonaesc
-@nmchar  = [_\-a-z0-9] | @nonaesc
+@nmstart = [_a-zA-Z] | @nonaesc
+@nmchar  = [_\-a-zA-Z0-9] | @nonaesc
 @ident   = [\-]? @nmstart @nmchar*
 @name    = @nmchar+
 @int     = [0-9]+
@@ -47,22 +48,22 @@ tokens :-
   "^="      { const TPrefixMatch }
   "$="      { const TSuffixMatch }
   "*="      { const TSubstringMatch }
-  $w* ","   { const Comma }
+  @wo ","   { const Comma }
   "."       { const Dot }
   "|"       { const Pipe }
   "*"       { const Asterisk }
   @ident    { Ident }
   @string   { String . readCssString }
   "#" @name { THash }
-  $w+       { const Space }
   @float    { Decimal . read }
   @int      { Integer . read }
-  $w* "+"   { const Plus }
-  $w* ">"   { const Greater }
-  $w* "~"   { const Tilde }
+  @wo "+"   { const Plus }
+  @wo ">"   { const Greater }
+  @wo $tl   { const Tilde }
   "["       { const BOpen }
   "]"       { const BClose }
   ":" @n @o @t "(" { const TNot }
+  $w @wo    { const Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {

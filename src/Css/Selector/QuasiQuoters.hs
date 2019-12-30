@@ -26,7 +26,7 @@ import Css.Selector.Parser(cssselector)
 -- | Parse the string to a 'SelectorGroup'.
 parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
     -> SelectorGroup -- ^ The selectorgroup that is the equivalent of the given 'String'.
-parseCss = cssselector . alexScanTokens
+parseCss = cssselector . alexScanTokens . filter ('\r' /=)
 
 liftDataWithText :: Data a => a -> Q Exp
 liftDataWithText = dataToExpQ ((((AppE (VarE 'pack) <$>) . lift . unpack) <$>) . cast)
