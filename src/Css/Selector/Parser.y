@@ -20,7 +20,6 @@ import Data.Text(pack)
     '~'    { Tilde }
     '.'    { Dot }
     ' '    { Space }
-    ':'    { Colon }
     '|'    { Pipe }
     '*'    { Asterisk }
     '['    { BOpen }
@@ -31,7 +30,6 @@ import Data.Text(pack)
     '*='   { TSubstringMatch }
     '|='   { TDashMatch }
     '~='   { TIncludes }
-    'not'  { TNot }
     ident  { Ident $$ }
     string { String $$ }
     hash   { THash $$ }
@@ -72,32 +70,22 @@ FilterList
 SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
     | Class                       { SClass $1 }
-    | Attrib                      { SAttrib $1 }
+    | AttribBox                   { SAttrib $1 }
     ;
 
 AttribBox
     : '[' Attrib ']'                       { $2 }
-    | '[' ' ' Attrib ']'                   { $3 }
-    | '[' Attrib ' ' ']'                   { $2 }
-    | '[' ' ' Attrib ' ' ']'               { $3 }
     ;
 
 Attrib
-    : AttribName                           { Exist $1 }
-    | AttribName AttribOpS ident           { Attrib $1 $2 (pack $3) }
-    | AttribName AttribOpS string          { Attrib $1 $2 (pack $3) }
+    : AttribName                          { Exist $1 }
+    | AttribName AttribOp Ident           { Attrib $1 $2 $3 }
+    | AttribName AttribOp string          { Attrib $1 $2 (pack $3) }
     ;
 
 AttribName
-    : NamespacePrefix ident       { AttributeName $1 (pack $2) }
-    | ident                       { AttributeName NAny (pack $1) }
-    ;
-
-AttribOpS
-    : AttribOp                    { $1 }
-    | ' ' AttribOp                { $2 }
-    | AttribOp ' '                { $1 }
-    | ' ' AttribOp ' '            { $2 }
+    : NamespacePrefix Ident       { AttributeName $1 $2 }
+    | Ident                       { AttributeName NAny $1 }
     ;
 
 AttribOp
@@ -115,22 +103,27 @@ Type
     ;
 
 TypeSelector
-    : NamespacePrefix ElementName { TypeSelector $1 $2 }
-    | ElementName                 { TypeSelector NAny $1 }
+    : NamespacePrefix ElementName { $1 .| $2 }
+    | ElementName                 { NAny .| $1 }
     ;
 
 ElementName
-    : ident        { ElementName (pack $1) }
+    : Ident        { ElementName $1 }
+    | '*'          { EAny }
     ;
 
 Class
-    : '.' ident    { Class (pack $2) }
+    : '.' Ident    { Class $2 }
     ;
 
 NamespacePrefix
-    : ident '|'    { Namespace (pack $1) }
+    : Ident '|'    { Namespace $1 }
     | '*' '|'      { NAny }
     | '|'          { NEmpty }
+    ;
+
+Ident
+    : ident        { pack $1 }
     ;
 
 {

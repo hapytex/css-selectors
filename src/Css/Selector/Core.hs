@@ -10,19 +10,27 @@ Portability : POSIX
 A module that defines the tree of types to represent and manipulate a css selector. These data types are members of several typeclasses to make these more useful.
 -}
 module Css.Selector.Core (
-    -- Classes
+    -- * ToCssSelector typeclass
     ToCssSelector(..)
-    -- Types
-    , Attrib(..), AttributeCombinator(..), AttributeName(..), AttributeValue
-    , Class(..), ElementName(..), Hash(..), Namespace(..), Selector(..)
+    -- * Selectors and combinators
+    , Selector(..)
     , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
-    , SelectorSequence(..), SelectorSpecificity(..), TypeSelector(..)
-    -- Functions
-    , addFilters, attrib, attributeCombinatorText, combinatorText, combine
-    , specificity, specificityValue, (.=), (.~=), (.|=), (.^=), (.$=), (.*=)
-    , (.#), (...), (.|)
-    -- Patterns
-    , pattern Universal
+    , SelectorSequence(..)
+    , addFilters, combinatorText, combine
+    -- * Namespaces
+    , Namespace(..)
+    -- * Type selectors
+    , ElementName(..), TypeSelector(..), pattern Universal, (.|)
+    -- * Attributes
+    , Attrib(..), AttributeCombinator(..), AttributeName(..), AttributeValue
+    , (.=), (.~=), (.|=), (.^=), (.$=), (.*=)
+    , attrib, attributeCombinatorText
+    -- * Classes
+    , Class(..), (...)
+    -- * Hashes
+    , Hash(..), (.#)
+    -- * Specificity
+    , SelectorSpecificity(..), specificity, specificityValue
   ) where
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
@@ -122,7 +130,10 @@ combinatorText DirectlyPreceded = " + "
 combinatorText Preceded = " ~ "
 
 -- | Combines two 'Selector's with the given 'SelectorCombinator'.
-combine :: SelectorCombinator -> Selector -> Selector -> Selector
+combine :: SelectorCombinator -- ^ The 'SelectorCombinator' that is applied between the two 'Selector's.
+    -> Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A 'Selector' that is a combination of the left 'Selector' and the right 'Selector' with the given 'SelectorCombinator'.
 combine c0 x0 ys = go x0
     where go (Selector x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
@@ -137,7 +148,9 @@ data SelectorSequence =
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
 -- filters are applied left-to-right.
-addFilters :: SelectorSequence -> [SelectorFilter] -> SelectorSequence
+addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter on.
+    -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
+    -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
 addFilters = foldl Filter
 
 -- | A type that sums up the different ways to filter a type selector: with an
@@ -444,7 +457,7 @@ instance Default AttributeCombinator where
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
-_apply n = foldl appE (conE n)
+_apply = foldl appE . conE
 
 instance Lift SelectorGroup where
     lift (SelectorGroup sg) = _apply 'SelectorGroup [liftNe sg]

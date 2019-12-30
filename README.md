@@ -41,7 +41,7 @@ or you can obtain a more detailed result with:
 specificity' :: ToCssSelector a => a -> SelectorSpecificity
 ```
 
-## `ToMarkup`, `ToJSON` and `ToJavascript` instances
+## `ToMarkup`, `ToJSON`, and `ToJavascript` instances
 
 The types that are members of the `ToCssSelector` are members of the `ToMarkup`,
 `ToJSON`, and `ToJavascript` type classes as well, such that we can conveniently
@@ -64,6 +64,14 @@ often strings are used to represent these.
 One can generate arbitrary CSS selectors (and their subcomponents). It is
 however not advisable to use this for anything other than for validation
 purposes (like with `QuickCheck`).
+
+# Contribute
+
+You can contribute by making a pull request on the [*GitHub
+repository*](https://github.com/hapytex/css-selectors).
+
+You can contact the package maintainer on
+[`hapytexeu+gh@gmail.com`](mailto:hapytexeu+gh@gmail.com).
 
 ---
 
