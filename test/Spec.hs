@@ -1,3 +1,8 @@
+import Css.Selector
+import Css.Selector.Utils(encodeString, readCssString)
+
+import Data.Text(unpack)
+
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
@@ -7,14 +12,17 @@ main :: IO ()
 main = defaultMain tests
 
 tests = [
-        testGroup "Sorting Group 1" [
-                testProperty "prop1" prop1,
-                testProperty "prop2" prop2
-           ]
+        testGroup "Encode-decode strings" [
+                testProperty "Encode-decode identity 1" (encodeDecode '"'),
+                testProperty "Encode-decode identity 2" (encodeDecode '\'')
+        ],
+        testGroup "Arbitrary css parsing" [
+                testProperty "Encode-decode css identity" encodeDecodeCss
+        ]
       ]
 
-prop1 b = b == False
-  where types = (b :: Bool)
+encodeDecode :: Char -> String -> Bool
+encodeDecode c b = readCssString (encodeString c b) == b
 
-prop2 i = i == 42
-  where types = (i :: Int)
+encodeDecodeCss :: SelectorGroup -> Bool
+encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg

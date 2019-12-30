@@ -45,6 +45,7 @@ test-suite css-selectors-test
   main-is:             Spec.hs
   build-depends:       base
                      , css-selectors
+                     , text
                      , test-framework
                      , test-framework-quickcheck2
                      , QuickCheck

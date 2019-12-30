@@ -13,13 +13,9 @@ module Css.Selector.Utils (
     encodeText
   ) where
 
-import Data.Char(isAscii, isControl, ord)
+import Data.Char(chr, digitToInt, intToDigit, isAscii, isControl, isHexDigit, ord)
 import Data.Text(Text, cons, pack, singleton, snoc)
 import qualified Data.Text as T
-
-import GHC.Read(readLitChar)
-
-import Numeric(showHex)
 
 -- | Parses a css string literal to a string that ontains the content of that
 -- string literal.
@@ -34,8 +30,8 @@ _readCssString c' = go
     where go "" = error "The string should end with " ++ c' : "."
           go [c] | c' == c = ""
           go ('\\':'\n':xs) = go xs
-          go xa@('\\':c:xs) | c == c' = c : go xs
-                             | otherwise = let ((y,ys):_) = readLitChar xa in y : go ys
+          go ('\\':c:xs) | c == c' = c : go xs
+                         | otherwise = let ~(y,ys) = parseEscape xs in y : go ys
           go (x:xs) | x == c' = error "The string can not contain a " ++ c' : ", you should escape it."
                     | otherwise = x : go xs
 
@@ -62,3 +58,17 @@ encodeText c' t = cons c' (snoc (T.concatMap go t) c')
     where go c | c == c' = cons '\\' (singleton c)
                | _notEncode c = singleton c
                | otherwise = cons '\\' (pack (showHex (ord c) ""))
+
+showHex :: Int -> ShowS
+showHex = go (6 :: Int)
+    where go 0 _ s = s
+          go k n rs = go (k-1) q ((intToDigit r) : rs)
+              where ~(q, r) = quotRem n 16
+
+parseEscape :: String -> (Char, String)
+parseEscape = go 5 0
+    where go 0 n cs = yield n cs
+          go _ n "" = yield n ""
+          go i n ca@(c:cs) | isHexDigit c = go (i-1) (16*n+digitToInt c) cs
+                           | otherwise = yield n ca
+          yield n s = (chr n, s)
