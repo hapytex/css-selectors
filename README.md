@@ -65,6 +65,14 @@ One can generate arbitrary CSS selectors (and their subcomponents). It is
 however not advisable to use this for anything other than for validation
 purposes (like with `QuickCheck`).
 
+# Contribute
+
+You can contribute by making a pull request on the [*GitHub
+repository*](https://github.com/hapytex/css-selectors).
+
+You can contact the package maintainer on
+[`hapytexeu+gh@gmail.com`](mailto:hapytexeu+gh@gmail.com).
+
 ---
 
 This package is dedicated in loving memory to my mother, Veerle Dumon
