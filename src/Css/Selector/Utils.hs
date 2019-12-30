@@ -30,12 +30,13 @@ _readCssString c' = go
     where go "" = error "The string should end with " ++ c' : "."
           go [c] | c' == c = ""
           go ('\\':'\n':xs) = go xs
-          go ('\\':c:xs) | c == c' = c : go xs
-                         | otherwise = let ~(y,ys) = parseEscape xs in y : go ys
+          go ('\\':ca@(c:xs)) | c == c' = c : go xs
+                              | otherwise = let ~(y,ys) = parseEscape ca in y : go ys
           go (x:xs) | x == c' = error "The string can not contain a " ++ c' : ", you should escape it."
                     | otherwise = x : go xs
 
 _notEncode :: Char -> Bool
+_notEncode '\\' = False
 _notEncode c = isAscii c && not (isControl c)
 
 -- | Convert a string to a css selector string literal. This is done by putting
@@ -62,11 +63,11 @@ encodeText c' t = cons c' (snoc (T.concatMap go t) c')
 showHex :: Int -> ShowS
 showHex = go (6 :: Int)
     where go 0 _ s = s
-          go k n rs = go (k-1) q ((intToDigit r) : rs)
+          go k n rs = go (k-1) q (intToDigit r : rs)
               where ~(q, r) = quotRem n 16
 
 parseEscape :: String -> (Char, String)
-parseEscape = go 5 0
+parseEscape = go (6 :: Int) 0
     where go 0 n cs = yield n cs
           go _ n "" = yield n ""
           go i n ca@(c:cs) | isHexDigit c = go (i-1) (16*n+digitToInt c) cs
