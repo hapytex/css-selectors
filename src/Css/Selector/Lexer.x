@@ -47,18 +47,18 @@ tokens :-
   @wo "^=" @wo     { const TPrefixMatch }
   @wo "$=" @wo     { const TSuffixMatch }
   @wo "*=" @wo     { const TSubstringMatch }
-  @wo ","          { const Comma }
+  @wo ","  @wo     { const Comma }
   "."              { const Dot }
   "|"              { const Pipe }
   "*"              { const Asterisk }
   @ident           { Ident }
   @string          { String . readCssString }
-  "#" @name        { THash }
+  "#" @name        { THash . tail }
   @float           { Decimal . read }
   @int             { Integer . read }
-  @wo "+"          { const Plus }
-  @wo ">"          { const Greater }
-  @wo $tl          { const Tilde }
+  @wo "+" @wo      { const Plus }
+  @wo ">" @wo      { const Greater }
+  @wo $tl @wo      { const Tilde }
   "[" @wo          { const BOpen }
   @wo "]"          { const BClose }
   $w @wo           { const Space }
