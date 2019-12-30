@@ -57,6 +57,7 @@ Combinator
     | '>'          { Child }
     | '~'          { Preceded }
     | ' '          { Descendant }
+--     | error        { error "Invalid selector combinator." }
     ;
 
 SimpleSelectorSequence

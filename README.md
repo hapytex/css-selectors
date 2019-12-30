@@ -41,7 +41,7 @@ or you can obtain a more detailed result with:
 specificity' :: ToCssSelector a => a -> SelectorSpecificity
 ```
 
-## `ToMarkup`, `ToJSON` and `ToJavascript` instances
+## `ToMarkup`, `ToJSON`, and `ToJavascript` instances
 
 The types that are members of the `ToCssSelector` are members of the `ToMarkup`,
 `ToJSON`, and `ToJavascript` type classes as well, such that we can conveniently
