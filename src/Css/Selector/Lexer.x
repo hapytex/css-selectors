@@ -26,8 +26,8 @@ $tl       = [\~]
 @name    = @nmchar+
 @int     = [0-9]+
 @float   = [0-9]*[.][0-9]+
-@string1 = \'([^\n\r\f\\"] | \\@nl | @nonaesc )*\'   -- strings with single quote
-@string2 = \"([^\n\r\f\\'] | \\@nl | @nonaesc )*\"   -- strings with double quotes
+@string1 = \'([^\n\r\f\\\'] | \\@nl | @nonaesc )*\'   -- strings with single quote
+@string2 = \"([^\n\r\f\\\"] | \\@nl | @nonaesc )*\"   -- strings with double quotes
 @string  = @string1 | @string2
 
 @d       = d|D|\\0{0,4}(44|64)(\r\n|[ \t\r\n\f])?
@@ -47,18 +47,18 @@ tokens :-
   @wo "^=" @wo     { const TPrefixMatch }
   @wo "$=" @wo     { const TSuffixMatch }
   @wo "*=" @wo     { const TSubstringMatch }
-  @wo ","          { const Comma }
+  @wo ","  @wo     { const Comma }
   "."              { const Dot }
   "|"              { const Pipe }
   "*"              { const Asterisk }
   @ident           { Ident }
   @string          { String . readCssString }
-  "#" @name        { THash }
+  "#" @name        { THash . tail }
   @float           { Decimal . read }
   @int             { Integer . read }
-  @wo "+"          { const Plus }
-  @wo ">"          { const Greater }
-  @wo $tl          { const Tilde }
+  @wo "+" @wo      { const Plus }
+  @wo ">" @wo      { const Greater }
+  @wo $tl @wo      { const Tilde }
   "[" @wo          { const BOpen }
   @wo "]"          { const BClose }
   $w @wo           { const Space }

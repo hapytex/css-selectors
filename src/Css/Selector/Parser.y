@@ -84,7 +84,8 @@ Attrib
     ;
 
 AttribName
-    : NamespacePrefix Ident       { AttributeName $1 $2 }
+    : NamespacePrefix '|' Ident   { AttributeName $1 $3 }
+    | '|' Ident                   { AttributeName NEmpty $2 }
     | Ident                       { AttributeName NAny $1 }
     ;
 
@@ -98,13 +99,9 @@ AttribOp
     ;
 
 Type
-    : TypeSelector                { $1 }
-    | '*'                         { Universal }
-    ;
-
-TypeSelector
-    : NamespacePrefix ElementName { $1 .| $2 }
-    | ElementName                 { NAny .| $1 }
+    : ElementName                      { NAny .| $1 }
+    | '|' ElementName                  { NEmpty .| $2 }
+    | NamespacePrefix '|' ElementName  { $1 .| $3 }
     ;
 
 ElementName
@@ -117,9 +114,8 @@ Class
     ;
 
 NamespacePrefix
-    : Ident '|'    { Namespace $1 }
-    | '*' '|'      { NAny }
-    | '|'          { NEmpty }
+    : Ident        { Namespace $1 }
+    | '*'          { NAny }
     ;
 
 Ident

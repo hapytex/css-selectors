@@ -32,7 +32,7 @@ _readCssString c' = go
           go ('\\':'\n':xs) = go xs
           go ('\\':ca@(c:xs)) | c == c' = c : go xs
                               | otherwise = let ~(y,ys) = parseEscape ca in y : go ys
-          go (x:xs) | x == c' = error "The string can not contain a " ++ c' : ", you should escape it."
+          go (x:xs) | x == c' = error "The string can not contain a " ++ show x ++ ", you should escape it."
                     | otherwise = x : go xs
 
 _notEncode :: Char -> Bool
