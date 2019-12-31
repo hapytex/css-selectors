@@ -1,5 +1,7 @@
 # css-selectors
 
+![build status of the package by Travis](https://travis-ci.com/hapytex/css-selectors.svg?branch=master)
+
 A library for parsing, manipulating, and rendering css selectors (not css files,
 just the selectors).
 
