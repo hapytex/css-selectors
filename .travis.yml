@@ -1,22 +1,16 @@
-language: haskell
-ghc:
-  - "7.10"
-  - "8.0"
-  - "8.2"
-  - "8.4"
-  - "8.6"
-  - "8.8"
+sudo: false
 os:
   - linux
-before_script:
-  - cabal sdist
-  - mkdir travisbuild
-  - mv dist/css-selectors*.tar.gz travisbuild/css-selectors.tar.gz
-  - cd travisbuild
-  - tar xzvf css-selectors.tar.gz
-  - cd css-selectors*
+# Caching so the next build will be fast too.
+# cache:
+#   directories:
+#     - $HOME/.stack
+
+before_install:
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  - stack build
+
 script:
-  - cabal configure --enable-tests --ghc-option=-Werror
-  - cabal build
-  - cabal test
-sudo: false
+  - stack --no-terminal --skip-ghc-check test
