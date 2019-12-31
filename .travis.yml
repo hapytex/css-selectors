@@ -1,10 +1,12 @@
 sudo: false
 os:
   - linux
+language: haskell
+
 # Caching so the next build will be fast too.
-# cache:
-#   directories:
-#     - $HOME/.stack
+cache:
+  directories:
+    - $HOME/.stack
 
 before_install:
   - mkdir -p ~/.local/bin
