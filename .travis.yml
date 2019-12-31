@@ -1,5 +1,7 @@
 sudo: false
-
+language: haskell
+os:
+  - linux
 # Caching so the next build will be fast too.
 cache:
   directories:
@@ -11,7 +13,9 @@ before_install:
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
   # Configure stack to use the system GHC installation
-  - stack config set system-ghc --global true
+  # - stack config set system-ghc --global true
+  - stack resolve
+  - stack build
   - export PATH=/opt/ghc/7.10.2/bin:$PATH
 
 addons:
