@@ -26,8 +26,8 @@ $tl       = [\~]
 @name    = @nmchar+
 @int     = [0-9]+
 @float   = [0-9]*[.][0-9]+
-@string1 = \'([^\n\r\f\\"] | \\@nl | @nonaesc )*\'   -- strings with single quote
-@string2 = \"([^\n\r\f\\'] | \\@nl | @nonaesc )*\"   -- strings with double quotes
+@string1 = \'([^\n\r\f\\\'] | \\@nl | @nonaesc )*\'   -- strings with single quote
+@string2 = \"([^\n\r\f\\\"] | \\@nl | @nonaesc )*\"   -- strings with double quotes
 @string  = @string1 | @string2
 
 @d       = d|D|\\0{0,4}(44|64)(\r\n|[ \t\r\n\f])?
