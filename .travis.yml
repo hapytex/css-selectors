@@ -1,0 +1,22 @@
+language: haskell
+ghc:
+  - "7.10"
+  - "8.0"
+  - "8.2"
+  - "8.4"
+  - "8.6"
+  - "8.8"
+os:
+  - linux
+before_script:
+  - cabal sdist
+  - mkdir travisbuild
+  - mv dist/css-selectors*.tar.gz travisbuild/css-selectors.tar.gz
+  - cd travisbuild
+  - tar xzvf css-selectors.tar.gz
+  - cd css-selectors*
+script:
+  - cabal configure --enable-tests --ghc-option=-Werror
+  - cabal build
+  - cabal test
+sudo: false
