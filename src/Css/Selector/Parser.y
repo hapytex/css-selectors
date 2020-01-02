@@ -3,36 +3,36 @@
 module Css.Selector.Parser where
 
 import Css.Selector.Core
-import Css.Selector.Lexer(Token(..))
+import Css.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
 import Data.Text(pack)
 }
 
 %name cssselector
-%tokentype { Token }
+%tokentype { TokenLoc }
 %error { fail "Can not parse the CSS selector" }
 
 %token
-    ','    { Comma }
-    '>'    { Greater }
-    '+'    { Plus }
-    '~'    { Tilde }
-    '.'    { Dot }
-    ' '    { Space }
-    '|'    { Pipe }
-    '*'    { Asterisk }
-    '['    { BOpen }
-    ']'    { BClose }
-    '='    { TEqual }
-    '^='   { TPrefixMatch }
-    '$='   { TSuffixMatch }
-    '*='   { TSubstringMatch }
-    '|='   { TDashMatch }
-    '~='   { TIncludes }
-    ident  { Ident $$ }
-    string { String $$ }
-    hash   { THash $$ }
+    ','    { TokenLoc Comma _ }
+    '>'    { TokenLoc Greater _ }
+    '+'    { TokenLoc Plus _ }
+    '~'    { TokenLoc Tilde _ }
+    '.'    { TokenLoc Dot _ }
+    ' '    { TokenLoc Space _ }
+    '|'    { TokenLoc Pipe _ }
+    '*'    { TokenLoc Asterisk _ }
+    '['    { TokenLoc BOpen _ }
+    ']'    { TokenLoc BClose _ }
+    '='    { TokenLoc TEqual _ }
+    '^='   { TokenLoc TPrefixMatch _ }
+    '$='   { TokenLoc TSuffixMatch _ }
+    '*='   { TokenLoc TSubstringMatch _ }
+    '|='   { TokenLoc TDashMatch _ }
+    '~='   { TokenLoc TIncludes _ }
+    ident  { TokenLoc (Ident $$) _ }
+    string { TokenLoc (String $$) _ }
+    hash   { TokenLoc (THash $$) _ }
 
 %%
 
