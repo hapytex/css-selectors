@@ -11,7 +11,7 @@ import Data.Text(pack)
 
 %name cssselector
 %tokentype { TokenLoc }
-%error { fail "Can not parse the CSS selector" }
+%error { happyError }
 
 %token
     ','    { TokenLoc Comma _ }
@@ -123,4 +123,9 @@ Ident
     ;
 
 {
+
+happyError :: [TokenLoc] -> a
+happyError [] = error "Unexpected end of string when parsing a css selector."
+happyError (~(TokenLoc _ ~(AlexPn _ l c)):_) = error ("Can not parse the CSS selector: unpexected token at location (" <> show l <> ", " <> show c <> ")")
+
 }
