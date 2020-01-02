@@ -1,6 +1,6 @@
 --vim:ft=haskell
 {
-module Css.Selector.Lexer(Token(..), alexScanTokens) where
+module Css.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
 
 import Data.Decimal(Decimal)
 import Css.Selector.Utils(readCssString)
@@ -41,27 +41,27 @@ $tl       = [\~]
 
 
 tokens :-
-  @wo "="  @wo     { tokenize (const TEqual) }
-  @wo "~=" @wo     { tokenize (const TIncludes) }
-  @wo "|=" @wo     { tokenize (const TDashMatch) }
-  @wo "^=" @wo     { tokenize (const TPrefixMatch) }
-  @wo "$=" @wo     { tokenize (const TSuffixMatch) }
-  @wo "*=" @wo     { tokenize (const TSubstringMatch) }
-  @wo ","  @wo     { tokenize (const Comma) }
-  "."              { tokenize (const Dot) }
-  "|"              { tokenize (const Pipe) }
-  "*"              { tokenize (const Asterisk) }
+  @wo "="  @wo     { constoken TEqual }
+  @wo "~=" @wo     { constoken TIncludes }
+  @wo "|=" @wo     { constoken TDashMatch }
+  @wo "^=" @wo     { constoken TPrefixMatch }
+  @wo "$=" @wo     { constoken TSuffixMatch }
+  @wo "*=" @wo     { constoken TSubstringMatch }
+  @wo ","  @wo     { constoken Comma }
+  "."              { constoken Dot }
+  "|"              { constoken Pipe }
+  "*"              { constoken Asterisk }
   @ident           { tokenize Ident }
   @string          { tokenize (String . readCssString) }
   "#" @name        { tokenize (THash . drop 1) }
   @float           { tokenize (Decimal . read) }
   @int             { tokenize (Integer . read) }
-  @wo "+" @wo      { tokenize (const Plus) }
-  @wo ">" @wo      { tokenize (const Greater) }
-  @wo $tl @wo      { tokenize (const Tilde) }
-  "[" @wo          { tokenize (const BOpen) }
-  @wo "]"          { tokenize (const BClose) }
-  $w @wo           { tokenize (const Space) }
+  @wo "+" @wo      { constoken Plus }
+  @wo ">" @wo      { constoken Greater }
+  @wo $tl @wo      { constoken Tilde }
+  "[" @wo          { constoken BOpen }
+  @wo "]"          { constoken BClose }
+  $w @wo           { constoken Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {
@@ -69,6 +69,9 @@ data TokenLoc = TokenLoc { token :: Token, location :: AlexPosn }
 
 tokenize :: (String -> Token) -> AlexPosn -> String -> TokenLoc
 tokenize = flip . (TokenLoc .)
+
+constoken :: Token -> AlexPosn -> String -> TokenLoc
+constoken = flip . (TokenLoc .) . const
 
 -- The token type:
 data Token =
