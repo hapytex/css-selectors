@@ -6,7 +6,7 @@ import Data.Decimal(Decimal)
 import Css.Selector.Utils(readCssString)
 }
 
-%wrapper "basic"
+%wrapper "posn"
 
 $nonascii = [^\0-\177]
 $w        = [\ \t\r\n\f]
@@ -41,30 +41,35 @@ $tl       = [\~]
 
 
 tokens :-
-  @wo "="  @wo     { const TEqual }
-  @wo "~=" @wo     { const TIncludes }
-  @wo "|=" @wo     { const TDashMatch }
-  @wo "^=" @wo     { const TPrefixMatch }
-  @wo "$=" @wo     { const TSuffixMatch }
-  @wo "*=" @wo     { const TSubstringMatch }
-  @wo ","  @wo     { const Comma }
-  "."              { const Dot }
-  "|"              { const Pipe }
-  "*"              { const Asterisk }
-  @ident           { Ident }
-  @string          { String . readCssString }
-  "#" @name        { THash . tail }
-  @float           { Decimal . read }
-  @int             { Integer . read }
-  @wo "+" @wo      { const Plus }
-  @wo ">" @wo      { const Greater }
-  @wo $tl @wo      { const Tilde }
-  "[" @wo          { const BOpen }
-  @wo "]"          { const BClose }
-  $w @wo           { const Space }
+  @wo "="  @wo     { tokenize (const TEqual) }
+  @wo "~=" @wo     { tokenize (const TIncludes) }
+  @wo "|=" @wo     { tokenize (const TDashMatch) }
+  @wo "^=" @wo     { tokenize (const TPrefixMatch) }
+  @wo "$=" @wo     { tokenize (const TSuffixMatch) }
+  @wo "*=" @wo     { tokenize (const TSubstringMatch) }
+  @wo ","  @wo     { tokenize (const Comma) }
+  "."              { tokenize (const Dot) }
+  "|"              { tokenize (const Pipe) }
+  "*"              { tokenize (const Asterisk) }
+  @ident           { tokenize Ident }
+  @string          { tokenize (String . readCssString) }
+  "#" @name        { tokenize (THash . drop 1) }
+  @float           { tokenize (Decimal . read) }
+  @int             { tokenize (Integer . read) }
+  @wo "+" @wo      { tokenize (const Plus) }
+  @wo ">" @wo      { tokenize (const Greater) }
+  @wo $tl @wo      { tokenize (const Tilde) }
+  "[" @wo          { tokenize (const BOpen) }
+  @wo "]"          { tokenize (const BClose) }
+  $w @wo           { tokenize (const Space) }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {
+data TokenLoc = TokenLoc { token :: Token, location :: AlexPosn }
+
+tokenize :: (String -> Token) -> AlexPosn -> String -> TokenLoc
+tokenize = flip . (TokenLoc .)
+
 -- The token type:
 data Token =
       TIncludes
