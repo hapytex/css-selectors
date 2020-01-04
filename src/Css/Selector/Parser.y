@@ -14,25 +14,25 @@ import Data.Text(pack)
 %error { happyError }
 
 %token
-    ','    { TokenLoc Comma _ }
-    '>'    { TokenLoc Greater _ }
-    '+'    { TokenLoc Plus _ }
-    '~'    { TokenLoc Tilde _ }
-    '.'    { TokenLoc Dot _ }
-    ' '    { TokenLoc Space _ }
-    '|'    { TokenLoc Pipe _ }
-    '*'    { TokenLoc Asterisk _ }
-    '['    { TokenLoc BOpen _ }
-    ']'    { TokenLoc BClose _ }
-    '='    { TokenLoc TEqual _ }
-    '^='   { TokenLoc TPrefixMatch _ }
-    '$='   { TokenLoc TSuffixMatch _ }
-    '*='   { TokenLoc TSubstringMatch _ }
-    '|='   { TokenLoc TDashMatch _ }
-    '~='   { TokenLoc TIncludes _ }
-    ident  { TokenLoc (Ident $$) _ }
-    string { TokenLoc (String $$) _ }
-    hash   { TokenLoc (THash $$) _ }
+    ','    { TokenLoc Comma _ _ }
+    '>'    { TokenLoc Greater _ _ }
+    '+'    { TokenLoc Plus _ _ }
+    '~'    { TokenLoc Tilde _ _ }
+    '.'    { TokenLoc Dot _ _ }
+    ' '    { TokenLoc Space _ _ }
+    '|'    { TokenLoc Pipe _ _ }
+    '*'    { TokenLoc Asterisk _ _ }
+    '['    { TokenLoc BOpen _ _ }
+    ']'    { TokenLoc BClose _ _ }
+    '='    { TokenLoc TEqual _ _ }
+    '^='   { TokenLoc TPrefixMatch _ _ }
+    '$='   { TokenLoc TSuffixMatch _ _ }
+    '*='   { TokenLoc TSubstringMatch _ _ }
+    '|='   { TokenLoc TDashMatch _ _ }
+    '~='   { TokenLoc TIncludes _ _ }
+    ident  { TokenLoc (Ident $$) _ _ }
+    string { TokenLoc (String $$) _ _ }
+    hash   { TokenLoc (THash $$) _ _ }
 
 %%
 
@@ -126,6 +126,6 @@ Ident
 
 happyError :: [TokenLoc] -> a
 happyError [] = error "Unexpected end of string when parsing a css selector."
-happyError (~(TokenLoc _ ~(AlexPn _ l c)):_) = error ("Can not parse the CSS selector: unpexected token at location (" <> show l <> ", " <> show c <> ")")
+happyError (~(TokenLoc _ s ~(AlexPn _ l c)):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
 
 }

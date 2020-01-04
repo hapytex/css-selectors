@@ -65,13 +65,13 @@ tokens :-
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {
-data TokenLoc = TokenLoc { token :: Token, location :: AlexPosn }
+data TokenLoc = TokenLoc { token :: Token, original :: String, location :: AlexPosn }
 
 tokenize :: (String -> Token) -> AlexPosn -> String -> TokenLoc
-tokenize = flip . (TokenLoc .)
+tokenize = flip . (>>= TokenLoc)
 
 constoken :: Token -> AlexPosn -> String -> TokenLoc
-constoken = flip . (TokenLoc .) . const
+constoken = tokenize . const
 
 -- The token type:
 data Token =
