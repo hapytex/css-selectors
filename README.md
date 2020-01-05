@@ -21,6 +21,10 @@ A css selector has the following structure:
     *comma-separated*;
  2. ...
 
+## Quasiquoter
+
+The main use of this package is a *quasiquoter*.
+
 ## Selector specificity
 
 The specificity of a selector is defined by three numbers *a*, *b* and *c*.

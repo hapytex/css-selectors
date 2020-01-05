@@ -97,35 +97,4 @@ data Token =
     | BOpen
     | BClose
     deriving (Eq,Show)
-
-data TokenType =
-      Identifier
-    | Literal
-    | Operator
-    | Keyword
-    | Bracket
-    deriving (Eq, Show)
-
-tokenType :: Token -> TokenType
-tokenType TIncludes = Operator
-tokenType TEqual = Operator
-tokenType TDashMatch = Operator
-tokenType TPrefixMatch = Operator
-tokenType TSuffixMatch = Operator
-tokenType TSubstringMatch = Operator
-tokenType (Ident _) = Identifier
-tokenType (String _) = Literal
-tokenType (THash _) = Literal
-tokenType (Decimal _) = Literal
-tokenType (Integer _) = Literal
-tokenType Comma = Operator
-tokenType Plus = Operator
-tokenType Greater = Operator
-tokenType Tilde = Operator
-tokenType Dot = Operator
-tokenType Pipe = Operator
-tokenType Asterisk = Literal
-tokenType Space = Operator
-tokenType BOpen = Bracket
-tokenType BClose = Bracket
 }
