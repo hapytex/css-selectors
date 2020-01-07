@@ -23,7 +23,7 @@ import Css.Selector.Core(SelectorGroup)
 import Css.Selector.Lexer(alexScanTokens)
 import Css.Selector.Parser(cssselector)
 
-data HlintWarning = HlintWarning Text
+data HlintWarning = HlintWarning String
 
 -- | Parse the string to a 'SelectorGroup'.
 parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
