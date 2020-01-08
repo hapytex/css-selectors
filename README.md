@@ -29,7 +29,8 @@ A css selector has the following structure:
      is `Universal`, this does not need to be part of the css-selector
      expression); and a set of zero or more `SelectorFilter`s;
   4. A `SelectorFilter` is a `Hash`, a `Class`, or an `Attrib`;
-  5. ...
+  5. Both a `TypeSelector` and an `AttributeName` have a namespace. A namespace
+     can be any (`*`), empty, or a valid namespace.
 
 ## Quasiquoter
 

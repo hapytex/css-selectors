@@ -18,7 +18,7 @@ module Css.Selector.Core (
     , SelectorSequence(..)
     , addFilters, combinatorText, combine
     -- * Namespaces
-    , Namespace(..)
+    , Namespace(..), pattern NEmpty
     -- * Type selectors
     , ElementName(..), TypeSelector(..), pattern Universal, (.|)
     -- * Attributes
@@ -240,13 +240,17 @@ attrib = flip Attrib
 (.|) = TypeSelector
 
 -- | The namespace of a css selector tag. The namespace can be 'NAny' (all
--- possible namespaces), 'NEmpty' (the empty namespace), or a namespace with a
--- given text.
+-- possible namespaces), or a namespace with a given text (this text can be
+-- empty).
 data Namespace =
       NAny -- ^ A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
-    | NEmpty -- ^ A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
     | Namespace Text -- ^ A typselector part that specifies that we accept a certain namespace name.
     deriving (Data, Eq, Show)
+
+-- | The empty namespace. This is /not/ the wildcard namespace (@*@). This is a
+-- bidirectional namespace and can thus be used in expressions as well.
+pattern NEmpty :: Namespace
+pattern NEmpty = Namespace ""
 
 -- | The element name of a css selector tag. The element name can be 'EAny' (all
 -- possible tag names), or an element name with a given text.
@@ -265,7 +269,7 @@ data TypeSelector = TypeSelector {
 -- | An attribute name is a name that optionally has a namespace, and the name
 -- of the attribute.
 data AttributeName = AttributeName {
-    attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' or 'NEmpty' as well.
+    attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' as well.
     attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
   } deriving (Data, Eq, Show)
 
@@ -321,8 +325,22 @@ instance Semigroup SelectorGroup where
 instance Semigroup Selector where
     (<>) = combine def
 
+instance Semigroup Namespace where
+    (<>) NAny = id
+    (<>) x = const x
+
+instance Semigroup ElementName where
+    (<>) EAny = id
+    (<>) x = const x
+
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
+
+instance Monoid Namespace where
+    mempty = NAny
+
+instance Monoid ElementName where
+    mempty = EAny
 
 -- IsString instances
 instance IsString Class where
@@ -335,7 +353,6 @@ instance IsString Hash where
 
 instance IsString Namespace where
     fromString "*" = NAny
-    fromString "" = NEmpty
     fromString s = Namespace (pack s)
 
 instance IsString ElementName where
@@ -379,7 +396,6 @@ instance ToCssSelector Hash where
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
-    toCssSelector NEmpty = ""
     toCssSelector (Namespace t) = t
     toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
     specificity' = mempty
