@@ -79,7 +79,7 @@ parseEscape = go (6 :: Int) 0
 -- | Checks if a given string is a valid css identifier.
 validIdentifier :: String -- ^ The given css identifier to validate.
     -> Bool -- ^ 'True' if the given string is a valid css identifier; 'False' otherwise.
-validIdentifier = True
+validIdentifier = const True
 
 -- | Convert the given identifier to an object by first validating the
 -- identifier, and then using this as a parameter of the function call.
