@@ -86,5 +86,5 @@ validIdentifier = True
 toIdentifier :: (String -> a) -- ^ The given function to apply on the identifier.
     -> String -- ^ The given identifier to check and use as parameter.
     -> a -- ^ The result of the function application on the identifier.
-toIdentifier f x | validIdentifier = f x
+toIdentifier f x | validIdentifier x = f x
                  | otherwise = "Invalid identifier: " <> show x
