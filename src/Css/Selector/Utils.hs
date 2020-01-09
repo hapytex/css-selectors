@@ -10,7 +10,9 @@ A module to encode and decode css selector strings. These are used in the parser
 module Css.Selector.Utils (
     readCssString,
     encodeString,
-    encodeText
+    encodeText,
+    validIdentifier,
+    toIdentifier
   ) where
 
 import Data.Char(chr, digitToInt, intToDigit, isAscii, isControl, isHexDigit, ord)
@@ -73,3 +75,16 @@ parseEscape = go (6 :: Int) 0
           go i n ca@(c:cs) | isHexDigit c = go (i-1) (16*n+digitToInt c) cs
                            | otherwise = yield n ca
           yield n s = (chr n, s)
+
+-- | Checks if a given string is a valid css identifier.
+validIdentifier :: String -- ^ The given css identifier to validate.
+    -> Bool -- ^ 'True' if the given string is a valid css identifier; 'False' otherwise.
+validIdentifier = True
+
+-- | Convert the given identifier to an object by first validating the
+-- identifier, and then using this as a parameter of the function call.
+toIdentifier :: (String -> a) -- ^ The given function to apply on the identifier.
+    -> String -- ^ The given identifier to check and use as parameter.
+    -> a -- ^ The result of the function application on the identifier.
+toIdentifier f x | validIdentifier = f x
+                 | otherwise = "Invalid identifier: " <> show x
