@@ -21,7 +21,8 @@ tests = [
     ],
     testGroup "Build an expression or pattern" [
         testProperty "Check build of expression" buildExpression,
-        testProperty "Check build of pattern" buildPattern
+        testProperty "Check build of pattern 1" buildPattern1,
+        testProperty "Check build of pattern 2" buildPattern2
     ]
   ]
 
@@ -35,5 +36,8 @@ encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
 buildExpression :: SelectorGroup -> Bool
 buildExpression _ = True
 
-buildPattern :: SelectorGroup -> Bool
-buildPattern x = (toPattern x) == (toPattern x) -- we use equality checks to force evaluation
+buildPattern1 :: SelectorGroup -> Bool
+buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force evaluation
+
+buildPattern2 :: SelectorGroup -> SelectorGroup -> Bool
+buildPattern2 x y = (x == y) == (toPattern x == toPattern y)
