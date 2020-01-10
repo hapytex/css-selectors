@@ -44,12 +44,12 @@ import Data.Function(on)
 import Data.List.NonEmpty(NonEmpty((:|)))
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
-import Data.Text(Text, cons, intercalate, pack)
+import Data.Text(Text, cons, intercalate, pack, unpack)
 
 import GHC.Exts(IsList(Item, fromList, toList))
 
 import Language.Haskell.TH.Lib(appE, conE)
-import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
+import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary), arbitraryBoundedEnum)
 import Test.QuickCheck.Gen(Gen, choose, elements, frequency, listOf, oneof)
@@ -89,6 +89,10 @@ class ToCssSelector a where
     -- 'SelectorSpecificity' object.
     specificity' :: a -- ^ The item for which we calculate the specificity level.
         -> SelectorSpecificity -- ^ The specificity level of the given item.
+    -- Convert the given 'ToCssSelector' item to a 'Pat' pattern, such that we
+    -- can use it in functions.
+    toPattern :: a -- ^ The item to convert to a 'Pat'.
+        -> Pat -- ^ The pattern that is generated that will match only items equal to the given object.
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
@@ -366,39 +370,59 @@ instance IsList SelectorGroup where
     toList (SelectorGroup ss) = toList ss
 
 -- ToCssSelector instances
+_textToPattern :: Text -> Pat
+_textToPattern t = ViewP (AppE (ConE '(==)) (AppE (ConE 'pack) (LitE (StringL (unpack t))))) (_constantP 'True)
+
+_constantP :: Name -> Pat
+_constantP = flip ConP []
+
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
     toSelectorGroup = id
     specificity' (SelectorGroup g) = foldMap specificity' g
+    toPattern (SelectorGroup g) = ConP 'SelectorGroup [go g]
+        where go (x :| xs) = ConP '(:|) [toPattern x, ListP (map toPattern xs)]
 
 instance ToCssSelector Class where
     toCssSelector = cons '.' . unClass
     toSelectorGroup = toSelectorGroup . SClass
     specificity' = const (SelectorSpecificity 0 1 0)
+    toPattern (Class c) = ConP 'Class [_textToPattern c]
 
 instance ToCssSelector Attrib where
     toCssSelector (Exist name) = "[" <> toCssSelector name <> "]"
     toCssSelector (Attrib name op val) = "[" <> toCssSelector name <> attributeCombinatorText op <> encodeText '"' val <> "]"
     toSelectorGroup = toSelectorGroup . SAttrib
     specificity' = const (SelectorSpecificity 0 1 0)
+    toPattern (Exist name) = ConP 'Exist [toPattern name]
+    toPattern (Attrib name op val) = ConP 'Attrib [toPattern name, _constantP (go op), _textToPattern val]
+        where go Exact = 'Exact
+              go Include = 'Include
+              go DashMatch = 'DashMatch
+              go PrefixMatch = 'PrefixMatch
+              go SuffixMatch = 'SuffixMatch
+              go SubstringMatch = 'SubstringMatch
 
 instance ToCssSelector AttributeName where
     toCssSelector (AttributeName NAny e) = e
     toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> e
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
-
+    toPattern (AttributeName n a) = ConP 'AttributeName [toPattern n, _textToPattern a]
 
 instance ToCssSelector Hash where
     toCssSelector = cons '#' . unHash
     toSelectorGroup = toSelectorGroup . SHash
     specificity' = const (SelectorSpecificity 1 0 0)
+    toPattern (Hash h) = ConP 'Hash [_textToPattern h]
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
     toCssSelector (Namespace t) = t
     toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
     specificity' = mempty
+    toPattern NAny = _constantP 'NAny
+    toPattern (Namespace t) = ConP 'Namespace [_textToPattern t]
 
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
@@ -406,12 +430,15 @@ instance ToCssSelector SelectorSequence where
     toSelectorGroup = toSelectorGroup . Selector
     specificity' (SimpleSelector s) = specificity' s
     specificity' (Filter s f) = specificity' s <> specificity' f
+    toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
+    toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e
     toCssSelector (TypeSelector n e) = toCssSelector n <> "|" <> toCssSelector e
     toSelectorGroup = toSelectorGroup . SimpleSelector
     specificity' (TypeSelector _ e) = specificity' e
+    toPattern (TypeSelector n t) = ConP 'TypeSelector [toPattern n, toPattern t]
 
 instance ToCssSelector ElementName where
     toCssSelector EAny = "*"
@@ -419,6 +446,8 @@ instance ToCssSelector ElementName where
     toSelectorGroup = toSelectorGroup . TypeSelector NAny
     specificity' EAny = mempty
     specificity' (ElementName _) = SelectorSpecificity 0 0 1
+    toPattern EAny = _constantP 'EAny
+    toPattern (ElementName e) = ConP 'ElementName [_textToPattern e]
 
 instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
@@ -428,6 +457,9 @@ instance ToCssSelector SelectorFilter where
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
+    toPattern (SHash h) = ConP 'SHash [toPattern h]
+    toPattern (SClass c) = ConP 'SClass [toPattern c]
+    toPattern (SAttrib a) = ConP 'SAttrib [toPattern a]
 
 instance ToCssSelector Selector where
     toCssSelector (Selector s) = toCssSelector s
@@ -435,6 +467,12 @@ instance ToCssSelector Selector where
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (Selector s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
+    toPattern (Selector s) = ConP 'Selector [toPattern s]
+    toPattern (Combined s1 c s2) = ConP 'Combined [toPattern s1, _constantP (go c), toPattern s2]
+        where go Descendant = 'Descendant
+              go Child = 'Child
+              go DirectlyPreceded = 'DirectlyPreceded
+              go Preceded = 'Preceded
 
 -- Custom Eq and Ord instances
 instance Eq SelectorSpecificity where
