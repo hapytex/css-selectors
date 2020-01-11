@@ -1,5 +1,4 @@
 import Css.Selector
--- import Css.Selector.Lexer(alexScanTokens)
 import Css.Selector.Utils(encodeString, readCssString)
 
 import Data.Text(unpack)
@@ -17,11 +16,13 @@ tests = [
         testProperty "Encode-decode identity 1" (encodeDecode '"'),
         testProperty "Encode-decode identity 2" (encodeDecode '\'')
     ],
-    -- testGroup "Css selector lexing" [
-    --    testProperty "At least one token" atleastOneToken
-    --]
     testGroup "Arbitrary css parsing" [
         testProperty "Encode-decode css identity" encodeDecodeCss
+    ],
+    testGroup "Build an expression or pattern" [
+        testProperty "Check build of expression" buildExpression,
+        testProperty "Check build of pattern 1" buildPattern1,
+        testProperty "Check build of pattern 2" buildPattern2
     ]
   ]
 
@@ -31,5 +32,12 @@ encodeDecode c b = readCssString (encodeString c b) == b
 encodeDecodeCss :: SelectorGroup -> Bool
 encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
 
--- atleastOneToken :: SelectorGroup -> Bool
--- atleastOneToken sg = 0 < (alexScanTokens . unpack . toCssSelector) sg
+-- TODO: complete
+buildExpression :: SelectorGroup -> Bool
+buildExpression _ = True
+
+buildPattern1 :: SelectorGroup -> Bool
+buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force evaluation
+
+buildPattern2 :: SelectorGroup -> SelectorGroup -> Bool
+buildPattern2 x y = (x == y) == (toPattern x == toPattern y)

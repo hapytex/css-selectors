@@ -18,7 +18,7 @@ module Css.Selector.Core (
     , SelectorSequence(..)
     , addFilters, combinatorText, combine
     -- * Namespaces
-    , Namespace(..)
+    , Namespace(..), pattern NEmpty
     -- * Type selectors
     , ElementName(..), TypeSelector(..), pattern Universal, (.|)
     -- * Attributes
@@ -35,7 +35,7 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
-import Css.Selector.Utils(encodeText)
+import Css.Selector.Utils(encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
@@ -44,12 +44,12 @@ import Data.Function(on)
 import Data.List.NonEmpty(NonEmpty((:|)))
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
-import Data.Text(Text, cons, intercalate, pack)
+import Data.Text(Text, cons, intercalate, pack, unpack)
 
 import GHC.Exts(IsList(Item, fromList, toList))
 
 import Language.Haskell.TH.Lib(appE, conE)
-import Language.Haskell.TH.Syntax(Lift(lift), Exp, Name, Q)
+import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary), arbitraryBoundedEnum)
 import Test.QuickCheck.Gen(Gen, choose, elements, frequency, listOf, oneof)
@@ -89,6 +89,10 @@ class ToCssSelector a where
     -- 'SelectorSpecificity' object.
     specificity' :: a -- ^ The item for which we calculate the specificity level.
         -> SelectorSpecificity -- ^ The specificity level of the given item.
+    -- Convert the given 'ToCssSelector' item to a 'Pat' pattern, such that we
+    -- can use it in functions.
+    toPattern :: a -- ^ The item to convert to a 'Pat'.
+        -> Pat -- ^ The pattern that is generated that will match only items equal to the given object.
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
@@ -240,13 +244,17 @@ attrib = flip Attrib
 (.|) = TypeSelector
 
 -- | The namespace of a css selector tag. The namespace can be 'NAny' (all
--- possible namespaces), 'NEmpty' (the empty namespace), or a namespace with a
--- given text.
+-- possible namespaces), or a namespace with a given text (this text can be
+-- empty).
 data Namespace =
       NAny -- ^ A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
-    | NEmpty -- ^ A typeselector part that specifies that we accept empty namespaces, this is denoted with no text before the pipe character.
     | Namespace Text -- ^ A typselector part that specifies that we accept a certain namespace name.
     deriving (Data, Eq, Show)
+
+-- | The empty namespace. This is /not/ the wildcard namespace (@*@). This is a
+-- bidirectional namespace and can thus be used in expressions as well.
+pattern NEmpty :: Namespace
+pattern NEmpty = Namespace ""
 
 -- | The element name of a css selector tag. The element name can be 'EAny' (all
 -- possible tag names), or an element name with a given text.
@@ -265,7 +273,7 @@ data TypeSelector = TypeSelector {
 -- | An attribute name is a name that optionally has a namespace, and the name
 -- of the attribute.
 data AttributeName = AttributeName {
-    attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' or 'NEmpty' as well.
+    attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' as well.
     attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
   } deriving (Data, Eq, Show)
 
@@ -321,26 +329,39 @@ instance Semigroup SelectorGroup where
 instance Semigroup Selector where
     (<>) = combine def
 
+instance Semigroup Namespace where
+    (<>) NAny = id
+    (<>) x = const x
+
+instance Semigroup ElementName where
+    (<>) EAny = id
+    (<>) x = const x
+
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
 
+instance Monoid Namespace where
+    mempty = NAny
+
+instance Monoid ElementName where
+    mempty = EAny
+
 -- IsString instances
 instance IsString Class where
-    fromString ('.' : s) = Class (pack s)
-    fromString s = Class (pack s)
+    fromString ('.' : s) = toIdentifier (Class . pack) s
+    fromString s = toIdentifier (Class . pack) s
 
 instance IsString Hash where
-    fromString ('#' : s) = Hash (pack s)
-    fromString s = Hash (pack s)
+    fromString ('#' : s) = toIdentifier (Hash . pack) s
+    fromString s = toIdentifier (Hash . pack) s
 
 instance IsString Namespace where
     fromString "*" = NAny
-    fromString "" = NEmpty
-    fromString s = Namespace (pack s)
+    fromString s = toIdentifier (Namespace . pack) s
 
 instance IsString ElementName where
     fromString "*" = EAny
-    fromString s = ElementName (pack s)
+    fromString s = toIdentifier (ElementName . pack) s
 
 -- IsList instances
 instance IsList SelectorGroup where
@@ -349,40 +370,61 @@ instance IsList SelectorGroup where
     toList (SelectorGroup ss) = toList ss
 
 -- ToCssSelector instances
+_textToPattern :: Text -> Pat
+_textToPattern t = ViewP (AppE (ConE '(==)) (AppE (ConE 'pack) (LitE (StringL (unpack t))))) (_constantP 'True)
+
+_constantP :: Name -> Pat
+_constantP = flip ConP []
+
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
     toSelectorGroup = id
     specificity' (SelectorGroup g) = foldMap specificity' g
+    toPattern (SelectorGroup g) = ConP 'SelectorGroup [go g]
+        where go (x :| xs) = ConP '(:|) [toPattern x, ListP (map toPattern xs)]
 
 instance ToCssSelector Class where
     toCssSelector = cons '.' . unClass
     toSelectorGroup = toSelectorGroup . SClass
     specificity' = const (SelectorSpecificity 0 1 0)
+    toPattern (Class c) = ConP 'Class [_textToPattern c]
 
 instance ToCssSelector Attrib where
     toCssSelector (Exist name) = "[" <> toCssSelector name <> "]"
     toCssSelector (Attrib name op val) = "[" <> toCssSelector name <> attributeCombinatorText op <> encodeText '"' val <> "]"
     toSelectorGroup = toSelectorGroup . SAttrib
     specificity' = const (SelectorSpecificity 0 1 0)
+    toPattern (Exist name) = ConP 'Exist [toPattern name]
+    toPattern (Attrib name op val) = ConP 'Attrib [toPattern name, _constantP (go op), _textToPattern val]
+        where go Exact = 'Exact
+              go Include = 'Include
+              go DashMatch = 'DashMatch
+              go PrefixMatch = 'PrefixMatch
+              go SuffixMatch = 'SuffixMatch
+              go SubstringMatch = 'SubstringMatch
 
 instance ToCssSelector AttributeName where
     toCssSelector (AttributeName NAny e) = e
     toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> e
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
-
+    toPattern (AttributeName n a) = ConP 'AttributeName [toPattern n, _textToPattern a]
 
 instance ToCssSelector Hash where
     toCssSelector = cons '#' . unHash
     toSelectorGroup = toSelectorGroup . SHash
     specificity' = const (SelectorSpecificity 1 0 0)
+    toPattern (Hash h) = ConP 'Hash [_textToPattern h]
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
-    toCssSelector NEmpty = ""
     toCssSelector (Namespace t) = t
     toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
     specificity' = mempty
+    toPattern NAny = _constantP 'NAny
+    -- used to make patterns more readable
+    toPattern NEmpty = _constantP 'NEmpty
+    toPattern (Namespace t) = ConP 'Namespace [_textToPattern t]
 
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
@@ -390,12 +432,17 @@ instance ToCssSelector SelectorSequence where
     toSelectorGroup = toSelectorGroup . Selector
     specificity' (SimpleSelector s) = specificity' s
     specificity' (Filter s f) = specificity' s <> specificity' f
+    toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
+    toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e
     toCssSelector (TypeSelector n e) = toCssSelector n <> "|" <> toCssSelector e
     toSelectorGroup = toSelectorGroup . SimpleSelector
     specificity' (TypeSelector _ e) = specificity' e
+    -- we use Universal, to make the generated pattern more convenient to read.
+    toPattern Universal = _constantP 'Universal
+    toPattern (TypeSelector n t) = ConP 'TypeSelector [toPattern n, toPattern t]
 
 instance ToCssSelector ElementName where
     toCssSelector EAny = "*"
@@ -403,6 +450,8 @@ instance ToCssSelector ElementName where
     toSelectorGroup = toSelectorGroup . TypeSelector NAny
     specificity' EAny = mempty
     specificity' (ElementName _) = SelectorSpecificity 0 0 1
+    toPattern EAny = _constantP 'EAny
+    toPattern (ElementName e) = ConP 'ElementName [_textToPattern e]
 
 instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
@@ -412,6 +461,9 @@ instance ToCssSelector SelectorFilter where
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
+    toPattern (SHash h) = ConP 'SHash [toPattern h]
+    toPattern (SClass c) = ConP 'SClass [toPattern c]
+    toPattern (SAttrib a) = ConP 'SAttrib [toPattern a]
 
 instance ToCssSelector Selector where
     toCssSelector (Selector s) = toCssSelector s
@@ -419,6 +471,12 @@ instance ToCssSelector Selector where
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (Selector s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
+    toPattern (Selector s) = ConP 'Selector [toPattern s]
+    toPattern (Combined s1 c s2) = ConP 'Combined [toPattern s1, _constantP (go c), toPattern s2]
+        where go Descendant = 'Descendant
+              go Child = 'Child
+              go DirectlyPreceded = 'DirectlyPreceded
+              go Preceded = 'Preceded
 
 -- Custom Eq and Ord instances
 instance Eq SelectorSpecificity where

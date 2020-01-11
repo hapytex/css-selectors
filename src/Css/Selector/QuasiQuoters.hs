@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE ScopedTypeVariables, TemplateHaskellQuotes #-}
 
 {-|
 Module      : Css.Selector.QuasiQuoters
@@ -13,15 +13,15 @@ module Css.Selector.QuasiQuoters (
     csssel, parseCss
   ) where
 
+import Css.Selector.Core(SelectorGroup(..), toPattern)
+import Css.Selector.Lexer(alexScanTokens)
+import Css.Selector.Parser(cssselector)
+
 import Data.Data(Data, cast)
 import Data.Text(pack, unpack)
 
 import Language.Haskell.TH.Quote(QuasiQuoter(QuasiQuoter, quoteExp, quotePat, quoteType, quoteDec))
 import Language.Haskell.TH.Syntax(Exp(AppE, VarE), Q, dataToExpQ, lift)
-
-import Css.Selector.Core(SelectorGroup)
-import Css.Selector.Lexer(alexScanTokens)
-import Css.Selector.Parser(cssselector)
 
 -- | Parse the string to a 'SelectorGroup'.
 parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
@@ -37,8 +37,7 @@ liftDataWithText = dataToExpQ ((((AppE (VarE 'pack) <$>) . lift . unpack) <$>) .
 csssel :: QuasiQuoter
 csssel = QuasiQuoter {
     quoteExp = liftDataWithText . parseCss,
-    -- TODO: maybe later generate pattern to match CSS selectors
-    quotePat = error "This quasiquoter does not generate patterns.",
-    quoteType = error "This quasiquoter does not generate a type.",
-    quoteDec = error "This quasiquoter does not generate declarations."
+    quotePat = return . toPattern . parseCss,
+    quoteType = fail "This quasiquoter does not generate a type.",
+    quoteDec = fail "This quasiquoter does not generate declarations."
   }

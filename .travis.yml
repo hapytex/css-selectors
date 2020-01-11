@@ -18,3 +18,5 @@ install:
 
 script:
   - stack --no-terminal --skip-ghc-check test
+  # verify that there are no hlint suggestions
+  - curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .

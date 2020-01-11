@@ -19,7 +19,22 @@ A css selector has the following structure:
 
  1. a `SelectorGroup` is a group of one or more `Selector`s, these are
     *comma-separated*;
- 2. ...
+ 2. A `Selector` is a custom linked list implementation where the "cons" (the
+    `Combined` data constructor) contains a besides a reference to a
+    `SelectorSequence` (head) and a `Selector` (tail), it specifies what
+    `SelectorCombinator` is used. A `Selector` has at least one
+    `SelectorSequence`, this is constructoed with the `Selector` data
+    constructor;
+  3. A `SelectorSequence` contains a `TypeSelector` (in case the `TypeSelector`
+     is `Universal`, this does not need to be part of the css-selector
+     expression); and a set of zero or more `SelectorFilter`s;
+  4. A `SelectorFilter` is a `Hash`, a `Class`, or an `Attrib`;
+  5. Both a `TypeSelector` and an `AttributeName` have a namespace. A namespace
+     can be any (`*`), empty, or a valid namespace.
+
+## Quasiquoter
+
+The main use of this package is a *quasiquoter*.
 
 ## Selector specificity
 

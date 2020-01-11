@@ -1,12 +1,12 @@
 --vim:ft=haskell
 {
-module Css.Selector.Lexer(Token(..), alexScanTokens) where
+module Css.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
 
 import Data.Decimal(Decimal)
 import Css.Selector.Utils(readCssString)
 }
 
-%wrapper "basic"
+%wrapper "posn"
 
 $nonascii = [^\0-\177]
 $w        = [\ \t\r\n\f]
@@ -41,30 +41,38 @@ $tl       = [\~]
 
 
 tokens :-
-  @wo "="  @wo     { const TEqual }
-  @wo "~=" @wo     { const TIncludes }
-  @wo "|=" @wo     { const TDashMatch }
-  @wo "^=" @wo     { const TPrefixMatch }
-  @wo "$=" @wo     { const TSuffixMatch }
-  @wo "*=" @wo     { const TSubstringMatch }
-  @wo ","  @wo     { const Comma }
-  "."              { const Dot }
-  "|"              { const Pipe }
-  "*"              { const Asterisk }
-  @ident           { Ident }
-  @string          { String . readCssString }
-  "#" @name        { THash . tail }
-  @float           { Decimal . read }
-  @int             { Integer . read }
-  @wo "+" @wo      { const Plus }
-  @wo ">" @wo      { const Greater }
-  @wo $tl @wo      { const Tilde }
-  "[" @wo          { const BOpen }
-  @wo "]"          { const BClose }
-  $w @wo           { const Space }
+  @wo "="  @wo     { constoken TEqual }
+  @wo "~=" @wo     { constoken TIncludes }
+  @wo "|=" @wo     { constoken TDashMatch }
+  @wo "^=" @wo     { constoken TPrefixMatch }
+  @wo "$=" @wo     { constoken TSuffixMatch }
+  @wo "*=" @wo     { constoken TSubstringMatch }
+  @wo ","  @wo     { constoken Comma }
+  "."              { constoken Dot }
+  "|"              { constoken Pipe }
+  "*"              { constoken Asterisk }
+  @ident           { tokenize Ident }
+  @string          { tokenize (String . readCssString) }
+  "#" @name        { tokenize (THash . drop 1) }
+  @float           { tokenize (Decimal . read) }
+  @int             { tokenize (Integer . read) }
+  @wo "+" @wo      { constoken Plus }
+  @wo ">" @wo      { constoken Greater }
+  @wo $tl @wo      { constoken Tilde }
+  "[" @wo          { constoken BOpen }
+  @wo "]"          { constoken BClose }
+  $w @wo           { constoken Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {
+data TokenLoc = TokenLoc { token :: Token, original :: String, location :: AlexPosn }
+
+tokenize :: (String -> Token) -> AlexPosn -> String -> TokenLoc
+tokenize = flip . (>>= TokenLoc)
+
+constoken :: Token -> AlexPosn -> String -> TokenLoc
+constoken = tokenize . const
+
 -- The token type:
 data Token =
       TIncludes
