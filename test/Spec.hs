@@ -19,6 +19,9 @@ tests = [
     testGroup "Arbitrary css parsing" [
         testProperty "Encode-decode css identity" encodeDecodeCss
     ],
+    testGroup "SelectorSequences" [
+        testProperty "Adding and removing filters" addRemFilters
+    ],
     testGroup "Normalization" [
         testProperty "Normalized variant has the same specificity" normSpec,
         testProperty "Normalization is idempotent" normIdem
@@ -45,6 +48,9 @@ buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force 
 
 buildPattern2 :: SelectorGroup -> SelectorGroup -> Bool
 buildPattern2 x y = (x == y) == (toPattern x == toPattern y)
+
+addRemFilters :: TypeSelector -> [SelectorFilter] -> Bool
+addRemFilters x fs = filters (addFilters (SimpleSelector x) fs) == fs
 
 normSpec :: SelectorGroup -> Bool
 normSpec x = specificity' x == specificity' nx

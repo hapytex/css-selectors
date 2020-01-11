@@ -16,7 +16,7 @@ module Css.Selector.Core (
     , Selector(..)
     , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
     , SelectorSequence(..)
-    , addFilters, combinatorText, combine
+    , filters, addFilters, combinatorText, combine
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -41,6 +41,7 @@ import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
+import Data.List(unfoldr)
 import Data.List.NonEmpty(NonEmpty((:|)))
 import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
@@ -163,6 +164,13 @@ addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter o
     -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
     -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
 addFilters = foldl Filter
+
+-- | Obtain the list of filters that are applied in the given 'SelectorSequence'
+filters :: SelectorSequence -- ^ The given 'SelectorSequence' to analyze.
+    -> [SelectorFilter] -- ^ The given list of 'SelectorFilter's applied, this can be empty.
+filters = reverse . unfoldr go
+    where go (Filter s f) = Just (f, s)
+          go (SimpleSelector _) = Nothing
 
 -- | A type that sums up the different ways to filter a type selector: with an
 -- id (hash), a class, and an attribute.
@@ -389,6 +397,7 @@ instance ToCssSelector SelectorGroup where
     specificity' (SelectorGroup g) = foldMap specificity' g
     toPattern (SelectorGroup g) = ConP 'SelectorGroup [go g]
         where go (x :| xs) = ConP '(:|) [toPattern x, ListP (map toPattern xs)]
+    normalize (SelectorGroup g) = (SelectorGroup (Data.List.NonEmpty.sort g))
 
 instance ToCssSelector Class where
     toCssSelector = cons '.' . unClass
