@@ -16,7 +16,7 @@ module Css.Selector.Core (
     , Selector(..)
     , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
     , SelectorSequence(..)
-    , addFilters, combinatorText, combine
+    , filters, filters', addFilters, combinatorText, combine
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -41,7 +41,9 @@ import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
+import Data.List(sort, unfoldr)
 import Data.List.NonEmpty(NonEmpty((:|)))
+import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
 import Data.Text(Text, cons, intercalate, pack, unpack)
@@ -93,6 +95,12 @@ class ToCssSelector a where
     -- can use it in functions.
     toPattern :: a -- ^ The item to convert to a 'Pat'.
         -> Pat -- ^ The pattern that is generated that will match only items equal to the given object.
+    -- Convert the given 'ToCssSelector' item to an item in a more normalized
+    -- form. A normalization is /idempotent/: applying this multiple times will
+    -- have the same effect as applying it once.
+    normalize :: a -- ^ The item to normalize.
+        -> a -- ^ A normalized variant of the given item. This will filter the same objects, and have the same specificity.
+    normalize = id
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
@@ -105,14 +113,14 @@ specificity = specificityValue . specificity'
 -- selectors.
 newtype SelectorGroup = SelectorGroup {
     unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
       Selector SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
     | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 
 -- | A type that contains the possible ways to combine 'SelectorSequence's.
@@ -148,7 +156,7 @@ combine c0 x0 ys = go x0
 data SelectorSequence =
       SimpleSelector TypeSelector -- ^ Convert a 'TypeSelector' into a 'SimpleSelector'.
     | Filter SelectorSequence SelectorFilter -- ^ Apply an additional 'SelectorFilter' to the 'SelectorSequence'.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
 -- filters are applied left-to-right.
@@ -157,13 +165,27 @@ addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter o
     -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
 addFilters = foldl Filter
 
+-- | Obtain the list of filters that are applied in the given 'SelectorSequence'
+-- in /reversed/ order.
+filters' :: SelectorSequence -- ^ The given 'SelectorSequence' to analyze.
+    -> [SelectorFilter] -- ^ The given list of 'SelectorFilter's applied in /reversed/ order, this can be empty.
+filters' = unfoldr go
+    where go (Filter s f) = Just (f, s)
+          go (SimpleSelector _) = Nothing
+
+-- | Obtain the list of filters that are applied in the given
+-- 'SelectorSequence'.
+filters :: SelectorSequence -- ^ The given 'SelectorSequence' to analyze.
+    -> [SelectorFilter] -- ^ The given list of 'SelectorFilter's applied, this can be empty.
+filters = reverse . filters'
+
 -- | A type that sums up the different ways to filter a type selector: with an
 -- id (hash), a class, and an attribute.
 data SelectorFilter =
       SHash Hash -- ^ A 'Hash' object as filter.
     | SClass Class -- ^ A 'Class' object as filter.
     | SAttrib Attrib -- ^ An 'Attrib' object as filter.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | A css attribute can come in two flavors: either a constraint that the
 -- attribute should exists, or a constraint that a certain attribute should have
@@ -171,7 +193,7 @@ data SelectorFilter =
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
     | Attrib AttributeName AttributeCombinator AttributeValue -- ^ A constraint about the value associated with the given 'AttributeName'.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
@@ -249,7 +271,7 @@ attrib = flip Attrib
 data Namespace =
       NAny -- ^ A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
     | Namespace Text -- ^ A typselector part that specifies that we accept a certain namespace name.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | The empty namespace. This is /not/ the wildcard namespace (@*@). This is a
 -- bidirectional namespace and can thus be used in expressions as well.
@@ -261,21 +283,21 @@ pattern NEmpty = Namespace ""
 data ElementName =
       EAny -- ^ A typeselector part that specifies that we accept all element names, in css denoted with @*@.
     | ElementName Text -- ^ A typeselector part that specifies that we accept a certain element name.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | A typeselector is a combination of a selector for a namespace, and a
 -- selector for an element name. One, or both can be a wildcard.
 data TypeSelector = TypeSelector {
     selectorNamespace :: Namespace, -- ^ The selector for the namespace.
     elementName :: ElementName -- ^ The selector for the element name.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | An attribute name is a name that optionally has a namespace, and the name
 -- of the attribute.
 data AttributeName = AttributeName {
     attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' as well.
     attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | We use 'Text' as the type to store an attribute value.
 type AttributeValue = Text
@@ -295,13 +317,13 @@ data AttributeCombinator =
 -- name, not the dot prefix.
 newtype Class = Class {
     unClass :: Text -- ^ Obtain the name from the class.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | A css hash (used to match an element with a given id). The type only wraps
 -- the hash name, not the hash (@#@) prefix.
 newtype Hash = Hash {
     unHash :: Text -- ^ Obtain the name from the hash.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
@@ -382,6 +404,7 @@ instance ToCssSelector SelectorGroup where
     specificity' (SelectorGroup g) = foldMap specificity' g
     toPattern (SelectorGroup g) = ConP 'SelectorGroup [go g]
         where go (x :| xs) = ConP '(:|) [toPattern x, ListP (map toPattern xs)]
+    normalize (SelectorGroup g) = SelectorGroup (Data.List.NonEmpty.sort g)
 
 instance ToCssSelector Class where
     toCssSelector = cons '.' . unClass
@@ -434,6 +457,9 @@ instance ToCssSelector SelectorSequence where
     specificity' (Filter s f) = specificity' s <> specificity' f
     toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
     toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
+    normalize = flip go []
+        where go (Filter s f) = go s . (f:)
+              go s@(SimpleSelector _) = addFilters s . sort
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e

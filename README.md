@@ -30,7 +30,15 @@ A css selector has the following structure:
      expression); and a set of zero or more `SelectorFilter`s;
   4. A `SelectorFilter` is a `Hash`, a `Class`, or an `Attrib`;
   5. Both a `TypeSelector` and an `AttributeName` have a namespace. A namespace
-     can be any (`*`), empty, or a valid namespace.
+     can be any (`*`), empty, or a namespace (which should be a valid
+     identifier);
+  6. A `Hash` is a valid identifier prepended with a number sign (`#`);
+  7. A `Class` is a valid identifier prepended with a dot (`.`);
+  8. An `Attribute` can be an `Exist` object that imposes a constraint that the
+     attribute should exist for the given tag, or an `Attrib` that specifies
+     that the attribute exists, and that the value for this attribute satisfies
+     a given constraint. This constraint is determined by the
+     `AttributeCombinator` and the value of the `Attrib` object.
 
 ## Quasiquoter
 
