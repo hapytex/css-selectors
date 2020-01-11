@@ -71,10 +71,10 @@ data SelectorSpecificity =
 
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
-    -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css-selector take precedence.
+    -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 
--- | A class that defines that the given type can be converted to a css-selector
+-- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.
 class ToCssSelector a where
     -- | Convert the given element to a 'Text' object that contains the css
@@ -109,7 +109,7 @@ specificity :: ToCssSelector a => a -- ^ The object for which we evaluate the sp
     -> Int -- ^ The specificity level as an 'Int' value.
 specificity = specificityValue . specificity'
 
--- | The root type of a css-selector. This is a comma-separated list of
+-- | The root type of a css selector. This is a comma-separated list of
 -- selectors.
 newtype SelectorGroup = SelectorGroup {
     unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
@@ -131,7 +131,7 @@ data SelectorCombinator =
     | Preceded -- ^ The second tag is preceded by the first one, denoted with a @~@ in css.
     deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
 
--- | Convert the 'SelectorCombinator' to the equivalent css-selector text. A
+-- | Convert the 'SelectorCombinator' to the equivalent css selector text. A
 -- space for 'Descendant', a @>@ for 'Child', a @+@ for 'DirectlyPreceded', and
 -- a @~@ for 'Preceded'
 combinatorText :: SelectorCombinator -- ^ The given 'SelectorCombinator' to retrieve the css token for.
@@ -325,7 +325,7 @@ newtype Hash = Hash {
     unHash :: Text -- ^ Obtain the name from the hash.
   } deriving (Data, Eq, Ord, Show)
 
--- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
+-- | Convert the given 'AttributeCombinator' to its css selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
     -> AttributeValue -- ^ The css selector text for the given 'AttributeCombinator'.
 attributeCombinatorText Exact = "="
@@ -458,8 +458,8 @@ instance ToCssSelector SelectorSequence where
     toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
     toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
     normalize = flip go []
-        where go (Filter s f) = go s . (f:)
-              go (SimpleSelector s) = addFilters (SimpleSelector (normalize s)) . sort . map normalize
+        where go (Filter s f) = go s . (normalize f:)
+              go (SimpleSelector s) = addFilters (SimpleSelector (normalize s)) . sort
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e
