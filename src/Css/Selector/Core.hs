@@ -42,6 +42,7 @@ import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
 import Data.List.NonEmpty(NonEmpty((:|)))
+import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
 import Data.Text(Text, cons, intercalate, pack, unpack)
@@ -93,6 +94,12 @@ class ToCssSelector a where
     -- can use it in functions.
     toPattern :: a -- ^ The item to convert to a 'Pat'.
         -> Pat -- ^ The pattern that is generated that will match only items equal to the given object.
+    -- Convert the given 'ToCssSelector' item to an item in a more normalized
+    -- form. A normalization is /idempotent/: applying this multiple times will
+    -- have the same effect as applying it once.
+    normalize :: a -- ^ The item to normalize.
+        -> a -- ^ A normalized variant of the given item. This will filter the same objects, and have the same specificity.
+    normalize = id
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value

@@ -19,6 +19,10 @@ tests = [
     testGroup "Arbitrary css parsing" [
         testProperty "Encode-decode css identity" encodeDecodeCss
     ],
+    testGroup "Normalization" [
+        testProperty "Normalized variant has the same specificity" normSpec,
+        testProperty "Normalization is idempotent" normIdem
+    ],
     testGroup "Build an expression or pattern" [
         testProperty "Check build of expression" buildExpression,
         testProperty "Check build of pattern 1" buildPattern1,
@@ -41,3 +45,11 @@ buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force 
 
 buildPattern2 :: SelectorGroup -> SelectorGroup -> Bool
 buildPattern2 x y = (x == y) == (toPattern x == toPattern y)
+
+normSpec :: SelectorGroup -> Bool
+normSpec x = specificity' x == specificity' nx
+    where nx = normalize x
+
+normIdem :: SelectorGroup -> Bool
+normIdem x = normalize nx == nx
+    where nx = normalize x
