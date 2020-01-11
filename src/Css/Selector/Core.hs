@@ -404,7 +404,7 @@ instance ToCssSelector SelectorGroup where
     specificity' (SelectorGroup g) = foldMap specificity' g
     toPattern (SelectorGroup g) = ConP 'SelectorGroup [go g]
         where go (x :| xs) = ConP '(:|) [toPattern x, ListP (map toPattern xs)]
-    normalize (SelectorGroup g) = SelectorGroup (Data.List.NonEmpty.sort g)
+    normalize (SelectorGroup g) = SelectorGroup (Data.List.NonEmpty.sort (normalize <$> g))
 
 instance ToCssSelector Class where
     toCssSelector = cons '.' . unClass
@@ -459,7 +459,7 @@ instance ToCssSelector SelectorSequence where
     toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
     normalize = flip go []
         where go (Filter s f) = go s . (f:)
-              go s@(SimpleSelector _) = addFilters s . sort
+              go (SimpleSelector s) = addFilters (SimpleSelector (normalize s)) . sort . map normalize
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e
@@ -503,6 +503,8 @@ instance ToCssSelector Selector where
               go Child = 'Child
               go DirectlyPreceded = 'DirectlyPreceded
               go Preceded = 'Preceded
+    normalize (Selector s) = Selector (normalize s)
+    normalize (Combined s1 c s2) = Combined (normalize s1) c (normalize s2)
 
 -- Custom Eq and Ord instances
 instance Eq SelectorSpecificity where
