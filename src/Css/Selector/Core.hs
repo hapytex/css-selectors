@@ -105,14 +105,14 @@ specificity = specificityValue . specificity'
 -- selectors.
 newtype SelectorGroup = SelectorGroup {
     unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
       Selector SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
     | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 
 -- | A type that contains the possible ways to combine 'SelectorSequence's.
@@ -148,7 +148,7 @@ combine c0 x0 ys = go x0
 data SelectorSequence =
       SimpleSelector TypeSelector -- ^ Convert a 'TypeSelector' into a 'SimpleSelector'.
     | Filter SelectorSequence SelectorFilter -- ^ Apply an additional 'SelectorFilter' to the 'SelectorSequence'.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
 -- filters are applied left-to-right.
@@ -163,7 +163,7 @@ data SelectorFilter =
       SHash Hash -- ^ A 'Hash' object as filter.
     | SClass Class -- ^ A 'Class' object as filter.
     | SAttrib Attrib -- ^ An 'Attrib' object as filter.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | A css attribute can come in two flavors: either a constraint that the
 -- attribute should exists, or a constraint that a certain attribute should have
@@ -171,7 +171,7 @@ data SelectorFilter =
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
     | Attrib AttributeName AttributeCombinator AttributeValue -- ^ A constraint about the value associated with the given 'AttributeName'.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
@@ -249,7 +249,7 @@ attrib = flip Attrib
 data Namespace =
       NAny -- ^ A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
     | Namespace Text -- ^ A typselector part that specifies that we accept a certain namespace name.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | The empty namespace. This is /not/ the wildcard namespace (@*@). This is a
 -- bidirectional namespace and can thus be used in expressions as well.
@@ -261,21 +261,21 @@ pattern NEmpty = Namespace ""
 data ElementName =
       EAny -- ^ A typeselector part that specifies that we accept all element names, in css denoted with @*@.
     | ElementName Text -- ^ A typeselector part that specifies that we accept a certain element name.
-    deriving (Data, Eq, Show)
+    deriving (Data, Eq, Ord, Show)
 
 -- | A typeselector is a combination of a selector for a namespace, and a
 -- selector for an element name. One, or both can be a wildcard.
 data TypeSelector = TypeSelector {
     selectorNamespace :: Namespace, -- ^ The selector for the namespace.
     elementName :: ElementName -- ^ The selector for the element name.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | An attribute name is a name that optionally has a namespace, and the name
 -- of the attribute.
 data AttributeName = AttributeName {
     attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' as well.
     attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | We use 'Text' as the type to store an attribute value.
 type AttributeValue = Text
@@ -295,13 +295,13 @@ data AttributeCombinator =
 -- name, not the dot prefix.
 newtype Class = Class {
     unClass :: Text -- ^ Obtain the name from the class.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | A css hash (used to match an element with a given id). The type only wraps
 -- the hash name, not the hash (@#@) prefix.
 newtype Hash = Hash {
     unHash :: Text -- ^ Obtain the name from the hash.
-  } deriving (Data, Eq, Show)
+  } deriving (Data, Eq, Ord, Show)
 
 -- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
