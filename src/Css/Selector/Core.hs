@@ -422,6 +422,8 @@ instance ToCssSelector Namespace where
     toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
     specificity' = mempty
     toPattern NAny = _constantP 'NAny
+    -- used to make patterns more readable
+    toPattern NEmpty = _constantP 'NEmpty
     toPattern (Namespace t) = ConP 'Namespace [_textToPattern t]
 
 instance ToCssSelector SelectorSequence where
@@ -438,6 +440,8 @@ instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector n e) = toCssSelector n <> "|" <> toCssSelector e
     toSelectorGroup = toSelectorGroup . SimpleSelector
     specificity' (TypeSelector _ e) = specificity' e
+    -- we use Universal, to make the generated pattern more convenient to read.
+    toPattern Universal = _constantP 'Universal
     toPattern (TypeSelector n t) = ConP 'TypeSelector [toPattern n, toPattern t]
 
 instance ToCssSelector ElementName where

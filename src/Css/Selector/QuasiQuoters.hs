@@ -18,13 +18,10 @@ import Css.Selector.Lexer(alexScanTokens)
 import Css.Selector.Parser(cssselector)
 
 import Data.Data(Data, cast)
-import Data.Generics(extQ)
 import Data.Text(pack, unpack)
 
 import Language.Haskell.TH.Quote(QuasiQuoter(QuasiQuoter, quoteExp, quotePat, quoteType, quoteDec))
-import Language.Haskell.TH.Syntax(Exp(AppE, VarE), Pat(ConP), Q, dataToExpQ, dataToPatQ, lift)
-
-import Type.Reflection(typeOf)
+import Language.Haskell.TH.Syntax(Exp(AppE, VarE), Q, dataToExpQ, lift)
 
 -- | Parse the string to a 'SelectorGroup'.
 parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
@@ -41,6 +38,6 @@ csssel :: QuasiQuoter
 csssel = QuasiQuoter {
     quoteExp = liftDataWithText . parseCss,
     quotePat = return . toPattern . parseCss,
-    quoteType = error "This quasiquoter does not generate a type.",
-    quoteDec = error "This quasiquoter does not generate declarations."
+    quoteType = fail "This quasiquoter does not generate a type.",
+    quoteDec = fail "This quasiquoter does not generate declarations."
   }
