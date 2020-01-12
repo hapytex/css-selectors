@@ -20,5 +20,3 @@ script:
   - stack --no-terminal --skip-ghc-check test
   # verify that there are no hlint suggestions
   - curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
-  # verify that there is no missing documentation
-  - echo "! stack haddock 2>&1 | grep -q -i 'Missing documentation'" | sh

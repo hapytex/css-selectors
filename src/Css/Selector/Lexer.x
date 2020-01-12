@@ -8,7 +8,7 @@ import Css.Selector.Utils(readCssString)
 
 %wrapper "posn"
 
-$nonascii = [^\0-\177]
+$nonascii = [^\0-\xff]
 $w        = [\ \t\r\n\f]
 $nostar   = [^\*]
 $nostars  = [^\/\*]
