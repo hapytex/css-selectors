@@ -16,7 +16,9 @@ module Css.Selector.Core (
     , Selector(..)
     , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
     , SelectorSequence(..)
-    , filters, filters', addFilters, combinatorText, combine
+    , combinatorText, combine
+    -- * Filters
+    , filters, filters', addFilters, (.:)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -164,6 +166,12 @@ addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter o
     -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
     -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
 addFilters = foldl Filter
+
+-- | An infix variant of the 'addFilters' function.
+(.:) :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter on.
+    -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
+    -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
+(.:) = addFilters
 
 -- | Obtain the list of filters that are applied in the given 'SelectorSequence'
 -- in /reversed/ order.
