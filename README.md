@@ -42,7 +42,39 @@ A css selector has the following structure:
 
 ## Quasiquoter
 
-The main use of this package is a *quasiquoter*.
+The main use of this package is a *quasiquoter*, that can be used both for
+*expressions* and *patterns*. We thus can construct a `SelectorSequence` in an
+expression with:
+
+```haskell
+myCssSelector :: SelectorGroup
+myCssSelector = [csssel|* html .pun .inbox, * html .pun #bdrdmain, * html .pun .infldset|]
+```
+
+A less common use case is using the quasiquoter in a pattern to check if a given
+`SelectorGroup` matches *exactly* with a given css selector. For example:
+
+```haskell
+isMyCssSelector :: SelectorGroup -> Bool
+isMyCssSelector [csssel|* html .pun .unbox|] = True
+isMyCssSelector _ = False
+```
+
+Note that you need to enable the `-XQuasiQuotes` pragma when you compile.
+
+## Selector normalization
+
+One can turn equivalent css selectors in a "normalized" form. This is done by
+sorting the `Selector`s in a `Selector` group, and sorting the `SelectorFilter`s
+of a certain `SelectorSequence`.
+
+The order is determined by the default instances of `Ord` of the sequences. This
+is thus not an "inherent" ordering of the css selector, but just an order that
+the program constructed to convert multiple css selectors that are equivalent
+same to a normal form in which these are equal.
+
+We here do *not* optimize the css selector, for example by removing duplicate
+filters, since that can have impact on the specificity of the selector.
 
 ## Selector specificity
 
