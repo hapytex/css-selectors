@@ -35,7 +35,7 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
-import Css.Selector.Utils(encodeText, toIdentifier)
+import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
@@ -407,7 +407,7 @@ instance ToCssSelector SelectorGroup where
     normalize (SelectorGroup g) = SelectorGroup (Data.List.NonEmpty.sort (normalize <$> g))
 
 instance ToCssSelector Class where
-    toCssSelector = cons '.' . unClass
+    toCssSelector = cons '.' . encodeIdentifier . unClass
     toSelectorGroup = toSelectorGroup . SClass
     specificity' = const (SelectorSpecificity 0 1 0)
     toPattern (Class c) = ConP 'Class [_textToPattern c]
@@ -428,20 +428,20 @@ instance ToCssSelector Attrib where
 
 instance ToCssSelector AttributeName where
     toCssSelector (AttributeName NAny e) = e
-    toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> e
+    toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> encodeIdentifier e
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
     toPattern (AttributeName n a) = ConP 'AttributeName [toPattern n, _textToPattern a]
 
 instance ToCssSelector Hash where
-    toCssSelector = cons '#' . unHash
+    toCssSelector = cons '#' . encodeIdentifier . unHash
     toSelectorGroup = toSelectorGroup . SHash
     specificity' = const (SelectorSpecificity 1 0 0)
     toPattern (Hash h) = ConP 'Hash [_textToPattern h]
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
-    toCssSelector (Namespace t) = t
+    toCssSelector (Namespace t) = encodeIdentifier t
     toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
     specificity' = mempty
     toPattern NAny = _constantP 'NAny
@@ -472,7 +472,7 @@ instance ToCssSelector TypeSelector where
 
 instance ToCssSelector ElementName where
     toCssSelector EAny = "*"
-    toCssSelector (ElementName e) = e
+    toCssSelector (ElementName e) = encodeIdentifier e
     toSelectorGroup = toSelectorGroup . TypeSelector NAny
     specificity' EAny = mempty
     specificity' (ElementName _) = SelectorSpecificity 0 0 1

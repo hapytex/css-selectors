@@ -9,8 +9,10 @@ A module to encode and decode css selector strings. These are used in the parser
 -}
 module Css.Selector.Utils (
     readCssString,
+    readIdentifier,
     encodeString,
     encodeText,
+    encodeIdentifier,
     validIdentifier,
     toIdentifier
   ) where
@@ -37,6 +39,11 @@ _readCssString c' = go
           go (x:xs) | x == c' = error "The string can not contain a " ++ show x ++ ", you should escape it."
                     | otherwise = x : go xs
 
+-- | Parse a given css identifier to the content of the identifier.
+readIdentifier :: String -- ^ The given css identifier to parse.
+    -> String -- ^ The result of the parsing: the content of the identifier.
+readIdentifier = id
+
 _notEncode :: Char -> Bool
 _notEncode '\\' = False
 _notEncode c = isAscii c && not (isControl c)
@@ -57,10 +64,19 @@ encodeString c' = (c' :) . go
 encodeText :: Char -- ^ The type of quotes that should be put around the content (should be @'@ or @"@).
     -> Text -- ^ The string that should be converted to a css selector string literal.
     -> Text -- ^ The corresponding css selector string literal.
-encodeText c' t = cons c' (snoc (T.concatMap go t) c')
-    where go c | c == c' = cons '\\' (singleton c)
-               | _notEncode c = singleton c
-               | otherwise = cons '\\' (pack (showHex (ord c) ""))
+encodeText c' t = cons c' (snoc (T.concatMap (_encodeCharacter c') t) c')
+
+_encodeCharacter :: Char -> Char -> Text
+_encodeCharacter c' c
+    | c == c' = cons '\\' (singleton c)
+    | _notEncode c = singleton c
+    | otherwise = cons '\\' (pack (showHex (ord c) ""))
+
+-- | Encode a given identifier to its css selector equivalent by escaping
+-- certain characters.
+encodeIdentifier :: Text -- ^ The identifier to encode.
+    -> Text -- ^ The encoded identifier.
+encodeIdentifier = T.concatMap (_encodeCharacter '\\')
 
 showHex :: Int -> ShowS
 showHex = go (6 :: Int)
