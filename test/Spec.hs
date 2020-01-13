@@ -15,7 +15,7 @@ tests = [
     testGroup "Encode-decode strings" [
         testProperty "Encode-decode identity 1" (encodeDecode '"'),
         testProperty "Encode-decode identity 2" (encodeDecode '\''),
-        testProperty "Encode-decode identifier" (encodeDecodeId)
+        testProperty "Encode-decode identifier" encodeDecodeId
     ],
     testGroup "Arbitrary css parsing" [
         testProperty "Encode-decode css identity" encodeDecodeCss

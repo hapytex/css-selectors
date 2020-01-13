@@ -35,7 +35,7 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
-import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
+import Css.Selector.Utils(encodeIdentifier, encodeText)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
@@ -370,20 +370,16 @@ instance Monoid ElementName where
 
 -- IsString instances
 instance IsString Class where
-    fromString ('.' : s) = toIdentifier (Class . pack) s
-    fromString s = toIdentifier (Class . pack) s
+    fromString = Class . pack
 
 instance IsString Hash where
-    fromString ('#' : s) = toIdentifier (Hash . pack) s
-    fromString s = toIdentifier (Hash . pack) s
+    fromString = Hash . pack
 
 instance IsString Namespace where
-    fromString "*" = NAny
-    fromString s = toIdentifier (Namespace . pack) s
+    fromString = Namespace . pack
 
 instance IsString ElementName where
-    fromString "*" = EAny
-    fromString s = toIdentifier (ElementName . pack) s
+    fromString = ElementName . pack
 
 -- IsList instances
 instance IsList SelectorGroup where
