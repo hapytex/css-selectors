@@ -381,6 +381,12 @@ instance IsString Namespace where
 instance IsString ElementName where
     fromString = ElementName . pack
 
+instance IsString AttributeName where
+    fromString = AttributeName NAny . pack
+
+instance IsString Attrib where
+    fromString = Exist . fromString
+
 -- IsList instances
 instance IsList SelectorGroup where
     type Item SelectorGroup = Selector
