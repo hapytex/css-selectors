@@ -14,9 +14,17 @@ module Css.Selector.Utils (
     readCssString, encodeString, encodeText
   ) where
 
+import Control.Arrow(first)
+
 import Data.Char(chr, digitToInt, intToDigit, isAscii, isControl, isHexDigit, ord)
 import Data.Text(Text, cons, pack, singleton, snoc)
 import qualified Data.Text as T
+
+_initLast :: [a] -> Maybe ([a], a)
+_initLast [] = Nothing
+_initLast (a:as) = Just (go as a)
+    where go [] x = ([], x)
+          go (y:ys) x = first (x:) (go ys y)
 
 -- | Parses a css string literal to a string that ontains the content of that
 -- string literal.

@@ -60,6 +60,13 @@ isMyCssSelector [csssel|* html .pun .unbox|] = True
 isMyCssSelector _ = False
 ```
 
+The quasiquoter can be used in a type signature as well, but will always,
+regardless of the content, return the type for `SelectorGroup`. If you use the
+quasiquoter as a declaration, it will simply not generate any declarations.
+
+Perhaps in the (far) future, we will make more sensical implementations for the
+type and declaration part of the quasiquoter.
+
 Note that you need to enable the `-XQuasiQuotes` pragma when you compile.
 
 ## Selector normalization
@@ -106,7 +113,8 @@ use these in blaze HTML and for example in *Hamlet*.
 
 The `ToMarkup` instance will render the css selector as raw content. So if you
 add this as an attribute, the css selector will appear, unescaped, in the
-rendered page.
+rendered page. Note that it will be escaped, so `foo > bar` will be generated as
+`foo &gt; bar`.
 
 The `ToJSON` instance will convert the given object in a JSON string that
 contains the css selector.

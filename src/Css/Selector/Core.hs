@@ -14,11 +14,11 @@ module Css.Selector.Core (
     ToCssSelector(..)
     -- * Selectors and combinators
     , Selector(..)
-    , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
+    , SelectorCombinator(..), SelectorGroup(..)
     , SelectorSequence(..)
     , combinatorText, combine
     -- * Filters
-    , filters, filters', addFilters, (.:)
+    , SelectorFilter(..), filters, filters', addFilters, (.:)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
