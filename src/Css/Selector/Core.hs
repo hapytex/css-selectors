@@ -17,6 +17,7 @@ module Css.Selector.Core (
     , SelectorCombinator(..), SelectorGroup(..)
     , SelectorSequence(..)
     , combinatorText, combine
+    , (.>), (.+), (.~)
     -- * Filters
     , SelectorFilter(..), filters, filters', addFilters, (.:)
     -- * Namespaces
@@ -103,6 +104,7 @@ class ToCssSelector a where
     normalize :: a -- ^ The item to normalize.
         -> a -- ^ A normalized variant of the given item. This will filter the same objects, and have the same specificity.
     normalize = id
+    {-# MINIMAL toCssSelector, toSelectorGroup, specificity', toPattern #-}
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
@@ -151,6 +153,24 @@ combine :: SelectorCombinator -- ^ The 'SelectorCombinator' that is applied betw
 combine c0 x0 ys = go x0
     where go (Selector x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
+
+-- | Combines two 'Selector's with the 'Child' combinator.
+(.>) :: Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A selector that is the combination of the left 'Selector' and the right 'Selector' through 'Child'.
+(.>) = combine Child
+
+-- | Combines two 'Selector's with the 'DirectlyPreceded' combinator.
+(.+) :: Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A selector that is the combination of the left 'Selector' and the right 'Selector' through 'DirectlyPreceded'.
+(.+) = combine DirectlyPreceded
+
+-- | Combines two 'Selector's with the 'Preceded' combinator.
+(.~) :: Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A selector that is the combination of the left 'Selector' and the right 'Selector' through 'Preceded'.
+(.~) = combine Preceded
 
 -- | A 'SelectorSequence' is a 'TypeSelector' (that can be 'Universal') followed
 -- by zero, one or more 'SelectorFilter's these filter the selector further, for

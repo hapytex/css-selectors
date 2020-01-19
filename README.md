@@ -130,6 +130,17 @@ One can generate arbitrary CSS selectors (and their subcomponents). It is
 however not advisable to use this for anything other than for validation
 purposes (like with `QuickCheck`).
 
+# `css-selectors` is not *safe* Haskell
+
+There are not extensions that are used that make the library *itself*
+unsafe, but it makes use of `aeson`, `blaze-markup`, etc. and the packages are
+not safe. Hence this package is not *safe Haskell*.
+
+# Future plans
+
+We want to implement an extra quasiquoter with the ability to specify variables,
+that can then be used in expressions, or in patterns.
+
 # Contribute
 
 You can contribute by making a pull request on the [*GitHub
