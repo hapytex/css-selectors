@@ -42,7 +42,46 @@ A css selector has the following structure:
 
 ## Quasiquoter
 
-The main use of this package is a *quasiquoter*.
+The main use of this package is a *quasiquoter*, that can be used both for
+*expressions* and *patterns*. We thus can construct a `SelectorSequence` in an
+expression with:
+
+```haskell
+myCssSelector :: SelectorGroup
+myCssSelector = [csssel|* html .pun .inbox, * html .pun #bdrdmain, * html .pun .infldset|]
+```
+
+A less common use case is using the quasiquoter in a pattern to check if a given
+`SelectorGroup` matches *exactly* with a given css selector. For example:
+
+```haskell
+isMyCssSelector :: SelectorGroup -> Bool
+isMyCssSelector [csssel|* html .pun .unbox|] = True
+isMyCssSelector _ = False
+```
+
+The quasiquoter can be used in a type signature as well, but will always,
+regardless of the content, return the type for `SelectorGroup`. If you use the
+quasiquoter as a declaration, it will simply not generate any declarations.
+
+Perhaps in the (far) future, we will make more sensical implementations for the
+type and declaration part of the quasiquoter.
+
+Note that you need to enable the `-XQuasiQuotes` pragma when you compile.
+
+## Selector normalization
+
+One can turn equivalent css selectors in a "normalized" form. This is done by
+sorting the `Selector`s in a `Selector` group, and sorting the `SelectorFilter`s
+of a certain `SelectorSequence`.
+
+The order is determined by the default instances of `Ord` of the sequences. This
+is thus not an "inherent" ordering of the css selector, but just an order that
+the program constructed to convert multiple css selectors that are equivalent
+same to a normal form in which these are equal.
+
+We here do *not* optimize the css selector, for example by removing duplicate
+filters, since that can have impact on the specificity of the selector.
 
 ## Selector specificity
 
@@ -74,7 +113,8 @@ use these in blaze HTML and for example in *Hamlet*.
 
 The `ToMarkup` instance will render the css selector as raw content. So if you
 add this as an attribute, the css selector will appear, unescaped, in the
-rendered page.
+rendered page. Note that it will be escaped, so `foo > bar` will be generated as
+`foo &gt; bar`.
 
 The `ToJSON` instance will convert the given object in a JSON string that
 contains the css selector.
@@ -89,6 +129,17 @@ often strings are used to represent these.
 One can generate arbitrary CSS selectors (and their subcomponents). It is
 however not advisable to use this for anything other than for validation
 purposes (like with `QuickCheck`).
+
+# `css-selectors` is not *safe* Haskell
+
+There are not extensions that are used that make the library *itself*
+unsafe, but it makes use of `aeson`, `blaze-markup`, etc. and the packages are
+not safe. Hence this package is not *safe Haskell*.
+
+# Future plans
+
+We want to implement an extra quasiquoter with the ability to specify variables,
+that can then be used in expressions, or in patterns.
 
 # Contribute
 

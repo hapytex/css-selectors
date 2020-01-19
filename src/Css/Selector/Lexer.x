@@ -3,12 +3,12 @@
 module Css.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
 
 import Data.Decimal(Decimal)
-import Css.Selector.Utils(readCssString)
+import Css.Selector.Utils(readCssString, readIdentifier)
 }
 
 %wrapper "posn"
 
-$nonascii = [^\0-\177]
+$nonascii = [^\0-\xff]
 $w        = [\ \t\r\n\f]
 $nostar   = [^\*]
 $nostars  = [^\/\*]
@@ -51,7 +51,7 @@ tokens :-
   "."              { constoken Dot }
   "|"              { constoken Pipe }
   "*"              { constoken Asterisk }
-  @ident           { tokenize Ident }
+  @ident           { tokenize (Ident . readIdentifier) }
   @string          { tokenize (String . readCssString) }
   "#" @name        { tokenize (THash . drop 1) }
   @float           { tokenize (Decimal . read) }

@@ -14,9 +14,12 @@ module Css.Selector.Core (
     ToCssSelector(..)
     -- * Selectors and combinators
     , Selector(..)
-    , SelectorCombinator(..), SelectorFilter(..), SelectorGroup(..)
+    , SelectorCombinator(..), SelectorGroup(..)
     , SelectorSequence(..)
-    , filters, filters', addFilters, combinatorText, combine
+    , combinatorText, combine
+    , (.>), (.+), (.~)
+    -- * Filters
+    , SelectorFilter(..), filters, filters', addFilters, (.:)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -35,7 +38,7 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
-import Css.Selector.Utils(encodeText, toIdentifier)
+import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
@@ -71,10 +74,10 @@ data SelectorSpecificity =
 
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
-    -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css-selector take precedence.
+    -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 
--- | A class that defines that the given type can be converted to a css-selector
+-- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.
 class ToCssSelector a where
     -- | Convert the given element to a 'Text' object that contains the css
@@ -101,6 +104,7 @@ class ToCssSelector a where
     normalize :: a -- ^ The item to normalize.
         -> a -- ^ A normalized variant of the given item. This will filter the same objects, and have the same specificity.
     normalize = id
+    {-# MINIMAL toCssSelector, toSelectorGroup, specificity', toPattern #-}
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
@@ -109,7 +113,7 @@ specificity :: ToCssSelector a => a -- ^ The object for which we evaluate the sp
     -> Int -- ^ The specificity level as an 'Int' value.
 specificity = specificityValue . specificity'
 
--- | The root type of a css-selector. This is a comma-separated list of
+-- | The root type of a css selector. This is a comma-separated list of
 -- selectors.
 newtype SelectorGroup = SelectorGroup {
     unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
@@ -131,7 +135,7 @@ data SelectorCombinator =
     | Preceded -- ^ The second tag is preceded by the first one, denoted with a @~@ in css.
     deriving (Bounded, Data, Enum, Eq, Ord, Read, Show)
 
--- | Convert the 'SelectorCombinator' to the equivalent css-selector text. A
+-- | Convert the 'SelectorCombinator' to the equivalent css selector text. A
 -- space for 'Descendant', a @>@ for 'Child', a @+@ for 'DirectlyPreceded', and
 -- a @~@ for 'Preceded'
 combinatorText :: SelectorCombinator -- ^ The given 'SelectorCombinator' to retrieve the css token for.
@@ -150,6 +154,24 @@ combine c0 x0 ys = go x0
     where go (Selector x) = Combined x c0 ys
           go (Combined s1 c s2) = Combined s1 c (go s2)
 
+-- | Combines two 'Selector's with the 'Child' combinator.
+(.>) :: Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A selector that is the combination of the left 'Selector' and the right 'Selector' through 'Child'.
+(.>) = combine Child
+
+-- | Combines two 'Selector's with the 'DirectlyPreceded' combinator.
+(.+) :: Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A selector that is the combination of the left 'Selector' and the right 'Selector' through 'DirectlyPreceded'.
+(.+) = combine DirectlyPreceded
+
+-- | Combines two 'Selector's with the 'Preceded' combinator.
+(.~) :: Selector -- ^ The left 'Selector'.
+    -> Selector -- ^ The right 'Selector'.
+    -> Selector -- ^ A selector that is the combination of the left 'Selector' and the right 'Selector' through 'Preceded'.
+(.~) = combine Preceded
+
 -- | A 'SelectorSequence' is a 'TypeSelector' (that can be 'Universal') followed
 -- by zero, one or more 'SelectorFilter's these filter the selector further, for
 -- example with a 'Hash', a 'Class', or an 'Attrib'.
@@ -164,6 +186,12 @@ addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter o
     -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
     -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
 addFilters = foldl Filter
+
+-- | An infix variant of the 'addFilters' function.
+(.:) :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter on.
+    -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
+    -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
+(.:) = addFilters
 
 -- | Obtain the list of filters that are applied in the given 'SelectorSequence'
 -- in /reversed/ order.
@@ -325,7 +353,7 @@ newtype Hash = Hash {
     unHash :: Text -- ^ Obtain the name from the hash.
   } deriving (Data, Eq, Ord, Show)
 
--- | Convert the given 'AttributeCombinator' to its css-selector counterpart.
+-- | Convert the given 'AttributeCombinator' to its css selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.
     -> AttributeValue -- ^ The css selector text for the given 'AttributeCombinator'.
 attributeCombinatorText Exact = "="
@@ -370,20 +398,22 @@ instance Monoid ElementName where
 
 -- IsString instances
 instance IsString Class where
-    fromString ('.' : s) = toIdentifier (Class . pack) s
-    fromString s = toIdentifier (Class . pack) s
+    fromString = toIdentifier Class
 
 instance IsString Hash where
-    fromString ('#' : s) = toIdentifier (Hash . pack) s
-    fromString s = toIdentifier (Hash . pack) s
+    fromString = toIdentifier Hash
 
 instance IsString Namespace where
-    fromString "*" = NAny
-    fromString s = toIdentifier (Namespace . pack) s
+    fromString = toIdentifier Namespace
 
 instance IsString ElementName where
-    fromString "*" = EAny
-    fromString s = toIdentifier (ElementName . pack) s
+    fromString = toIdentifier ElementName
+
+instance IsString AttributeName where
+    fromString = toIdentifier (AttributeName NAny)
+
+instance IsString Attrib where
+    fromString = Exist . fromString
 
 -- IsList instances
 instance IsList SelectorGroup where
@@ -407,7 +437,7 @@ instance ToCssSelector SelectorGroup where
     normalize (SelectorGroup g) = SelectorGroup (Data.List.NonEmpty.sort (normalize <$> g))
 
 instance ToCssSelector Class where
-    toCssSelector = cons '.' . unClass
+    toCssSelector = cons '.' . encodeIdentifier . unClass
     toSelectorGroup = toSelectorGroup . SClass
     specificity' = const (SelectorSpecificity 0 1 0)
     toPattern (Class c) = ConP 'Class [_textToPattern c]
@@ -428,20 +458,20 @@ instance ToCssSelector Attrib where
 
 instance ToCssSelector AttributeName where
     toCssSelector (AttributeName NAny e) = e
-    toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> e
+    toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> encodeIdentifier e
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
     toPattern (AttributeName n a) = ConP 'AttributeName [toPattern n, _textToPattern a]
 
 instance ToCssSelector Hash where
-    toCssSelector = cons '#' . unHash
+    toCssSelector = cons '#' . encodeIdentifier . unHash
     toSelectorGroup = toSelectorGroup . SHash
     specificity' = const (SelectorSpecificity 1 0 0)
     toPattern (Hash h) = ConP 'Hash [_textToPattern h]
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
-    toCssSelector (Namespace t) = t
+    toCssSelector (Namespace t) = encodeIdentifier t
     toSelectorGroup = toSelectorGroup . flip TypeSelector EAny
     specificity' = mempty
     toPattern NAny = _constantP 'NAny
@@ -458,8 +488,8 @@ instance ToCssSelector SelectorSequence where
     toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
     toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
     normalize = flip go []
-        where go (Filter s f) = go s . (f:)
-              go (SimpleSelector s) = addFilters (SimpleSelector (normalize s)) . sort . map normalize
+        where go (Filter s f) = go s . (normalize f:)
+              go (SimpleSelector s) = addFilters (SimpleSelector (normalize s)) . sort
 
 instance ToCssSelector TypeSelector where
     toCssSelector (TypeSelector NAny e) = toCssSelector e
@@ -472,7 +502,7 @@ instance ToCssSelector TypeSelector where
 
 instance ToCssSelector ElementName where
     toCssSelector EAny = "*"
-    toCssSelector (ElementName e) = e
+    toCssSelector (ElementName e) = encodeIdentifier e
     toSelectorGroup = toSelectorGroup . TypeSelector NAny
     specificity' EAny = mempty
     specificity' (ElementName _) = SelectorSpecificity 0 0 1
