@@ -41,7 +41,7 @@ _readCssString c' = go
           go [c] | c' == c = ""
           go ('\\':'\n':xs) = go xs
           go ('\\':ca@(c:xs)) | c == c' = c : go xs
-                              | otherwise = let ~(y,ys) = parseEscape ca in y : go ys
+                              | otherwise = let ~(y,ys) = _parseEscape ca in y : go ys
           go (x:xs) | x == c' = error "The string can not contain a " ++ show x ++ ", you should escape it."
                     | otherwise = x : go xs
 
@@ -63,7 +63,7 @@ encodeString c' = (c' :) . go
     where go [] = [c']
           go (c:cs) | c == c' = '\\' : c : go cs
                     | _notEncode c = c : go cs
-                    | otherwise = '\\' : showHex (ord c) (go cs)
+                    | otherwise = '\\' : _showHex (ord c) (go cs)
 
 -- | Convert a string to a css selector string literal. This is done by putting
 -- quotes around the content, and escaping certain characters.
@@ -76,7 +76,7 @@ _encodeCharacter :: Char -> Char -> Text
 _encodeCharacter c' c
     | c == c' = cons '\\' (singleton c)
     | _notEncode c = singleton c
-    | otherwise = cons '\\' (pack (showHex (ord c) ""))
+    | otherwise = cons '\\' (pack (_showHex (ord c) ""))
 
 -- | Encode a given identifier to its css selector equivalent by escaping
 -- certain characters.
@@ -84,14 +84,14 @@ encodeIdentifier :: Text -- ^ The identifier to encode.
     -> Text -- ^ The encoded identifier.
 encodeIdentifier = T.concatMap (_encodeCharacter '\\')
 
-showHex :: Int -> ShowS
-showHex = go (6 :: Int)
+_showHex :: Int -> ShowS
+_showHex = go (6 :: Int)
     where go 0 _ s = s
           go k n rs = go (k-1) q (intToDigit r : rs)
               where ~(q, r) = quotRem n 16
 
-parseEscape :: String -> (Char, String)
-parseEscape = go (6 :: Int) 0
+_parseEscape :: String -> (Char, String)
+_parseEscape = go (6 :: Int) 0
     where go 0 n cs = yield n cs
           go _ n "" = yield n ""
           go i n ca@(c:cs) | isHexDigit c = go (i-1) (16*n+digitToInt c) cs
