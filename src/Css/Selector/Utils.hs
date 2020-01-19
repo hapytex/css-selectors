@@ -31,7 +31,7 @@ _initLast (a:as) = Just (go as a)
 -- string literal.
 readCssString :: String  -- ^ The string that contains the string literal in the css selector.
     -> String -- ^ A string that contains the content of the string literal.
-readCssString (c:xs) | elem c "'\"" = f
+readCssString (c:xs) | c `elem` "'\"" = f
     where f | Just (vs, c') <- _initLast xs = g c' vs
             | otherwise = "The string literal should contain at least two quotation marks."
               where  g c' vs | c == c' = _readCssString c vs
