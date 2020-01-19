@@ -38,7 +38,7 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
-import Css.Selector.Utils(encodeIdentifier, encodeText)
+import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)
@@ -398,19 +398,19 @@ instance Monoid ElementName where
 
 -- IsString instances
 instance IsString Class where
-    fromString = Class . pack
+    fromString = toIdentifier Class
 
 instance IsString Hash where
-    fromString = Hash . pack
+    fromString = toIdentifier Hash
 
 instance IsString Namespace where
-    fromString = Namespace . pack
+    fromString = toIdentifier Namespace
 
 instance IsString ElementName where
-    fromString = ElementName . pack
+    fromString = toIdentifier ElementName
 
 instance IsString AttributeName where
-    fromString = AttributeName NAny . pack
+    fromString = toIdentifier (AttributeName NAny)
 
 instance IsString Attrib where
     fromString = Exist . fromString
