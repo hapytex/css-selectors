@@ -43,7 +43,7 @@ A css selector has the following structure:
 ## Quasiquoter
 
 The main use of this package is a *quasiquoter*, that can be used both for
-*expressions* and *patterns*. We thus can construct a `SelectorSequence` in an
+*expressions* and *patterns*. We thus can construct a `SelectorGroup` in an
 expression with:
 
 ```haskell
@@ -62,7 +62,8 @@ isMyCssSelector _ = False
 
 The quasiquoter can be used in a type signature as well, but will always,
 regardless of the content, return the type for `SelectorGroup`. If you use the
-quasiquoter as a declaration, it will simply not generate any declarations.
+quasiquoter as a declaration, it will simply not generate any declarations. It
+will raise a warning (not an error) about this.
 
 Perhaps in the (far) future, we will make more sensical implementations for the
 type and declaration part of the quasiquoter.

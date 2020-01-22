@@ -5,7 +5,6 @@ import Data.Text(pack, unpack)
 
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-
 import Test.QuickCheck
 
 main :: IO ()
@@ -18,7 +17,18 @@ tests = [
         testProperty "Encode-decode identifier" encodeDecodeId
     ],
     testGroup "Arbitrary css parsing" [
-        testProperty "Encode-decode css identity" encodeDecodeCss
+        testProperty "Encode-decode css identity" encodeDecodeCss,
+        testProperty "Encode-decode css identity: selector group" (encodeDecodeCss' :: SelectorGroup -> Bool),
+        testProperty "Encode-decode css identity: selector" (encodeDecodeCss' :: Selector -> Bool),
+        testProperty "Encode-decode css identity: selector sequence" (encodeDecodeCss' :: SelectorSequence -> Bool),
+        testProperty "Encode-decode css identity: selector filter" (encodeDecodeCss' :: SelectorFilter -> Bool),
+        testProperty "Encode-decode css identity: namespace" (encodeDecodeCss' :: Namespace -> Bool),
+        testProperty "Encode-decode css identity: element name" (encodeDecodeCss' :: ElementName -> Bool),
+        testProperty "Encode-decode css identity: type selector" (encodeDecodeCss' :: TypeSelector -> Bool),
+        testProperty "Encode-decode css identity: attribute" (encodeDecodeCss' :: Attrib -> Bool),
+        testProperty "Encode-decode css identity: attribute name" (encodeDecodeCss' :: AttributeName -> Bool),
+        testProperty "Encode-decode css identity: class" (encodeDecodeCss' :: Class -> Bool),
+        testProperty "Encode-decode css identity: hash" (encodeDecodeCss' :: Hash -> Bool)
     ],
     testGroup "SelectorSequences" [
         testProperty "Adding and removing filters" addRemFilters
@@ -42,6 +52,9 @@ encodeDecodeId b = readIdentifier (unpack (encodeIdentifier (pack b))) == b
 
 encodeDecodeCss :: SelectorGroup -> Bool
 encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
+
+encodeDecodeCss' :: ToCssSelector a => a -> Bool
+encodeDecodeCss' sg = (parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg
 
 -- TODO: complete
 buildExpression :: SelectorGroup -> Bool

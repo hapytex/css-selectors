@@ -53,7 +53,7 @@ tokens :-
   "*"              { constoken Asterisk }
   @ident           { tokenize (Ident . readIdentifier) }
   @string          { tokenize (String . readCssString) }
-  "#" @name        { tokenize (THash . drop 1) }
+  "#" @name        { tokenize (THash . readIdentifier . drop 1) }
   @float           { tokenize (Decimal . read) }
   @int             { tokenize (Integer . read) }
   @wo "+" @wo      { constoken Plus }
