@@ -38,7 +38,6 @@ tests = [
         testProperty "Normalization is idempotent" normIdem
     ],
     testGroup "Build an expression or pattern" [
-        testProperty "Check build of expression" buildExpression,
         testProperty "Check build of pattern 1" buildPattern1,
         testProperty "Check build of pattern 2" buildPattern2
     ]
@@ -55,10 +54,6 @@ encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
 
 encodeDecodeCss' :: ToCssSelector a => a -> Bool
 encodeDecodeCss' sg = (parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg
-
--- TODO: complete
-buildExpression :: SelectorGroup -> Bool
-buildExpression _ = True
 
 buildPattern1 :: SelectorGroup -> Bool
 buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force evaluation

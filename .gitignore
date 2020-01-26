@@ -25,6 +25,8 @@ cabal.project.local~
 *.sw?
 *.lock
 
+*.dot
+
 samples
 samples/
 samples/*

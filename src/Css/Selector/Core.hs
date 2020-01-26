@@ -57,7 +57,7 @@ import Language.Haskell.TH.Lib(appE, conE)
 import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary), arbitraryBoundedEnum)
-import Test.QuickCheck.Gen(Gen, choose, elements, frequency, listOf, oneof)
+import Test.QuickCheck.Gen(Gen, frequency, listOf, listOf1, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
 import Text.Blaze.Internal(Markup)
@@ -457,7 +457,7 @@ instance ToCssSelector Attrib where
               go SubstringMatch = 'SubstringMatch
 
 instance ToCssSelector AttributeName where
-    toCssSelector (AttributeName NAny e) = e
+    toCssSelector (AttributeName NAny e) = encodeIdentifier e
     toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> encodeIdentifier e
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
@@ -643,29 +643,8 @@ instance ToJSON Attrib where
 
 
 -- Arbitrary instances
-type FreqGen a = (Int, Gen a)
-
-_azGen :: FreqGen Char
-_azGen = (52, oneof [choose ('a', 'z'), choose ('A', 'Z')])
-
-_digitGen :: FreqGen Char
-_digitGen = (10, choose ('0', '9'))
-
-_symbolGen :: FreqGen Char
-_symbolGen = (2, elements "-_")
-
-_arbitraryIdent0 :: Gen Char
-_arbitraryIdent0 = snd _azGen
-
-_arbitraryIdentN :: Gen Char
-_arbitraryIdentN = frequency [_azGen, _digitGen, _symbolGen]
-
 _arbitraryIdent :: Gen Text
-_arbitraryIdent = do
-    ident0 <- _arbitraryIdent0
-    identn <- listOf _arbitraryIdentN
-    postpr <- frequency [(1, return (cons '-')), (3, return id)]
-    return (postpr (cons ident0 (pack identn)))
+_arbitraryIdent = pack <$> listOf1 arbitrary 
 
 instance Arbitrary Hash where
     arbitrary = Hash <$> _arbitraryIdent

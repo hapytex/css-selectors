@@ -1,14 +1,24 @@
 name:                css-selectors
-version:             0.1.1.0
+version:             0.2.0.0
 synopsis:            Parsing, rendering and manipulating css selectors in Haskell.
--- description:
+description:
+  A library for parsing, manipulating, and rendering css selectors (not css files,
+  just the selectors).
+  .
+  It has a /quasiquoter/ to enable Haskell to validate the css selector at compile
+  time.
+  .
+  Currently the css grammar is implemented /without/ the pseudo-classes,
+  pseudo-elements and negations. One can furthermore calculate the specificity of
+  a css-selector, and thus perform an analysis over what css-selector will take
+  precedence.
 homepage:            https://github.com/KommuSoft/css-selectors#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Willem Van Onsem
 maintainer:          hapytexeu+gh@gmail.com
 copyright:           2019 Willem Van Onsem
-category:            webdevelopment
+category:            web
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10

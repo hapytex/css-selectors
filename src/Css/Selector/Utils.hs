@@ -17,7 +17,7 @@ module Css.Selector.Utils (
 
 import Control.Arrow(first)
 
-import Data.Char(chr, digitToInt, intToDigit, isAscii, isControl, isHexDigit, ord)
+import Data.Char(chr, digitToInt, intToDigit, isAsciiLower, isAsciiUpper, isHexDigit, ord)
 import Data.Text(Text, cons, pack, singleton, snoc)
 import qualified Data.Text as T
 
@@ -27,11 +27,16 @@ _initLast (a:as) = Just (go as a)
     where go [] x = ([], x)
           go (y:ys) x = first (x:) (go ys y)
 
+_isQuote :: Char -> Bool
+_isQuote '"' = True
+_isQuote '\'' = True
+_isQuote _ = False
+
 -- | Parses a css string literal to a string that ontains the content of that
 -- string literal.
 readCssString :: String  -- ^ The string that contains the string literal in the css selector.
     -> String -- ^ A string that contains the content of the string literal.
-readCssString (c:xs) | c `elem` "'\"" = f
+readCssString (c:xs) | _isQuote c = f
     where f | Just (vs, c') <- _initLast xs = g c' vs
             | otherwise = "The string literal should contain at least two quotation marks."
               where  g c' vs | c == c' = _readCssString c vs
@@ -53,8 +58,7 @@ readIdentifier :: String -- ^ The given css identifier to parse.
 readIdentifier = _readCssString '\\'
 
 _notEncode :: Char -> Bool
-_notEncode '\\' = False
-_notEncode c = isAscii c && not (isControl c)
+_notEncode x = isAsciiLower x || isAsciiUpper x
 
 -- | Convert a string to a css selector string literal. This is done by putting
 -- quotes around the content, and escaping certain characters.
@@ -63,8 +67,7 @@ encodeString :: Char -- ^ The type of quotes that should be put around the conte
     -> String -- ^ The corresponding css selector string literal.
 encodeString c' = (c' :) . go
     where go [] = [c']
-          go (c:cs) | c == c' = '\\' : c : go cs
-                    | _notEncode c = c : go cs
+          go (c:cs) | _notEncode c = c : go cs
                     | otherwise = '\\' : _showHex (ord c) (go cs)
 
 -- | Convert a string to a css selector string literal. This is done by putting
@@ -72,11 +75,10 @@ encodeString c' = (c' :) . go
 encodeText :: Char -- ^ The type of quotes that should be put around the content (should be @'@ or @"@).
     -> Text -- ^ The string that should be converted to a css selector string literal.
     -> Text -- ^ The corresponding css selector string literal.
-encodeText c' t = cons c' (snoc (T.concatMap (_encodeCharacter c') t) c')
+encodeText c' t = cons c' (snoc (T.concatMap _encodeCharacter t) c')
 
-_encodeCharacter :: Char -> Char -> Text
-_encodeCharacter c' c
-    | c == c' = cons '\\' (singleton c)
+_encodeCharacter :: Char -> Text
+_encodeCharacter c
     | _notEncode c = singleton c
     | otherwise = cons '\\' (pack (_showHex (ord c) ""))
 
@@ -84,7 +86,7 @@ _encodeCharacter c' c
 -- certain characters.
 encodeIdentifier :: Text -- ^ The identifier to encode.
     -> Text -- ^ The encoded identifier.
-encodeIdentifier = T.concatMap (_encodeCharacter '\\')
+encodeIdentifier = T.concatMap _encodeCharacter
 
 _showHex :: Int -> ShowS
 _showHex = go (6 :: Int)
