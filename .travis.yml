@@ -11,7 +11,7 @@ before_install:
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 install:
   - stack build
-  - stack haddock --haddock-arguments --haddock-for-hackage
+  - stack haddock --haddock-arguments '--html-location=../$pkg-$version/'
 script:
   - stack --no-terminal --skip-ghc-check test
   - curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
