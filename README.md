@@ -13,6 +13,8 @@ pseudo-elements and negations. One can furthermore calculate the specificity of
 a css-selector, and thus perform an analysis over what css-selector will take
 precedence.
 
+The package documentation can be found on the [GitHub pages](https://hapytex.github.io/css-selectors/).
+
 ## Selector structure
 
 A css selector has the following structure:
