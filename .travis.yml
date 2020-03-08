@@ -1,22 +1,29 @@
 sudo: false
 os:
-  - linux
+- linux
 language: haskell
-
-# Caching so the next build will be fast too.
 cache:
   directories:
-    - $HOME/.stack
-
+  - "$HOME/.stack"
 before_install:
-  - mkdir -p ~/.local/bin
-  - export PATH=$HOME/.local/bin:$PATH
-  - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar
+  xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 install:
-  - stack build
-
+- stack build
+- stack haddock
 script:
-  - stack --no-terminal --skip-ghc-check test
-  # verify that there are no hlint suggestions
-  - curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
+- stack --no-terminal --skip-ghc-check test
+- curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
+deploy:
+  local_dir: `stack path --local-doc-root`
+  provider: pages
+  skip_cleanup: true
+  github_token: "$GITHUB_TOKEN"
+  keep_history: true
+  on:
+    branch: gh-pages
+env:
+  global:
+    secure: GN2811VRE19kGS/BfDr0dVZTfClqzNmJX63G11qeKsLN95tzOt/NqFwIp6xRtJ/VHDJPtsZYc061+tagVZ5ZzH+XXhM4oPAknlub47pf4amW+Oeid6dJNQyzEFd07SXUJEvafCtLvOXLKIwQDFRY0y5Sd7ScxjY6O2ilqU5ArmLEF6ts38vViuFuyxYpuxKhMjig2aLPcyoa8auhkVMXP8kkjlYM54bP7cOZoJbZ0AJcjEMlmd5Bk6WYwg1XtovRgtg+ULi64IjrxYZXzdoJsmRlT4jB3Hx4XdnmD+OcEBDLSpOdFmyfQlNCwod64lfw6nj3kmPQsKH6cQz0YuWbbdOEsdaO02ci4HAPSZYSAKP+lEHO2LPFR+nCQygDl/CQre8Txy+dLLkAnHRcnrMcYgPCDJO4gcAAEqQ2IWMMeITm8y47ROLAwoJanJGydfUu8ZRzgdSLWsr7fK5EYfqF4kcZ13y083axnBWFFAEZb3zlMm4zNz3mifortKs5Dg5Zjgxs7Avj0bcq5IVAd+TuX8KwnS5cE+kqFcNQ8ToRICI7tHo2e+XmGSGDdC0z64ztnL6e53vdkFc4xXLz/exjnJ0XRGooB7GRhsUQDAqemdW+SDco0BgaWj0uBwRVbiMmJLmJngvCMlqoXuwdqDzyAa5mghNTQ3ipRV9NDRpOaHM=
