@@ -2,6 +2,7 @@ sudo: false
 os:
 - linux
 language: haskell
+cabal: "2.4"
 cache:
   directories:
   - "$HOME/.stack"
@@ -26,6 +27,7 @@ deploy:
 - provider: hackage
   username: "$HACKAGE_USER"
   password: "$HACKAGE_PASSWORD"
+  skip_cleanup: true
   on:
     branch: master
 env:
