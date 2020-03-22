@@ -2,11 +2,13 @@ sudo: false
 os:
 - linux
 language: haskell
-cabal: '2.4'
 cache:
   directories:
   - "$HOME/.stack"
 before_install:
+- sudo add-apt-repository -y ppa:hvr/ghc
+- sudo apt-get update
+- sudo apt-get install cabal-install-3.0
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
@@ -16,6 +18,8 @@ install:
 script:
 - stack --no-terminal --skip-ghc-check test
 - curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
+- stack sdist
+- cabal --version
 deploy:
 - provider: pages
   local_dir: "$(stack path --local-doc-root)"
