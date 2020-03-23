@@ -12,7 +12,7 @@ description:
   pseudo-elements and negations. One can furthermore calculate the specificity of
   a css-selector, and thus perform an analysis over what css-selector will take
   precedence.
-homepage:            https://github.com/KommuSoft/css-selectors#readme
+homepage:            https://github.com/hapytex/css-selectors#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Willem Van Onsem
@@ -20,7 +20,9 @@ maintainer:          hapytexeu+gh@gmail.com
 copyright:           2019 Willem Van Onsem
 category:            web
 build-type:          Simple
-extra-source-files:  README.md
+extra-source-files:
+    README.md
+  , CHANGELOG.md
 cabal-version:       >=1.10
 
 library

@@ -19,14 +19,14 @@ The package documentation can be found on the [GitHub pages](https://hapytex.git
 
 A css selector has the following structure:
 
- 1. a `SelectorGroup` is a group of one or more `Selector`s, these are
-    *comma-separated*;
- 2. A `Selector` is a custom linked list implementation where the "cons" (the
-    `Combined` data constructor) contains a besides a reference to a
-    `SelectorSequence` (head) and a `Selector` (tail), it specifies what
-    `SelectorCombinator` is used. A `Selector` has at least one
-    `SelectorSequence`, this is constructoed with the `Selector` data
-    constructor;
+  1. a `SelectorGroup` is a group of one or more `Selector`s, these are
+     *comma-separated*;
+  2. A `Selector` is a custom linked list implementation where the "cons" (the
+     `Combined` data constructor) contains a besides a reference to a
+     `SelectorSequence` (head) and a `Selector` (tail), it specifies what
+     `SelectorCombinator` is used. A `Selector` has at least one
+     `SelectorSequence`, this is constructoed with the `Selector` data
+     constructor;
   3. A `SelectorSequence` contains a `TypeSelector` (in case the `TypeSelector`
      is `Universal`, this does not need to be part of the css-selector
      expression); and a set of zero or more `SelectorFilter`s;
@@ -154,5 +154,5 @@ You can contact the package maintainer by sending a mail to
 
 ---
 
-This package is dedicated in loving memory to my mother, Veerle Dumon
+This package is dedicated in loving memory to my mother, *Veerle Dumon*
 (1958-2019), in the hope that eventually it will be as stylish as she was.
