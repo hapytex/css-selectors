@@ -23,7 +23,7 @@ deploy:
 - provider: script
   script: bash deploy.sh "$HACKAGE_USER" "$HACKAGE_PASSWORD"
   on:
-    branch: master
+    tags: true
 - provider: pages
   local_dir: "$(stack path --local-doc-root)"
   skip_cleanup: true
