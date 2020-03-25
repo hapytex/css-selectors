@@ -1,6 +1,8 @@
 # css-selectors
 
 [![Build Status of the package by Travis](https://travis-ci.com/hapytex/css-selectors.svg?branch=master)](https://travis-ci.com/hapytex/css-selectors)
+[![Build Status of the package by Hackage](https://matrix.hackage.haskell.org/api/v2/packages/css-selectors/badge)](https://matrix.hackage.haskell.org/#/package/css-selectors)
+[![Hackage version badge](https://img.shields.io/hackage/v/css-selectors.svg)](https://hackage.haskell.org/package/css-selectors)
 
 A library for parsing, manipulating, and rendering css selectors (not css files,
 just the selectors).
