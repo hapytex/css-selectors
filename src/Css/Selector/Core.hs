@@ -681,6 +681,8 @@ instance Arbitrary TypeSelector where
 
 instance Arbitrary SelectorSequence where
     arbitrary = addFilters . SimpleSelector <$> arbitrary <*> listOf arbitrary
+    shrink (SimpleSelector _) = []
+    shrink (Filter ss sf) = ss : (Filter ss <$> shrink sf)
 
 instance Arbitrary SelectorCombinator where
     arbitrary = arbitraryBoundedEnum
@@ -705,9 +707,11 @@ instance Arbitrary Attrib where
 
 instance Arbitrary SelectorGroup where
     arbitrary = SelectorGroup <$> ((:|) <$> arbitrary <*> arbitrary)
-    shrink (SelectorGroup (x :| xs)) = SelectorGroup . (x :|) <$> shrink xs
+    shrink (SelectorGroup (x :| xs)) = go xs (SelectorGroup . (x :|) <$> shrink xs)
+      where go [] = id
+            go (y:ys) = (SelectorGroup (y :| ys) :)
 
 instance Arbitrary Selector where
     arbitrary = frequency [(3, Selector <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]
     shrink (Selector x) = Selector <$> shrink x
-    shrink (Combined x y z) = (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
+    shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
