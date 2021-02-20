@@ -11,14 +11,15 @@ before_install:
 - sudo apt-get install cabal-install-3.0
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar
-  xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 install:
-- stack build
+- stack build --ghc-options='-Wall -Werror'
 - stack haddock
 script:
 - stack --no-terminal --skip-ghc-check test
 - curl -sSL https://raw.github.com/ndmitchell/hlint/master/misc/run.sh | sh -s .
+- "! grep -E -i '[?][?][?]|TODO' $(find src -iname '*.hs')"
+- "! stack haddock --force-dirty 2>&1 | grep -P '^\\s*[0-9]{1,2}%'"
 deploy:
 - provider: script
   script: bash deploy.sh "$HACKAGE_USER" "$HACKAGE_PASSWORD"
