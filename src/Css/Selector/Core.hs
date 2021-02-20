@@ -38,6 +38,8 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
+import Control.Applicative(liftA2)
+
 import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
@@ -49,14 +51,15 @@ import Data.List.NonEmpty(NonEmpty((:|)))
 import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
-import Data.Text(Text, cons, intercalate, pack, unpack)
+import qualified Data.Text as T
+import Data.Text(Text, cons, inits, intercalate, pack, tails, unpack)
 
 import GHC.Exts(IsList(Item, fromList, toList))
 
 import Language.Haskell.TH.Lib(appE, conE)
 import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
 
-import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary), arbitraryBoundedEnum)
+import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary, shrink), arbitraryBoundedEnum)
 import Test.QuickCheck.Gen(Gen, frequency, listOf, listOf1, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
@@ -644,22 +647,37 @@ instance ToJSON Attrib where
 
 -- Arbitrary instances
 _arbitraryIdent :: Gen Text
-_arbitraryIdent = pack <$> listOf1 arbitrary 
+_arbitraryIdent = pack <$> listOf1 arbitrary
+
+_shrinkText :: Text -> [Text]
+_shrinkText = liftA2 (zipWith (<>)) inits (tails . T.drop 1)
+
+_shrinkIdent :: Text -> [Text]
+_shrinkIdent t
+    | T.length t < 2 = []
+    | otherwise = _shrinkText t
 
 instance Arbitrary Hash where
     arbitrary = Hash <$> _arbitraryIdent
+    shrink (Hash a) = Hash <$> _shrinkIdent a
 
 instance Arbitrary Class where
     arbitrary = Class <$> _arbitraryIdent
+    shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Namespace where
-    arbitrary = frequency [(3, return NAny), (1, Namespace <$> _arbitraryIdent)]
+    arbitrary = frequency [(3, pure NAny), (1, Namespace <$> _arbitraryIdent)]
+    shrink NAny = []
+    shrink (Namespace a) = Namespace <$> _shrinkIdent a
 
 instance Arbitrary ElementName where
-    arbitrary = frequency [(1, return EAny), (3, ElementName <$> _arbitraryIdent)]
+    arbitrary = frequency [(1, pure EAny), (3, ElementName <$> _arbitraryIdent)]
+    shrink EAny = []
+    shrink (ElementName a) = ElementName <$> _shrinkIdent a
 
 instance Arbitrary TypeSelector where
     arbitrary = TypeSelector <$> arbitrary <*> arbitrary
+    shrink (TypeSelector x y) = (TypeSelector x <$> shrink y) ++ ((`TypeSelector` y) <$> shrink x)
 
 instance Arbitrary SelectorSequence where
     arbitrary = addFilters . SimpleSelector <$> arbitrary <*> listOf arbitrary
@@ -672,15 +690,24 @@ instance Arbitrary AttributeCombinator where
 
 instance Arbitrary SelectorFilter where
     arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary]
+    shrink (SHash x) = SHash <$> shrink x
+    shrink (SClass x) = SClass <$> shrink x
+    shrink (SAttrib x) = SAttrib <$> shrink x
 
 instance Arbitrary AttributeName where
     arbitrary = AttributeName <$> arbitrary <*> _arbitraryIdent
+    shrink (AttributeName x y) = (AttributeName x <$> _shrinkIdent y) ++ ((`AttributeName` y) <$> shrink x)
 
 instance Arbitrary Attrib where
     arbitrary = oneof [Exist <$> arbitrary, Attrib <$> arbitrary <*> arbitrary <*> (pack <$> listOf arbitrary)]
+    shrink (Exist x) = Exist <$> shrink x
+    shrink (Attrib x y z) = (Attrib x y <$> _shrinkText z) ++ ((\sx -> Attrib sx y z) <$> shrink x)
 
 instance Arbitrary SelectorGroup where
     arbitrary = SelectorGroup <$> ((:|) <$> arbitrary <*> arbitrary)
+    shrink (SelectorGroup (x :| xs)) = SelectorGroup . (x :|) <$> shrink xs
 
 instance Arbitrary Selector where
     arbitrary = frequency [(3, Selector <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]
+    shrink (Selector x) = Selector <$> shrink x
+    shrink (Combined x y z) = (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
