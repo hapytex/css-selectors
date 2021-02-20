@@ -49,14 +49,15 @@ import Data.List.NonEmpty(NonEmpty((:|)))
 import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
 import Data.String(IsString(fromString))
-import Data.Text(Text, cons, intercalate, pack, unpack)
+import qualified Data.Text as T
+import Data.Text(Text, cons, inits, intercalate, pack, tails, unpack)
 
 import GHC.Exts(IsList(Item, fromList, toList))
 
 import Language.Haskell.TH.Lib(appE, conE)
 import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
 
-import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary), arbitraryBoundedEnum)
+import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary, shrink), arbitraryBoundedEnum)
 import Test.QuickCheck.Gen(Gen, frequency, listOf, listOf1, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
@@ -644,19 +645,30 @@ instance ToJSON Attrib where
 
 -- Arbitrary instances
 _arbitraryIdent :: Gen Text
-_arbitraryIdent = pack <$> listOf1 arbitrary 
+_arbitraryIdent = pack <$> listOf1 arbitrary
+
+_shrinkIdent :: Text -> [Text]
+_shrinkIdent t
+    | T.length t < 2 = []
+    | otherwise = zipWith (<>) (inits t) (tails (T.drop 1 t))
 
 instance Arbitrary Hash where
     arbitrary = Hash <$> _arbitraryIdent
+    shrink (Hash a) = Hash <$> _shrinkIdent a
 
 instance Arbitrary Class where
     arbitrary = Class <$> _arbitraryIdent
+    shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Namespace where
-    arbitrary = frequency [(3, return NAny), (1, Namespace <$> _arbitraryIdent)]
+    arbitrary = frequency [(3, pure NAny), (1, Namespace <$> _arbitraryIdent)]
+    shrink NAny = []
+    shrink (Namespace a) = Namespace <$> _shrinkIdent a
 
 instance Arbitrary ElementName where
-    arbitrary = frequency [(1, return EAny), (3, ElementName <$> _arbitraryIdent)]
+    arbitrary = frequency [(1, pure EAny), (3, ElementName <$> _arbitraryIdent)]
+    shrink EAny = []
+    shrink (ElementName a) = ElementName <$> _shrinkIdent a
 
 instance Arbitrary TypeSelector where
     arbitrary = TypeSelector <$> arbitrary <*> arbitrary
