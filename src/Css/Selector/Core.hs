@@ -38,6 +38,8 @@ module Css.Selector.Core (
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
 
+import Control.Applicative(liftA2)
+
 import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
@@ -647,10 +649,13 @@ instance ToJSON Attrib where
 _arbitraryIdent :: Gen Text
 _arbitraryIdent = pack <$> listOf1 arbitrary
 
+_shrinkText :: Text -> [Text]
+_shrinkText = liftA2 (zipWith (<>)) inits (tails . T.drop 1)
+
 _shrinkIdent :: Text -> [Text]
 _shrinkIdent t
     | T.length t < 2 = []
-    | otherwise = zipWith (<>) (inits t) (tails (T.drop 1 t))
+    | otherwise = _shrinkText t
 
 instance Arbitrary Hash where
     arbitrary = Hash <$> _arbitraryIdent
@@ -672,6 +677,7 @@ instance Arbitrary ElementName where
 
 instance Arbitrary TypeSelector where
     arbitrary = TypeSelector <$> arbitrary <*> arbitrary
+    shrink (TypeSelector x y) = (TypeSelector x <$> shrink y) ++ ((`TypeSelector` y) <$> shrink x)
 
 instance Arbitrary SelectorSequence where
     arbitrary = addFilters . SimpleSelector <$> arbitrary <*> listOf arbitrary
@@ -684,15 +690,24 @@ instance Arbitrary AttributeCombinator where
 
 instance Arbitrary SelectorFilter where
     arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary]
+    shrink (SHash x) = SHash <$> shrink x
+    shrink (SClass x) = SClass <$> shrink x
+    shrink (SAttrib x) = SAttrib <$> shrink x
 
 instance Arbitrary AttributeName where
     arbitrary = AttributeName <$> arbitrary <*> _arbitraryIdent
+    shrink (AttributeName x y) = (AttributeName x <$> _shrinkIdent y) ++ ((`AttributeName` y) <$> shrink x)
 
 instance Arbitrary Attrib where
     arbitrary = oneof [Exist <$> arbitrary, Attrib <$> arbitrary <*> arbitrary <*> (pack <$> listOf arbitrary)]
+    shrink (Exist x) = Exist <$> shrink x
+    shrink (Attrib x y z) = (Attrib x y <$> _shrinkText z) ++ ((\sx -> Attrib sx y z) <$> shrink x)
 
 instance Arbitrary SelectorGroup where
     arbitrary = SelectorGroup <$> ((:|) <$> arbitrary <*> arbitrary)
+    shrink (SelectorGroup (x :| xs)) = SelectorGroup . (x :|) <$> shrink xs
 
 instance Arbitrary Selector where
     arbitrary = frequency [(3, Selector <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]
+    shrink (Selector x) = Selector <$> shrink x
+    shrink (Combined x y z) = (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
