@@ -1,6 +1,6 @@
 # css-selectors
 
-[![Build Status of the package by Travis](https://travis-ci.com/hapytex/css-selectors.svg?branch=master)](https://travis-ci.com/hapytex/css-selectors)
+[![Build Status of the package by GitHub actions](https://github.com/hapytex/css-selectors/actions/workflows/build-ci.yml/badge.svg)](https://github.com/hapytex/css-selectors/actions/workflows/build-ci.yml)
 [![Build Status of the package by Hackage](https://matrix.hackage.haskell.org/api/v2/packages/css-selectors/badge)](https://matrix.hackage.haskell.org/#/package/css-selectors)
 [![Hackage version badge](https://img.shields.io/hackage/v/css-selectors.svg)](https://hackage.haskell.org/package/css-selectors)
 
@@ -158,4 +158,3 @@ You can contact the package maintainer by sending a mail to
 
 This package is dedicated in loving memory to my mother, *Veerle Dumon*
 (1958-2019), in the hope that eventually it will be as stylish as she was.
-[![Build Status of the package by GitHub actions](https://github.com/hapytex/css-selectors/actions/workflows/build-ci.yml/badge.svg)](https://github.com/hapytex/css-selectors/actions/workflows/build-ci.yml)
