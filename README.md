@@ -158,3 +158,4 @@ You can contact the package maintainer by sending a mail to
 
 This package is dedicated in loving memory to my mother, *Veerle Dumon*
 (1958-2019), in the hope that eventually it will be as stylish as she was.
+[![Build Status of the package by GitHub actions](https://github.com/hapytex/css-selectors/actions/workflows/build-ci.yml/badge.svg)](https://github.com/hapytex/css-selectors/actions/workflows/build-ci.yml)
