@@ -7,22 +7,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: set up Haskell environment
-      uses: hapytex/github-actions/setup-haskell@master
+      uses: hapytex/github-actions/actions/setup-haskell@master
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: build haskell project
-      uses: hapytex/github-actions/build-haskell-project@master
+      uses: hapytex/github-actions/actions/build-haskell-project@master
 
   linux2:
     name: Build the Haddock documentation
     runs-on: ubuntu-latest
     steps:
     - name: set up Haskell environment
-      uses: hapytex/github-actions/setup-haskell@master
+      uses: hapytex/github-actions/actions/setup-haskell@master
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: make Haddock documentation
-      uses: hapytex/github-actions/run-haddock@master
+      uses: hapytex/github-actions/actions/run-haddock@master
       id: haddock
     - name: echo path
       run: "echo '${{ steps.haddock.outputs.haddock-path }}'"
@@ -34,7 +34,7 @@ jobs:
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: look for todos
-      uses: hapytex/github-actions/look-for-todos@master
+      uses: hapytex/github-actions/actions/look-for-todos@master
       with:
         directory: src
 
@@ -46,14 +46,14 @@ jobs:
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: look for todos
-      uses: hapytex/github-actions/hlint@master
+      uses: hapytex/github-actions/actions/hlint@master
 
   linux5:
     name: Run the tests
     runs-on: ubuntu-latest
     steps:
     - name: set up Haskell environment
-      uses: hapytex/github-actions/setup-haskell@master
+      uses: hapytex/github-actions/actions/setup-haskell@master
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: run the tests of the package
@@ -64,11 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
     steps:
-    - uses: hapytex/github-actions/setup-haskell@master
+    - uses: hapytex/github-actions/actions/setup-haskell@master
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: make Haddock documentation
-      uses: hapytex/github-actions/run-haddock@master
+      uses: hapytex/github-actions/actions/run-haddock@master
       id: haddock
     - name: deploy the documentation on the GitHub pages
       uses: JamesIves/github-pages-deploy-action@4.0.0
@@ -82,11 +82,11 @@ jobs:
     needs: [linux1, linux2, linux3, linux4, linux5, linux6]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-    - uses: hapytex/github-actions/setup-haskell@master
+    - uses: hapytex/github-actions/actions/setup-haskell@master
     - name: checkout code
       uses: actions/checkout@v2.3.1
     - name: make Haddock documentation
-      uses: hapytex/github-actions/hackage-publish@master
+      uses: hapytex/github-actions/actions/hackage-publish@master
       with:
         hackage-user: "${{ secrets.HACKAGE_USER  }}"
         hackage-password: "${{ secrets.HACKAGE_PASSWORD }}"
