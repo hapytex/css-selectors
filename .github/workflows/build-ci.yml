@@ -62,7 +62,7 @@ jobs:
   linux6:
     name: Deploy documentation to GitHub pages
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
     steps:
     - uses: hapytex/github-actions/setup-haskell@master
     - name: checkout code
