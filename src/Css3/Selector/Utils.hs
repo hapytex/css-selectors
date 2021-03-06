@@ -1,5 +1,5 @@
 {-|
-Module      : Css.Selector.Utils
+Module      : Css3.Selector.Utils
 Description : A set of utility methods to encode and decode strings.
 Maintainer  : hapytexeu+gh@gmail.com
 Stability   : experimental
@@ -7,7 +7,7 @@ Portability : POSIX
 
 A module to encode and decode css selector strings. These are used in the parser and renderer to parse and render css selector strings.
 -}
-module Css.Selector.Utils (
+module Css3.Selector.Utils (
     -- * Identifiers
       readIdentifier, encodeIdentifier
     , isValidIdentifier, toIdentifier

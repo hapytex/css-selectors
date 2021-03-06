@@ -28,13 +28,13 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
-      Css.Selector
-    , Css.Selector.Core
-    , Css.Selector.QuasiQuoters
-    , Css.Selector.Utils
+      Css3.Selector
+    , Css3.Selector.Core
+    , Css3.Selector.QuasiQuoters
+    , Css3.Selector.Utils
   other-modules:
-       Css.Selector.Lexer
-     , Css.Selector.Parser
+       Css3.Selector.Lexer
+     , Css3.Selector.Parser
   build-depends:
       base >=4.7 && <5
     , aeson >=1.0 && <2

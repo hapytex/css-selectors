@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
 
 {-|
-Module      : Css.Selector.Core
+Module      : Css3.Selector.Core
 Description : A module where we define the tree of types to represent and maniplate a css selector.
 Maintainer  : hapytexeu+gh@gmail.com
 Stability   : experimental
@@ -9,7 +9,7 @@ Portability : POSIX
 
 A module that defines the tree of types to represent and manipulate a css selector. These data types are members of several typeclasses to make these more useful.
 -}
-module Css.Selector.Core (
+module Css3.Selector.Core (
     -- * ToCssSelector typeclass
     ToCssSelector(..)
     -- * Selectors and combinators
@@ -40,7 +40,7 @@ module Css.Selector.Core (
 
 import Control.Applicative(liftA2)
 
-import Css.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
+import Css3.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Data(Data)

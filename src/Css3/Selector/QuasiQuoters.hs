@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 {-|
-Module      : Css.Selector.QuasiQuoters
+Module      : Css3.Selector.QuasiQuoters
 Description : A module that defines a quasiquoter to parse a string to a css selector.
 Maintainer  : hapytexeu+gh@gmail.com
 Stability   : experimental
@@ -9,13 +9,13 @@ Portability : POSIX
 
 A module that defines a quasiquoter to parse a string to a css selector.
 -}
-module Css.Selector.QuasiQuoters (
+module Css3.Selector.QuasiQuoters (
     csssel, cssselFile, parseCss
   ) where
 
-import Css.Selector.Core(SelectorGroup, toPattern)
-import Css.Selector.Lexer(alexScanTokens)
-import Css.Selector.Parser(cssselector)
+import Css3.Selector.Core(SelectorGroup, toPattern)
+import Css3.Selector.Lexer(alexScanTokens)
+import Css3.Selector.Parser(cssselector)
 
 import Data.Data(Data, cast)
 import Data.Text(pack, unpack)
