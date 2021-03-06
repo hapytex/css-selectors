@@ -1,5 +1,5 @@
 name:                css-selectors
-version:             0.2.0.0
+version:             0.2.1.0
 synopsis:            Parsing, rendering and manipulating css selectors in Haskell.
 description:
   A library for parsing, manipulating, and rendering css selectors (not css files,
@@ -28,7 +28,11 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:
-      Css3.Selector
+      Css.Selector
+    , Css.Selector.Core
+    , Css.Selector.QuasiQuoters
+    , Css.Selector.Utils
+    , Css3.Selector
     , Css3.Selector.Core
     , Css3.Selector.QuasiQuoters
     , Css3.Selector.Utils
