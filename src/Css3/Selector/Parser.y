@@ -1,9 +1,9 @@
 -- vim:ft=haskell
 {
-module Css.Selector.Parser where
+module Css3.Selector.Parser where
 
-import Css.Selector.Core
-import Css.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
+import Css3.Selector.Core
+import Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
 import Data.Text(pack)

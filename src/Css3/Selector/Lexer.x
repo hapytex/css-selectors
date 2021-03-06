@@ -1,9 +1,9 @@
 --vim:ft=haskell
 {
-module Css.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
+module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
 
 import Data.Decimal(Decimal)
-import Css.Selector.Utils(readCssString, readIdentifier)
+import Css3.Selector.Utils(readCssString, readIdentifier)
 }
 
 %wrapper "posn"
