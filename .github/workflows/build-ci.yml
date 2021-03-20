@@ -75,6 +75,7 @@ jobs:
       with:
         branch: gh-pages
         folder: "${{ steps.haddock.outputs.haddock-path }}"
+        single-commit: true
 
   linux7:
     name: Deploy package on hackage
