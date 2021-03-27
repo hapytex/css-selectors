@@ -73,7 +73,7 @@ jobs:
     - name: Add cname to the directory
       uses: hapytex/github-actions/actions/add-cname-to-directory@master
       with:
-        directory: "${{ steps.haddock.outputs.haddock-path }}"
+        folder: "${{ steps.haddock.outputs.haddock-path }}"
         cname: "css-selectors.django-antipatterns.com"
     - name: deploy the documentation on the GitHub pages
       uses: JamesIves/github-pages-deploy-action@4.0.0
