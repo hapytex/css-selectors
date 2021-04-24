@@ -129,6 +129,12 @@ use this in hamlet, you generate a string that contains the css-selector. This
 is often useful, since javascript itself has no syntax for css selectors, and
 often strings are used to represent these.
 
+## `Binary` instances
+
+The css-elements are all a member of the `Binary` typeclass, that converts the
+css selector to a compact binary format. This is *not* standard format. This is
+more to write a css-selector to a binary format and back.
+
 ## `Arbitrary` css selectors
 
 One can generate arbitrary CSS selectors (and their subcomponents). It is
