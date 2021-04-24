@@ -1,6 +1,10 @@
-import Css.Selector
-import Css.Selector.Utils(encodeString, readCssString)
+{-# LANGUAGE TypeApplications #-}
 
+import Css3.Selector
+import Css3.Selector.Utils(encodeString, readCssString)
+
+import Data.Binary(Binary, encode, decode)
+import Data.Function(on)
 import Data.Text(pack, unpack)
 
 import Test.Framework (defaultMain, testGroup)
@@ -18,17 +22,17 @@ tests = [
     ],
     testGroup "Arbitrary css parsing" [
         testProperty "Encode-decode css identity" encodeDecodeCss,
-        testProperty "Encode-decode css identity: selector group" (encodeDecodeCss' :: SelectorGroup -> Bool),
-        testProperty "Encode-decode css identity: selector" (encodeDecodeCss' :: Selector -> Bool),
-        testProperty "Encode-decode css identity: selector sequence" (encodeDecodeCss' :: SelectorSequence -> Bool),
-        testProperty "Encode-decode css identity: selector filter" (encodeDecodeCss' :: SelectorFilter -> Bool),
-        testProperty "Encode-decode css identity: namespace" (encodeDecodeCss' :: Namespace -> Bool),
-        testProperty "Encode-decode css identity: element name" (encodeDecodeCss' :: ElementName -> Bool),
-        testProperty "Encode-decode css identity: type selector" (encodeDecodeCss' :: TypeSelector -> Bool),
-        testProperty "Encode-decode css identity: attribute" (encodeDecodeCss' :: Attrib -> Bool),
-        testProperty "Encode-decode css identity: attribute name" (encodeDecodeCss' :: AttributeName -> Bool),
-        testProperty "Encode-decode css identity: class" (encodeDecodeCss' :: Class -> Bool),
-        testProperty "Encode-decode css identity: hash" (encodeDecodeCss' :: Hash -> Bool)
+        testProperty "Encode-decode css identity: selector group" (encodeDecodeCss' @SelectorGroup),
+        testProperty "Encode-decode css identity: selector" (encodeDecodeCss' @Selector),
+        testProperty "Encode-decode css identity: selector sequence" (encodeDecodeCss' @SelectorSequence),
+        testProperty "Encode-decode css identity: selector filter" (encodeDecodeCss' @SelectorFilter),
+        testProperty "Encode-decode css identity: namespace" (encodeDecodeCss' @Namespace),
+        testProperty "Encode-decode css identity: element name" (encodeDecodeCss' @ElementName),
+        testProperty "Encode-decode css identity: type selector" (encodeDecodeCss' @TypeSelector),
+        testProperty "Encode-decode css identity: attribute" (encodeDecodeCss' @Attrib),
+        testProperty "Encode-decode css identity: attribute name" (encodeDecodeCss' @AttributeName),
+        testProperty "Encode-decode css identity: class" (encodeDecodeCss' @Class),
+        testProperty "Encode-decode css identity: hash" (encodeDecodeCss' @Hash)
     ],
     testGroup "SelectorSequences" [
         testProperty "Adding and removing filters" addRemFilters
@@ -40,7 +44,34 @@ tests = [
     testGroup "Build an expression or pattern" [
         testProperty "Check build of pattern 1" buildPattern1,
         testProperty "Check build of pattern 2" buildPattern2
+    ],
+    testGroup "Convert to binary and back" [
+        testProperty "Binary identity: selector group" (binaryEquivalent @SelectorGroup),
+        testProperty "Binary identity: selector" (binaryEquivalent @Selector),
+        testProperty "Binary identity: selector sequence" (binaryEquivalent @SelectorSequence),
+        testProperty "Binary identity: selector filter" (binaryEquivalent @SelectorFilter),
+        testProperty "Binary identity: namespace" (binaryEquivalent @Namespace),
+        testProperty "Binary identity: element name" (binaryEquivalent @ElementName),
+        testProperty "Binary identity: type selector" (binaryEquivalent @TypeSelector),
+        testProperty "Binary identity: attribute" (binaryEquivalent @Attrib),
+        testProperty "Binary identity: attribute name" (binaryEquivalent @AttributeName),
+        testProperty "Binary identity: class" (binaryEquivalent @Class),
+        testProperty "Binary identity: hash" (binaryEquivalent @Hash)
+    ],
+    testGroup "Check binary equality" [
+        testProperty "Binary uniqness: selector group" (uniqnessEncoding @SelectorGroup),
+        testProperty "Binary uniqness: selector" (uniqnessEncoding @Selector),
+        testProperty "Binary uniqness: selector sequence" (uniqnessEncoding @SelectorSequence),
+        testProperty "Binary uniqness: selector filter" (uniqnessEncoding @SelectorFilter),
+        testProperty "Binary uniqness: namespace" (uniqnessEncoding @Namespace),
+        testProperty "Binary uniqness: element name" (uniqnessEncoding @ElementName),
+        testProperty "Binary uniqness: type selector" (uniqnessEncoding @TypeSelector),
+        testProperty "Binary uniqness: attribute" (uniqnessEncoding @Attrib),
+        testProperty "Binary uniqness: attribute name" (uniqnessEncoding @AttributeName),
+        testProperty "Binary uniqness: class" (uniqnessEncoding @Class),
+        testProperty "Binary uniqness: hash" (uniqnessEncoding @Hash)
     ]
+
   ]
 
 encodeDecode :: Char -> String -> Bool
@@ -51,6 +82,12 @@ encodeDecodeId b = readIdentifier (unpack (encodeIdentifier (pack b))) == b
 
 encodeDecodeCss :: SelectorGroup -> Bool
 encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
+
+binaryEquivalent :: (Binary a, Eq a, ToCssSelector a) => a -> Bool
+binaryEquivalent x = decode (encode x) == x
+
+uniqnessEncoding :: (Binary a, Eq a, ToCssSelector a) => a -> a -> Bool
+uniqnessEncoding ca cb = (encode ca == encode cb) == (ca == cb)
 
 encodeDecodeCss' :: ToCssSelector a => a -> Bool
 encodeDecodeCss' sg = (parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg

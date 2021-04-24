@@ -43,6 +43,7 @@ library
       base >=4.7 && <5
     , aeson >=1.0 && <2
     , array >=0.5.3.0 && <0.5.4.0
+    , binary >=0.2 && <0.8.8.0
     , blaze-markup >=0.8 && <0.9
     , data-default >=0.7 && <0.8
     , Decimal >=0.5.1 && <0.5.2
@@ -61,6 +62,7 @@ test-suite css-selectors-test
   main-is:             Spec.hs
   build-depends:
       base
+    , binary >=0.2 && <0.8.8.0
     , css-selectors
     , text
     , test-framework
