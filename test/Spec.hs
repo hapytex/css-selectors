@@ -1,6 +1,7 @@
 import Css.Selector
 import Css.Selector.Utils(encodeString, readCssString)
 
+import Data.Binary(Binary, encode, decode)
 import Data.Text(pack, unpack)
 
 import Test.Framework (defaultMain, testGroup)
@@ -40,6 +41,19 @@ tests = [
     testGroup "Build an expression or pattern" [
         testProperty "Check build of pattern 1" buildPattern1,
         testProperty "Check build of pattern 2" buildPattern2
+    ],
+    testGroup "Convert to binary and back" [
+        testProperty "Binary equivalent identity: selector group" (binaryEquivalent :: SelectorGroup -> Bool),
+        testProperty "Encode-decode css identity: selector" (binaryEquivalent :: Selector -> Bool),
+        testProperty "Encode-decode css identity: selector sequence" (binaryEquivalent :: SelectorSequence -> Bool),
+        testProperty "Encode-decode css identity: selector filter" (binaryEquivalent :: SelectorFilter -> Bool),
+        testProperty "Encode-decode css identity: namespace" (binaryEquivalent :: Namespace -> Bool),
+        testProperty "Encode-decode css identity: element name" (binaryEquivalent :: ElementName -> Bool),
+        testProperty "Encode-decode css identity: type selector" (binaryEquivalent :: TypeSelector -> Bool),
+        testProperty "Encode-decode css identity: attribute" (binaryEquivalent :: Attrib -> Bool),
+        testProperty "Encode-decode css identity: attribute name" (binaryEquivalent :: AttributeName -> Bool),
+        testProperty "Encode-decode css identity: class" (binaryEquivalent :: Class -> Bool),
+        testProperty "Encode-decode css identity: hash" (binaryEquivalent :: Hash -> Bool)
     ]
   ]
 
@@ -51,6 +65,9 @@ encodeDecodeId b = readIdentifier (unpack (encodeIdentifier (pack b))) == b
 
 encodeDecodeCss :: SelectorGroup -> Bool
 encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
+
+binaryEquivalent :: (Binary a, Eq a, ToCssSelector a) => a -> Bool
+binaryEquivalent x = decode (encode x) == x
 
 encodeDecodeCss' :: ToCssSelector a => a -> Bool
 encodeDecodeCss' sg = (parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg

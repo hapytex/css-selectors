@@ -43,6 +43,7 @@ import Control.Applicative(liftA2)
 import Css3.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
+import Data.Binary(Binary(put, get), Get, Put, getWord8, putWord8)
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
@@ -573,6 +574,108 @@ instance Default SelectorCombinator where
 
 instance Default AttributeCombinator where
     def = Exact
+
+-- Binary instance
+_putEnum :: Enum a => a -> Put
+_putEnum = putWord8 . fromIntegral . fromEnum
+
+_getEnum :: Enum a => Get a
+_getEnum = toEnum . fromIntegral <$> getWord8
+
+instance Binary SelectorSpecificity where
+  put (SelectorSpecificity a b c) = put a >> put b >> put c
+  get = SelectorSpecificity <$> get <*> get <*> get
+
+instance Binary Selector where
+  put (Selector c) = putWord8 0 >> put c
+  put (Combined c sc cs) = putWord8 1 >> put c >> put sc >> put cs
+  get = do
+    w <- getWord8
+    case w of
+      0 -> Selector <$> get
+      1 -> Combined <$> get <*> get <*> get
+      _ -> fail "An error occured while deserializing a Selector object"
+
+instance Binary SelectorCombinator where
+  put = _putEnum
+  get = _getEnum
+
+instance Binary SelectorSequence where
+  put (SimpleSelector ts) = putWord8 0 >> put ts
+  put (Filter ss sf) = putWord8 1 >> put ss >> put sf
+  get = do
+    w <- getWord8
+    case w of
+      0 -> SimpleSelector <$> get
+      1 -> Filter <$> get <*> get
+      _ -> fail "An error occured while deserializing a Selector object."
+
+instance Binary SelectorFilter where
+  put (SHash h) = putWord8 0 >> put h
+  put (SClass c) = putWord8 1 >> put c
+  put (SAttrib a) = putWord8 2 >> put a
+  get = do
+    w <- getWord8
+    case w of
+      0 -> SHash <$> get
+      1 -> SClass <$> get
+      2 -> SAttrib <$> get
+      _ -> fail "An error occurred when deserializing a SelectorFilter object."
+
+instance Binary Attrib where
+  put (Exist e) = putWord8 0 >> put e
+  put (Attrib an ac av) = putWord8 1 >> put an >> put ac >> put av
+  get = do
+    w <- getWord8
+    case w of
+      0 -> Exist <$> get
+      1 -> Attrib <$> get <*> get <*> get
+      _ -> fail "An error occured when deserializing an Attrib object."
+
+instance Binary Namespace where
+  put NAny = putWord8 0
+  put (Namespace t) = putWord8 1 >> put t
+  get = do
+    w <- getWord8
+    case w of
+      0 -> pure NAny
+      1 -> Namespace <$> get
+      _ -> fail "An error occurred when deserializing a Namespace object."
+
+instance Binary ElementName where
+  put EAny = putWord8 0
+  put (ElementName t) = putWord8 1 >> put t
+  get = do
+    w <- getWord8
+    case w of
+      0 -> pure EAny
+      1 -> ElementName <$> get
+      _ -> fail "An error occurred when deserializing an ElementName."
+
+instance Binary TypeSelector where
+  put (TypeSelector ns en) = put ns >> put en
+  get = TypeSelector <$> get <*> get
+
+instance Binary AttributeName where
+  put (AttributeName ns n) = put ns >> put n
+  get = AttributeName <$> get <*> get
+
+instance Binary AttributeCombinator where
+  put = _putEnum
+  get = _getEnum
+
+instance Binary Hash where
+  put (Hash h) = put h
+  get = Hash <$> get
+
+instance Binary Class where
+  put (Class h) = put h
+  get = Class <$> get
+
+instance Binary SelectorGroup where
+  put (SelectorGroup g) = put g
+  get = SelectorGroup <$> get
+
 
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
