@@ -34,6 +34,8 @@ module Css3.Selector.Core (
     , Hash(..), (.#)
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
+    -- * Read and write binary content
+    , encode, decode, compressEncode, compressEncodeWith, decompressDecode
   ) where
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
@@ -86,7 +88,7 @@ specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 
 -- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.
-class Binary a => ToCssSelector a where
+class ToCssSelector a where
     -- | Convert the given element to a 'Text' object that contains the css
     -- selector.
     toCssSelector :: a -- ^ The given object for which we calculate the css selector.
@@ -111,33 +113,33 @@ class Binary a => ToCssSelector a where
     normalize :: a -- ^ The item to normalize.
         -> a -- ^ A normalized variant of the given item. This will filter the same objects, and have the same specificity.
     normalize = id
-
-    -- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
-    -- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
-    -- stream is then passed through a gzip implementation.
-    compressedEncoding
-      :: a -- ^ The object to turn into a compressed 'ByteString'.
-      -> ByteString -- ^ A compressed binary representation of the given object.
-    compressedEncoding = compress . encode
-
-    -- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
-    -- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
-    -- stream is then passed through a gzip implementation.
-    compressedEncodingWith
-      :: CompressParams -- ^ The parameters that determine how to compress the 'ByteString'.
-      -> a -- ^ The object to turn into a compressed 'ByteString'.
-      -> ByteString -- ^ A compressed binary representation of the given object.
-    compressedEncodingWith level = compressWith level . encode
-
-    -- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
-    -- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
-    -- stream is then passed through a gzip implementation.
-    decompressEncoding
-      :: ByteString -- ^ A compressed binary representation of a 'ToCssSelector' type.
-      -> a -- ^ The corresponding decompressed and decoded logic.
-    decompressEncoding = decode . decompress
-
     {-# MINIMAL toCssSelector, toSelectorGroup, specificity', toPattern #-}
+
+-- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
+-- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
+-- stream is then passed through a gzip implementation.
+compressEncode :: (Binary a, ToCssSelector a)
+  => a -- ^ The object to turn into a compressed 'ByteString'.
+  -> ByteString -- ^ A compressed binary representation of the given object.
+compressEncode = compress . encode
+
+-- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
+-- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
+-- stream is then passed through a gzip implementation.
+compressEncodeWith :: (Binary a, ToCssSelector a)
+  => CompressParams -- ^ The parameters that determine how to compress the 'ByteString'.
+  -> a -- ^ The object to turn into a compressed 'ByteString'.
+  -> ByteString -- ^ A compressed binary representation of the given object.
+compressEncodeWith level = compressWith level . encode
+
+-- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
+-- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
+-- stream is then passed through a gzip implementation.
+decompressDecode :: (Binary a, ToCssSelector a)
+  => ByteString -- ^ A compressed binary representation of a 'ToCssSelector' type.
+  -> a -- ^ The corresponding decompressed and decoded logic.
+decompressDecode = decode . decompress
+
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
