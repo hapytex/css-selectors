@@ -2,7 +2,7 @@
 
 For a full list of changes, see the history on [GitHub](https://github.com/hapytex/css-selectors).
 
-## Version 0.2.2.0
+## Version 0.3.0.0
 
 The css items are now an instance of `Binary` and can be serialized and deserialized; and compressed. One
 can use this to store the css selector to a file. The format is *not* a standardized one: it is just defined
