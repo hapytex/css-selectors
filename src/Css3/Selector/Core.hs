@@ -34,16 +34,21 @@ module Css3.Selector.Core (
     , Hash(..), (.#)
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
+    -- * Read and write binary content
+    , encode, decode, compressEncode, compressEncodeWith, decompressDecode
   ) where
 
 -- based on https://www.w3.org/TR/2018/REC-selectors-3-20181106/#w3cselgrammar
+
+import Codec.Compression.GZip(CompressParams, compress, compressWith, decompress)
 
 import Control.Applicative(liftA2)
 
 import Css3.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
 import Data.Aeson(Value(String), ToJSON(toJSON))
-import Data.Binary(Binary(put, get), Get, Put, getWord8, putWord8)
+import Data.Binary(Binary(put, get), Get, Put, decode, encode, getWord8, putWord8)
+import Data.ByteString.Lazy(ByteString)
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
@@ -109,6 +114,32 @@ class ToCssSelector a where
         -> a -- ^ A normalized variant of the given item. This will filter the same objects, and have the same specificity.
     normalize = id
     {-# MINIMAL toCssSelector, toSelectorGroup, specificity', toPattern #-}
+
+-- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
+-- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
+-- stream is then passed through a gzip implementation.
+compressEncode :: (Binary a, ToCssSelector a)
+  => a -- ^ The object to turn into a compressed 'ByteString'.
+  -> ByteString -- ^ A compressed binary representation of the given object.
+compressEncode = compress . encode
+
+-- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
+-- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
+-- stream is then passed through a gzip implementation.
+compressEncodeWith :: (Binary a, ToCssSelector a)
+  => CompressParams -- ^ The parameters that determine how to compress the 'ByteString'.
+  -> a -- ^ The object to turn into a compressed 'ByteString'.
+  -> ByteString -- ^ A compressed binary representation of the given object.
+compressEncodeWith level = compressWith level . encode
+
+-- | Convert the given item to a compressed 'ByteString'. This can be used to write to and read from a file for example.
+-- The econding format is not an official format: it is constructed based on the structure of the Haskell types. That
+-- stream is then passed through a gzip implementation.
+decompressDecode :: (Binary a, ToCssSelector a)
+  => ByteString -- ^ A compressed binary representation of a 'ToCssSelector' type.
+  -> a -- ^ The corresponding decompressed and decoded logic.
+decompressDecode = decode . decompress
+
 
 -- | Calculate the specificity of a 'ToCssSelector' type object. This is done by
 -- calculating the 'SelectorSpecificity' object, and then calculating the value
