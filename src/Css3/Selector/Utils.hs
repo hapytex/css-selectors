@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 {-|
 Module      : Css3.Selector.Utils
 Description : A set of utility methods to encode and decode strings.
