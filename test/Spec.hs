@@ -5,6 +5,7 @@ import Css3.Selector.Utils(encodeString, readCssString)
 
 import Data.Binary(Binary, encode, decode)
 import Data.Function(on)
+import Data.Hashable(Hashable(hashWithSalt))
 import Data.Text(pack, unpack)
 
 import Test.Framework (defaultMain, testGroup)
@@ -70,8 +71,20 @@ tests = [
         testProperty "Binary uniqness: attribute name" (uniqnessEncoding @AttributeName),
         testProperty "Binary uniqness: class" (uniqnessEncoding @Class),
         testProperty "Binary uniqness: hash" (uniqnessEncoding @Hash)
+    ],
+    testGroup "Check hash constraint for the Hashable instances" [
+        testProperty "Different hash implies different items: selector group" (hashingDifferent @SelectorGroup),
+        testProperty "Different hash implies different items: selector" (hashingDifferent @Selector),
+        testProperty "Different hash implies different items: selector sequence" (hashingDifferent @SelectorSequence),
+        testProperty "Different hash implies different items: selector filter" (hashingDifferent @SelectorFilter),
+        testProperty "Different hash implies different items: namespace" (hashingDifferent @Namespace),
+        testProperty "Different hash implies different items: element name" (hashingDifferent @ElementName),
+        testProperty "Different hash implies different items: type selector" (hashingDifferent @TypeSelector),
+        testProperty "Different hash implies different items: attribute" (hashingDifferent @Attrib),
+        testProperty "Different hash implies different items: attribute name" (hashingDifferent @AttributeName),
+        testProperty "Different hash implies different items: class" (hashingDifferent @Class),
+        testProperty "Different hash implies different items: hash" (hashingDifferent @Hash)
     ]
-
   ]
 
 encodeDecode :: Char -> String -> Bool
@@ -85,6 +98,9 @@ encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
 
 binaryEquivalent :: (Binary a, Eq a, ToCssSelector a) => a -> Bool
 binaryEquivalent x = decode (encode x) == x
+
+hashingDifferent :: (Hashable a, Eq a) => Int -> a -> a -> Bool
+hashingDifferent slt xa xb = (hashWithSalt slt xa == hashWithSalt slt xb) || (xa /= xb)
 
 uniqnessEncoding :: (Binary a, Eq a, ToCssSelector a) => a -> a -> Bool
 uniqnessEncoding ca cb = (encode ca == encode cb) == (ca == cb)

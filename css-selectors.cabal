@@ -67,6 +67,7 @@ test-suite css-selectors-test
       base
     , binary >=0.2 && <0.8.8.0
     , css-selectors
+    , hashable >=1.2.7.0
     , text
     , test-framework
     , test-framework-quickcheck2
