@@ -2,6 +2,10 @@
 
 For a full list of changes, see the history on [GitHub](https://github.com/hapytex/css-selectors).
 
+## Version 0.4.0.0
+
+All css items are now a member of the `Generic` and the `Hashable` typeclass.
+
 ## Version 0.3.0.0
 
 The css items are now an instance of `Binary` and can be serialized and deserialized; and compressed. One
