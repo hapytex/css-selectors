@@ -42,7 +42,7 @@ library
   build-depends:
       base >=4.7 && <5
     , aeson >=1.0
-    , array >=0.5.3.0
+    , array >=0.5.2.0
     , binary >=0.2
     , blaze-markup >=0.8
     , bytestring >=0.9
