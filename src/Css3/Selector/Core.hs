@@ -57,6 +57,9 @@ import Data.List(sort, unfoldr)
 import Data.List.NonEmpty(NonEmpty((:|)))
 import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
+#if __GLASGOW_HASKELL__ < 803
+import Data.Semigroup(Semigroup((<>)))
+#endif
 import Data.String(IsString(fromString))
 import qualified Data.Text as T
 import Data.Text(Text, cons, inits, intercalate, pack, tails, unpack)
@@ -460,12 +463,21 @@ instance Semigroup ElementName where
 
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
 
 instance Monoid Namespace where
     mempty = NAny
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
 
 instance Monoid ElementName where
     mempty = EAny
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
 
 -- IsString instances
 instance IsString Class where
@@ -815,7 +827,11 @@ instance ToMarkup Attrib where
 
 -- ToJavaScript and ToJson instances
 _cssToJavascript :: ToCssSelector a => a -> Javascript
+#if __GLASGOW_HASKELL__ < 803
+_cssToJavascript = toJavascript . toJSON . toCssSelector
+#else
 _cssToJavascript = toJavascript . toCssSelector
+#endif
 
 _cssToJson :: ToCssSelector a => a -> Value
 _cssToJson = String . toCssSelector
