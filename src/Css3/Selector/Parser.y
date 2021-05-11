@@ -6,6 +6,10 @@ import Css3.Selector.Core
 import Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
+
+#if __GLASGOW_HASKELL__ < 803
+import Data.Semigroup((<>))
+#endif
 import Data.Text(pack)
 }
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveGeneric, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
 
 {-|
 Module      : Css3.Selector.Core
@@ -57,6 +57,9 @@ import Data.List(sort, unfoldr)
 import Data.List.NonEmpty(NonEmpty((:|)))
 import qualified Data.List.NonEmpty
 import Data.Ord(comparing)
+#if __GLASGOW_HASKELL__ < 803
+import Data.Semigroup(Semigroup((<>)))
+#endif
 import Data.String(IsString(fromString))
 import qualified Data.Text as T
 import Data.Text(Text, cons, inits, intercalate, pack, tails, unpack)
@@ -65,7 +68,13 @@ import GHC.Exts(IsList(Item, fromList, toList))
 import GHC.Generics(Generic)
 
 import Language.Haskell.TH.Lib(appE, conE)
+#if MIN_VERSION_template_haskell(2,17,0)
+import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q, unsafeCodeCoerce)
+#elif MIN_VERSION_template_haskell(2,16,0)
+import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q, unsafeTExpCoerce)
+#else
 import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
+#endif
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary, shrink), arbitraryBoundedEnum)
 import Test.QuickCheck.Gen(Gen, frequency, listOf, listOf1, oneof)
@@ -454,12 +463,21 @@ instance Semigroup ElementName where
 
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
 
 instance Monoid Namespace where
     mempty = NAny
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
 
 instance Monoid ElementName where
     mempty = EAny
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
 
 -- IsString instances
 instance IsString Class where
@@ -745,12 +763,48 @@ _apply = foldl appE . conE
 instance Lift SelectorGroup where
     lift (SelectorGroup sg) = _apply 'SelectorGroup [liftNe sg]
         where liftNe (a :| as) = _apply '(:|) [lift a, lift as]
+#if MIN_VERSION_template_haskell(2,17,0)
+    liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+    liftTyped = unsafeTExpCoerce . lift
+#endif
 
-instance Lift Selector
-instance Lift SelectorCombinator
-instance Lift SelectorSequence
-instance Lift SelectorFilter
-instance Lift Attrib
+
+instance Lift Selector where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift SelectorCombinator where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift SelectorSequence where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift SelectorFilter where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift Attrib where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
 
 -- ToMarkup instances
 _cssToMarkup :: ToCssSelector a => a -> Markup
@@ -773,7 +827,11 @@ instance ToMarkup Attrib where
 
 -- ToJavaScript and ToJson instances
 _cssToJavascript :: ToCssSelector a => a -> Javascript
+#if __GLASGOW_HASKELL__ < 803
+_cssToJavascript = toJavascript . toJSON . toCssSelector
+#else
 _cssToJavascript = toJavascript . toCssSelector
+#endif
 
 _cssToJson :: ToCssSelector a => a -> Value
 _cssToJson = String . toCssSelector

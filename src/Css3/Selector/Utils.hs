@@ -1,4 +1,4 @@
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE CPP, Safe #-}
 
 {-|
 Module      : Css3.Selector.Utils
@@ -20,6 +20,9 @@ module Css3.Selector.Utils (
 import Control.Arrow(first)
 
 import Data.Char(chr, digitToInt, intToDigit, isAsciiLower, isAsciiUpper, isHexDigit, ord)
+#if __GLASGOW_HASKELL__ < 803
+import Data.Semigroup((<>))
+#endif
 import Data.Text(Text, cons, pack, singleton, snoc)
 import qualified Data.Text as T
 
