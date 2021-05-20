@@ -51,7 +51,7 @@ library
     , hashable >=1.2.7.0
     , QuickCheck >=2.8
     , shakespeare >=2.0
-    , template-haskell >=2.12.0
+    , template-haskell >=2.11.1
     , text >=1.1
     , zlib >=0.5
   build-tools:
