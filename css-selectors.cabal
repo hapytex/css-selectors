@@ -1,5 +1,5 @@
 name:                css-selectors
-version:             0.4.0.2
+version:             0.4.0.3
 synopsis:            Parsing, rendering and manipulating css selectors in Haskell.
 description:
   A library for parsing, manipulating, and rendering css selectors (not css files,
@@ -51,7 +51,7 @@ library
     , hashable >=1.2.7.0
     , QuickCheck >=2.8
     , shakespeare >=2.0
-    , template-haskell >=2.12.0
+    , template-haskell >=2.11.1
     , text >=1.1
     , zlib >=0.5
   build-tools:
