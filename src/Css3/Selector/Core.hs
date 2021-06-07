@@ -206,7 +206,7 @@ combine :: SelectorCombinator -- ^ The 'SelectorCombinator' that is applied betw
     -> Selector -- ^ A 'Selector' that is a combination of the left 'Selector' and the right 'Selector' with the given 'SelectorCombinator'.
 combine c0 x0 ys = go x0
     where go (Selector x) = Combined x c0 ys
-          go (Combined s1 c s2) = Combined s1 c (go s2)
+          go ~(Combined s1 c s2) = Combined s1 c (go s2)
 
 -- | Combines two 'Selector's with the 'Child' combinator.
 (.>) :: Selector -- ^ The left 'Selector'.
@@ -937,3 +937,7 @@ instance Arbitrary Selector where
     arbitrary = frequency [(3, Selector <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]
     shrink (Selector x) = Selector <$> shrink x
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
+
+instance Arbitrary SelectorSpecificity where
+  arbitrary = SelectorSpecificity <$> go <*> go <*> go
+    where go = abs <$> arbitrary
