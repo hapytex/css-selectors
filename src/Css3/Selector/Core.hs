@@ -43,6 +43,7 @@ module Css3.Selector.Core (
 import Codec.Compression.GZip(CompressParams, compress, compressWith, decompress)
 
 import Control.Applicative(liftA2)
+import Control.DeepSeq(NFData)
 
 import Css3.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
@@ -93,6 +94,8 @@ data SelectorSpecificity
     deriving (Data, Generic, Show)
 
 instance Hashable SelectorSpecificity
+
+instance NFData SelectorSpecificity
 
 -- | Calculate the specificity value of the 'SelectorSpecificity'
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
@@ -169,6 +172,8 @@ newtype SelectorGroup = SelectorGroup {
 
 instance Hashable SelectorGroup
 
+instance NFData SelectorGroup
+
 -- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
@@ -178,6 +183,7 @@ data Selector =
 
 instance Hashable Selector
 
+instance NFData Selector
 
 -- | A type that contains the possible ways to combine 'SelectorSequence's.
 data SelectorCombinator =
@@ -188,6 +194,8 @@ data SelectorCombinator =
     deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
 
 instance Hashable SelectorCombinator
+
+instance NFData SelectorCombinator
 
 -- | Convert the 'SelectorCombinator' to the equivalent css selector text. A
 -- space for 'Descendant', a @>@ for 'Child', a @+@ for 'DirectlyPreceded', and
@@ -236,6 +244,8 @@ data SelectorSequence =
 
 instance Hashable SelectorSequence
 
+instance NFData SelectorSequence
+
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
 -- filters are applied left-to-right.
 addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter on.
@@ -273,6 +283,8 @@ data SelectorFilter =
 
 instance Hashable SelectorFilter
 
+instance NFData SelectorFilter
+
 -- | A css attribute can come in two flavors: either a constraint that the
 -- attribute should exists, or a constraint that a certain attribute should have
 -- a certain value (prefix, suffix, etc.).
@@ -282,6 +294,8 @@ data Attrib =
     deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable Attrib
+
+instance NFData Attrib
 
 -- | A flipped version of the 'Attrib' data constructor, where one first
 -- specifies the conbinator, then the 'AttributeName' and finally the value.
@@ -363,6 +377,8 @@ data Namespace =
 
 instance Hashable Namespace
 
+instance NFData Namespace
+
 -- | The empty namespace. This is /not/ the wildcard namespace (@*@). This is a
 -- bidirectional namespace and can thus be used in expressions as well.
 pattern NEmpty :: Namespace
@@ -377,6 +393,8 @@ data ElementName =
 
 instance Hashable ElementName
 
+instance NFData ElementName
+
 -- | A typeselector is a combination of a selector for a namespace, and a
 -- selector for an element name. One, or both can be a wildcard.
 data TypeSelector = TypeSelector {
@@ -386,6 +404,8 @@ data TypeSelector = TypeSelector {
 
 instance Hashable TypeSelector
 
+instance NFData TypeSelector
+
 -- | An attribute name is a name that optionally has a namespace, and the name
 -- of the attribute.
 data AttributeName = AttributeName {
@@ -394,6 +414,8 @@ data AttributeName = AttributeName {
   } deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable AttributeName
+
+instance NFData AttributeName
 
 -- | We use 'Text' as the type to store an attribute value.
 type AttributeValue = Text
@@ -411,6 +433,8 @@ data AttributeCombinator =
 
 instance Hashable AttributeCombinator
 
+instance NFData AttributeCombinator
+
 -- | A css class, this is wrapped in a data type. The type only wraps the class
 -- name, not the dot prefix.
 newtype Class = Class {
@@ -419,6 +443,8 @@ newtype Class = Class {
 
 instance Hashable Class
 
+instance NFData Class
+
 -- | A css hash (used to match an element with a given id). The type only wraps
 -- the hash name, not the hash (@#@) prefix.
 newtype Hash = Hash {
@@ -426,6 +452,8 @@ newtype Hash = Hash {
   } deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable Hash
+
+instance NFData Hash
 
 -- | Convert the given 'AttributeCombinator' to its css selector counterpart.
 attributeCombinatorText :: AttributeCombinator -- ^ The 'AttributeCombinator' for which we obtain the corresponding css selector text.

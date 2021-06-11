@@ -48,6 +48,7 @@ library
     , bytestring >=0.9
     , data-default >=0.7
     , Decimal >=0.4.2
+    , deepseq >=1.4.3.0
     , hashable >=1.2.7.0
     , QuickCheck >=2.8
     , shakespeare >=2.0
