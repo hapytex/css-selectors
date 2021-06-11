@@ -43,6 +43,7 @@ module Css3.Selector.Core (
 import Codec.Compression.GZip(CompressParams, compress, compressWith, decompress)
 
 import Control.Applicative(liftA2)
+import Control.DeepSeq(NFData)
 
 import Css3.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 
@@ -90,7 +91,7 @@ import Text.Julius(Javascript, ToJavascript(toJavascript))
 -- count certain elements of the css selector.
 data SelectorSpecificity
     = SelectorSpecificity Int Int Int -- ^ Create a 'SelectorSpecificity' object with a given value for @a@, @b@, and @c@.
-    deriving (Data, Generic, Show)
+    deriving (Data, Generic, NFData, Show)
 
 instance Hashable SelectorSpecificity
 
@@ -165,7 +166,7 @@ specificity = specificityValue . specificity'
 -- selectors.
 newtype SelectorGroup = SelectorGroup {
     unSelectorGroup :: NonEmpty Selector -- ^ Unwrap the given 'NonEmpty' list of 'Selector's from the 'SelectorGroup' object.
-  } deriving (Data, Eq, Generic, Ord, Show)
+  } deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable SelectorGroup
 
@@ -174,7 +175,7 @@ instance Hashable SelectorGroup
 data Selector =
       Selector SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
     | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
-    deriving (Data, Eq, Generic, Ord, Show)
+    deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable Selector
 
@@ -185,7 +186,7 @@ data SelectorCombinator =
     | Child -- ^ The second tag is the (direct) child of the first one, denoted with a @>@ in css.
     | DirectlyPreceded -- ^ The second tag is directly preceded by the first one, denoted with a @+@ in css.
     | Preceded -- ^ The second tag is preceded by the first one, denoted with a @~@ in css.
-    deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
+    deriving (Bounded, Data, Enum, Eq, Generic, NFData, Ord, Read, Show)
 
 instance Hashable SelectorCombinator
 
@@ -232,7 +233,7 @@ combine c0 x0 ys = go x0
 data SelectorSequence =
       SimpleSelector TypeSelector -- ^ Convert a 'TypeSelector' into a 'SimpleSelector'.
     | Filter SelectorSequence SelectorFilter -- ^ Apply an additional 'SelectorFilter' to the 'SelectorSequence'.
-    deriving (Data, Eq, Generic, Ord, Show)
+    deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable SelectorSequence
 
@@ -269,7 +270,7 @@ data SelectorFilter =
       SHash Hash -- ^ A 'Hash' object as filter.
     | SClass Class -- ^ A 'Class' object as filter.
     | SAttrib Attrib -- ^ An 'Attrib' object as filter.
-    deriving (Data, Eq, Generic, Ord, Show)
+    deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable SelectorFilter
 
@@ -279,7 +280,7 @@ instance Hashable SelectorFilter
 data Attrib =
       Exist AttributeName -- ^ A constraint that the given 'AttributeName' should exist.
     | Attrib AttributeName AttributeCombinator AttributeValue -- ^ A constraint about the value associated with the given 'AttributeName'.
-    deriving (Data, Eq, Generic, Ord, Show)
+    deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable Attrib
 
@@ -359,7 +360,7 @@ attrib = flip Attrib
 data Namespace =
       NAny -- ^ A typeselector part that specifies that we accept all namespaces, in css denoted with @*@.
     | Namespace Text -- ^ A typselector part that specifies that we accept a certain namespace name.
-    deriving (Data, Eq, Generic, Ord, Show)
+    deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable Namespace
 
@@ -373,7 +374,7 @@ pattern NEmpty = Namespace ""
 data ElementName =
       EAny -- ^ A typeselector part that specifies that we accept all element names, in css denoted with @*@.
     | ElementName Text -- ^ A typeselector part that specifies that we accept a certain element name.
-    deriving (Data, Eq, Generic, Ord, Show)
+    deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable ElementName
 
@@ -382,7 +383,7 @@ instance Hashable ElementName
 data TypeSelector = TypeSelector {
     selectorNamespace :: Namespace, -- ^ The selector for the namespace.
     elementName :: ElementName -- ^ The selector for the element name.
-  } deriving (Data, Eq, Generic, Ord, Show)
+  } deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable TypeSelector
 
@@ -391,7 +392,7 @@ instance Hashable TypeSelector
 data AttributeName = AttributeName {
     attributeNamespace :: Namespace, -- ^ The namespace to which the attribute name belongs. This can be 'NAny' as well.
     attributeName :: Text  -- ^ The name of the attribute over which we make a claim.
-  } deriving (Data, Eq, Generic, Ord, Show)
+  } deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable AttributeName
 
@@ -407,7 +408,7 @@ data AttributeCombinator =
     | PrefixMatch -- ^ The value is a prefix of the value in the attribute, denoted with @^=@ in css.
     | SuffixMatch -- ^ The value is a suffix of the value in the attribute, denoted with @$=@ in css.
     | SubstringMatch -- ^The value is a substring of the value in the attribute, denoted with @*=@ in css.
-    deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
+    deriving (Bounded, Data, Enum, Eq, Generic, NFData, Ord, Read, Show)
 
 instance Hashable AttributeCombinator
 
@@ -415,7 +416,7 @@ instance Hashable AttributeCombinator
 -- name, not the dot prefix.
 newtype Class = Class {
     unClass :: Text -- ^ Obtain the name from the class.
-  } deriving (Data, Eq, Generic, Ord, Show)
+  } deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable Class
 
@@ -423,7 +424,7 @@ instance Hashable Class
 -- the hash name, not the hash (@#@) prefix.
 newtype Hash = Hash {
     unHash :: Text -- ^ Obtain the name from the hash.
-  } deriving (Data, Eq, Generic, Ord, Show)
+  } deriving (Data, Eq, Generic, NFData, Ord, Show)
 
 instance Hashable Hash
 
