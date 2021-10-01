@@ -7,6 +7,7 @@ import Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
 
+import Data.Default(def)
 #if __GLASGOW_HASKELL__ < 803
 import Data.Semigroup((<>))
 #endif
@@ -37,6 +38,7 @@ import Data.Text(pack)
     ident  { TokenLoc (Ident $$) _ _ }
     string { TokenLoc (String $$) _ _ }
     hash   { TokenLoc (THash $$) _ _ }
+    pseude { TokenLoc (PseudoElement $$) _ _ }
 
 %%
 
@@ -50,8 +52,8 @@ SelectorGroupList
     ;
 
 Selector
-    : SimpleSelectorSequence                      { Selector $1 }
-    | SimpleSelectorSequence Combinator Selector  { Combined $1 $2 $3 }
+    : PseudoSelectorSequence                      { Selector $1 }
+    | PseudoSelectorSequence Combinator Selector  { Combined $1 $2 $3 }
     ;
 
 Combinator
@@ -59,6 +61,12 @@ Combinator
     | '>'          { Child }
     | '~'          { Preceded }
     | ' '          { Descendant }
+    ;
+
+PseudoSelectorSequence
+    : SimpleSelectorSequence        { SelectorSequence $1 }
+    | SimpleSelectorSequence pseude { $1 :.:: $2 }
+    | pseude                        { def :.:: $1 }
     ;
 
 SimpleSelectorSequence

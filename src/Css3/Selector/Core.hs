@@ -15,6 +15,7 @@ module Css3.Selector.Core (
     -- * Selectors and combinators
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
+    , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(SelectorSequence, (:.::)), (.::)
     , SelectorSequence(..)
     , combinatorText, combine
     , (.>), (.+), (.~)
@@ -178,8 +179,8 @@ instance NFData SelectorGroup
 -- | The type of a single selector. This is a sequence of 'SelectorSequence's that
 -- are combined with a 'SelectorCombinator'.
 data Selector =
-      Selector SelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
-    | Combined SelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
+      Selector PseudoSelectorSequence -- ^ Convert a given 'SelectorSequence' to a 'Selector'.
+    | Combined PseudoSelectorSequence SelectorCombinator Selector -- ^ Create a combined selector where we have a 'SelectorSequence' that is combined with a given 'SelectorCombinator' to a 'Selector'.
     deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable Selector
@@ -246,6 +247,18 @@ data SelectorSequence =
 instance Hashable SelectorSequence
 
 instance NFData SelectorSequence
+
+data PseudoSelectorSequence
+    = SelectorSequence SelectorSequence
+    | SelectorSequence :.:: PseudoElement
+    deriving (Data, Eq, Generic, Ord, Show)
+
+instance Hashable PseudoSelectorSequence
+
+instance NFData PseudoSelectorSequence
+
+(.::) :: SelectorSequence -> PseudoElement -> PseudoSelectorSequence
+(.::) = (:.::)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
 -- filters are applied left-to-right.
@@ -681,7 +694,7 @@ instance ToCssSelector Namespace where
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
     toCssSelector (Filter s f) = toCssSelector s <> toCssSelector f
-    toSelectorGroup = toSelectorGroup . Selector
+    toSelectorGroup = toSelectorGroup . SelectorSequence
     specificity' (SimpleSelector s) = specificity' s
     specificity' (Filter s f) = specificity' s <> specificity' f
     toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
@@ -735,8 +748,29 @@ instance ToCssSelector Selector where
     normalize (Selector s) = Selector (normalize s)
     normalize (Combined s1 c s2) = Combined (normalize s1) c (normalize s2)
 
+instance ToCssSelector PseudoSelectorSequence where
+    toCssSelector (SelectorSequence ss) = toCssSelector ss
+    toCssSelector (ss :.:: pe)
+      | def == ss = toCssSelector pe
+      | otherwise = toCssSelector ss <> toCssSelector pe
+    toSelectorGroup = toSelectorGroup . Selector
+    specificity' (SelectorSequence ss) = specificity' ss
+    specificity' (ss :.:: pe) = specificity' ss <> specificity' pe
+    toPattern (SelectorSequence ss) = ConP 'SelectorSequence [toPattern ss]
+    toPattern (ss :.:: pe) = ConP '(:.::) [toPattern ss, toPattern pe]
+    normalize (SelectorSequence ss) = SelectorSequence (normalize ss)
+    normalize (ss :.:: pe) = normalize ss :.:: normalize pe
+
 instance ToCssSelector PseudoElement where
-    toCssSelector x = pack (':' : ':' : map toLower (show x))
+    toCssSelector = pack . (':' :) . (':' :) . go
+      where go After = "after"
+            go Before = "before"
+            go FirstLetter = "first-letter"
+            go FirstLine = "first-line"
+            go Marker = "marker"
+            go Selection = "selection"
+    specificity' = const (SelectorSpecificity 0 0 1)
+    toSelectorGroup = toSelectorGroup . (def :.::)
     toPattern = _constantP . go
       where go After = 'After
             go Before = 'Before
@@ -758,6 +792,9 @@ instance Default SelectorGroup where
 
 instance Default Selector where
     def = Selector def
+
+instance Default PseudoSelectorSequence where
+    def = SelectorSequence def
 
 instance Default SelectorSequence where
     def = SimpleSelector def
@@ -799,7 +836,17 @@ instance Binary Selector where
     case w of
       0 -> Selector <$> get
       1 -> Combined <$> get <*> get <*> get
-      _ -> fail "An error occured while deserializing a Selector object"
+      _ -> fail "An error occured while deserializing a Selector object."
+
+instance Binary PseudoSelectorSequence where
+  put (SelectorSequence ss) = putWord8 0 >> put ss
+  put (ss :.:: pe) = putWord8 1 >> put ss >> put pe
+  get = do
+    w <- getWord8
+    case w of
+      0 -> SelectorSequence <$> get
+      1 -> (:.::) <$> get <*> get
+      _ -> fail "An error occured while deserializing a PseudoSelectorSequence."
 
 instance Binary PseudoClass where
   put = _putEnum
@@ -1052,6 +1099,11 @@ instance Arbitrary SelectorSequence where
     arbitrary = addFilters . SimpleSelector <$> arbitrary <*> listOf arbitrary
     shrink (SimpleSelector _) = []
     shrink (Filter ss sf) = ss : (Filter ss <$> shrink sf)
+
+instance Arbitrary PseudoSelectorSequence where
+    arbitrary = frequency [(3, SelectorSequence <$> arbitrary), (1, (:.::) <$> arbitrary <*> arbitrary)]
+    shrink (SelectorSequence ss) = SelectorSequence <$> shrink ss
+    shrink (ss :.:: pe) = SelectorSequence ss : ((:.:: pe) <$> shrink ss)
 
 instance Arbitrary SelectorCombinator where
     arbitrary = arbitraryBoundedEnum
