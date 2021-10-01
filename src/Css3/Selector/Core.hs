@@ -19,7 +19,7 @@ module Css3.Selector.Core (
     , combinatorText, combine
     , (.>), (.+), (.~)
     -- * Filters
-    , SelectorFilter(..), filters, filters', addFilters, (.:)
+    , SelectorFilter(..), filters, filters', addFilters, (.@)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -50,6 +50,7 @@ import Css3.Selector.Utils(encodeIdentifier, encodeText, toIdentifier)
 import Data.Aeson(Value(String), ToJSON(toJSON))
 import Data.Binary(Binary(put, get), Get, Put, decode, encode, getWord8, putWord8)
 import Data.ByteString.Lazy(ByteString)
+import Data.Char(toLower)
 import Data.Data(Data)
 import Data.Default(Default(def))
 import Data.Function(on)
@@ -254,10 +255,10 @@ addFilters :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter o
 addFilters = foldl Filter
 
 -- | An infix variant of the 'addFilters' function.
-(.:) :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter on.
+(.@) :: SelectorSequence -- ^ The 'SelectorSequence' to apply the filter on.
     -> [SelectorFilter] -- ^ The list of 'SelectorFilter's to apply on the 'SelectorSequence'.
     -> SelectorSequence -- ^ A modified 'SelectorSequence' where we applied the list of 'SelectorFilter's.
-(.:) = addFilters
+(.@) = addFilters
 
 -- | Obtain the list of filters that are applied in the given 'SelectorSequence'
 -- in /reversed/ order.
@@ -435,6 +436,54 @@ instance Hashable AttributeCombinator
 
 instance NFData AttributeCombinator
 
+-- https://www.w3schools.com/css/css_pseudo_classes.asp
+data PseudoClass
+  = Active
+  | Checked
+  | Disabled
+  | Empty
+  | Enabled
+  | FirstChild
+  | FirstOfType
+  | Focus
+  | Hover
+  | InRange
+  | Invalid
+  -- TODO: Lang
+  | LastChild
+  | LastOfType
+  | Link
+  -- TODO: Not, NthChild | NthLastChild | NthLastOfType | NthOfType
+  | OnlyOfType
+  | OnlyChild
+  | Optional
+  | OutOfRange
+  | ReadOnly
+  | ReadWrite
+  | Required
+  | Root
+  | Target
+  | Valid
+  | Visited
+  deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
+
+instance Hashable PseudoClass
+
+instance NFData PseudoClass
+
+data PseudoElement
+  = After
+  | Before
+  | FirstLetter
+  | FirstLine
+  | Marker
+  | Selection
+  deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
+
+instance Hashable PseudoElement
+
+instance NFData PseudoElement
+
 -- | A css class, this is wrapped in a data type. The type only wraps the class
 -- name, not the dot prefix.
 newtype Class = Class {
@@ -526,6 +575,45 @@ instance IsString AttributeName where
 instance IsString Attrib where
     fromString = Exist . fromString
 
+instance IsString PseudoClass where
+    fromString = go . map toLower
+      where go "active" = Active
+            go "checked" = Checked
+            go "disabled" = Disabled
+            go "empty" = Empty
+            go "enabled" = Enabled
+            go "first-child" = FirstChild
+            go "first-of-type" = FirstOfType
+            go "focus" = Focus
+            go "hover" = Hover
+            go "in-range" = InRange
+            go "invalid" = Invalid
+            go "last-child" = LastChild
+            go "last-of-type" = LastOfType
+            go "link" = Link
+            go "only-of-type" = OnlyOfType
+            go "only-child" = OnlyChild
+            go "optional" = Optional
+            go "out-of-range" = OutOfRange
+            go "read-only"= ReadOnly
+            go "read-write" = ReadWrite
+            go "required" = Required
+            go "root" = Root
+            go "target" = Target
+            go "valid" = Valid
+            go "visited" = Visited
+            go x = error ("The pseudo class \"" ++ x ++ "\" is not a valid pseudo class.")
+
+instance IsString PseudoElement where
+    fromString = go . map toLower
+      where go "after" = After
+            go "before" = Before
+            go "first-letter" = FirstLetter
+            go "first-line" = FirstLine
+            go "selection" = Selection
+            go x = error ("The pseudo element \"" ++ x ++ "\" is not a valid pseudo element.")
+
+
 -- IsList instances
 instance IsList SelectorGroup where
     type Item SelectorGroup = Selector
@@ -537,7 +625,7 @@ _textToPattern :: Text -> Pat
 _textToPattern t = ViewP (AppE (ConE '(==)) (AppE (ConE 'pack) (LitE (StringL (unpack t))))) (_constantP 'True)
 
 _constantP :: Name -> Pat
-_constantP = flip ConP []
+_constantP = (`ConP` [])
 
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
@@ -647,6 +735,16 @@ instance ToCssSelector Selector where
     normalize (Selector s) = Selector (normalize s)
     normalize (Combined s1 c s2) = Combined (normalize s1) c (normalize s2)
 
+instance ToCssSelector PseudoElement where
+    toCssSelector x = pack (':' : ':' : map toLower (show x))
+    toPattern = _constantP . go
+      where go After = 'After
+            go Before = 'Before
+            go FirstLetter = 'FirstLetter
+            go FirstLine = 'FirstLine
+            go Marker = 'Marker
+            go Selection = 'Selection
+
 -- Custom Eq and Ord instances
 instance Eq SelectorSpecificity where
     (==) = on (==) specificityValue
@@ -702,6 +800,14 @@ instance Binary Selector where
       0 -> Selector <$> get
       1 -> Combined <$> get <*> get <*> get
       _ -> fail "An error occured while deserializing a Selector object"
+
+instance Binary PseudoClass where
+  put = _putEnum
+  get = _getEnum
+
+instance Binary PseudoElement where
+  put = _putEnum
+  get = _getEnum
 
 instance Binary SelectorCombinator where
   put = _putEnum
@@ -833,6 +939,19 @@ instance Lift Attrib where
   liftTyped = unsafeTExpCoerce . lift
 #endif
 
+instance Lift PseudoClass where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift PseudoElement where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
 
 -- ToMarkup instances
 _cssToMarkup :: ToCssSelector a => a -> Markup
@@ -965,3 +1084,9 @@ instance Arbitrary Selector where
     arbitrary = frequency [(3, Selector <$> arbitrary), (1, Combined <$> arbitrary <*> arbitrary <*> arbitrary) ]
     shrink (Selector x) = Selector <$> shrink x
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
+
+instance Arbitrary PseudoClass where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary PseudoElement where
+    arbitrary = arbitraryBoundedEnum

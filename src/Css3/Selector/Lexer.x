@@ -38,7 +38,8 @@ $tl       = [\~]
 @v       = v|V|\\0{0,4}(58|78)(\r\n|[ \t\r\n\f])?|\\v
 @cmo     = \/\*
 @cmc     = \*\/
-
+@psc     = [:]
+@pse     = [:][:]
 
 tokens :-
   @wo "="  @wo     { constoken TEqual }
@@ -61,6 +62,7 @@ tokens :-
   @wo $tl @wo      { constoken Tilde }
   "[" @wo          { constoken BOpen }
   @wo "]"          { constoken BClose }
+  @psc "active"    { constoken Space }
   $w @wo           { constoken Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 

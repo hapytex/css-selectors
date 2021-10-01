@@ -1,5 +1,5 @@
 name:                css-selectors
-version:             0.4.0.3
+version:             0.5.0.0
 synopsis:            Parsing, rendering and manipulating css selectors in Haskell.
 description:
   A library for parsing, manipulating, and rendering css selectors (not css files,
