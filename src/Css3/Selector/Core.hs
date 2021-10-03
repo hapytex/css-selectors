@@ -122,6 +122,15 @@ pattern Even = Nth 2 0
 pattern Odd :: Nth
 pattern Odd = Nth 2 1
 
+nthToText :: Nth -> Text
+nthToText Even = "even"
+nthToText Odd = "odd"
+nthToText (Nth n 0) = snoc (pack (show n)) 'n'
+nthToText (Nth 0 b) = pack (show b)
+nthToText (Nth n b)
+  | b <= 0 = pack (show n <> 'n' : show b)
+  | otherwise = (show n <> 'n' : '+' : show b)
+
 -- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.
 class ToCssSelector a where
