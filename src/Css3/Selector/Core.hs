@@ -16,6 +16,10 @@ module Css3.Selector.Core (
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
     , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(SelectorSequence, (:.::)), (.::)
+    , PseudoClass(
+          Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
+        , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+        )
     , SelectorSequence(..)
     , combinatorText, combine
     , (.>), (.+), (.~)
@@ -33,6 +37,8 @@ module Css3.Selector.Core (
     , Class(..), (...)
     -- * Hashes
     , Hash(..), (.#)
+    -- * Nth items
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -103,6 +109,18 @@ instance NFData SelectorSpecificity
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
     -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
+
+data Nth = Nth { linear :: Int, constant :: Int } deriving (Data, Eq, Generic, Ord, Read, Show)
+
+instance Hashable Nth
+
+instance NFData Nth
+
+pattern Even :: Nth
+pattern Even = Nth 2 0
+
+pattern Odd :: Nth
+pattern Odd = Nth 2 1
 
 -- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.
@@ -767,11 +785,36 @@ instance ToCssSelector PseudoSelectorSequence where
 
 instance ToCssSelector PseudoClass where
     toCssSelector = pack . (':' :) . go
-      where go = undefined
+      where go Active = "active"
+            go Checked = "checked"
+            go Disabled = "disabled"
+            go Empty = "empty"
+            go Enabled = "enabled"
+            go FirstChild = "first-child"
+            go FirstOfType = "first-of-type"
+            go Focus = "focus"
+            go Hover = "hover"
+            go InRange = "in-range"
+            go Invalid = "invalid"
+            go LastChild = "last-child"
+            go LastOfType = "last-of-type"
+            go Link = "link"
+            go OnlyOfType = "only-of-type"
+            go OnlyChild = "only-child"
+            go Optional = "optional"
+            go OutOfRange = "out-of-range"
+            go ReadOnly = "read-only"
+            go ReadWrite = "read-write"
+            go Required = "required"
+            go Root = "root"
+            go Target = "target"
+            go Valid = "valid"
+            go Visited = "visited"
+
     specificity' = const (SelectorSpecificity 0 1 0)  -- TODO: add items in the not(...) function
     toSelectorGroup = toSelectorGroup . SPseudo
     toPattern = undefined  -- TODO: convert to a pattern
-    normalize = undefined  -- normalize item in the not(...) function
+    -- normalize = undefined  -- TODO: normalize item in the not(...), etc. function(s).
 
 instance ToCssSelector PseudoElement where
     toCssSelector = pack . (':' :) . (':' :) . go

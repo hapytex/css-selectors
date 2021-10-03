@@ -39,6 +39,7 @@ import Data.Text(pack)
     string { TokenLoc (String $$) _ _ }
     hash   { TokenLoc (THash $$) _ _ }
     pseude { TokenLoc (PseudoElement $$) _ _ }
+    pseudc { TokenLoc (PseudoClass $$) _ _ }
 
 %%
 
@@ -81,6 +82,7 @@ FilterList
 
 SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
+    | pseudc                      { SPseudo $1 }
     | Class                       { SClass $1 }
     | AttribBox                   { SAttrib $1 }
     ;

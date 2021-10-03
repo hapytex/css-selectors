@@ -4,7 +4,14 @@ module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens
 
 import Data.Decimal(Decimal)
 import Css3.Selector.Utils(readCssString, readIdentifier)
-import Css3.Selector.Core(PseudoElement(..))
+import Css3.Selector.Core(
+    PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection)
+  , PseudoClass(
+        Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
+      , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+      )
+  , PseudoClass(..)
+  )
 }
 
 %wrapper "posn"
@@ -44,33 +51,58 @@ $tl       = [\~]
 @psb     = [:][:]?
 
 tokens :-
-  @wo "="  @wo        { constoken TEqual }
-  @wo "~=" @wo        { constoken TIncludes }
-  @wo "|=" @wo        { constoken TDashMatch }
-  @wo "^=" @wo        { constoken TPrefixMatch }
-  @wo "$=" @wo        { constoken TSuffixMatch }
-  @wo "*=" @wo        { constoken TSubstringMatch }
-  @wo ","  @wo        { constoken Comma }
-  "."                 { constoken Dot }
-  "|"                 { constoken Pipe }
-  "*"                 { constoken Asterisk }
-  @ident              { tokenize (Ident . readIdentifier) }
-  @string             { tokenize (String . readCssString) }
-  "#" @name           { tokenize (THash . readIdentifier . drop 1) }
-  @float              { tokenize (Decimal . read) }
-  @int                { tokenize (Integer . read) }
-  @wo "+" @wo         { constoken Plus }
-  @wo ">" @wo         { constoken Greater }
-  @wo $tl @wo         { constoken Tilde }
-  "[" @wo             { constoken BOpen }
-  @wo "]"             { constoken BClose }
-  @psb "after"        { constoken (PseudoElement After) }
-  @psb "before"       { constoken (PseudoElement Before) }
-  @psb "first-letter" { constoken (PseudoElement FirstLetter) }
-  @psb "first-line"   { constoken (PseudoElement FirstLine) }
-  @pse "marker"       { constoken (PseudoElement Marker) }
-  @pse "selection"    { constoken (PseudoElement Selection) }
-  $w @wo              { constoken Space }
+  @wo "="  @wo         { constoken TEqual }
+  @wo "~=" @wo         { constoken TIncludes }
+  @wo "|=" @wo         { constoken TDashMatch }
+  @wo "^=" @wo         { constoken TPrefixMatch }
+  @wo "$=" @wo         { constoken TSuffixMatch }
+  @wo "*=" @wo         { constoken TSubstringMatch }
+  @wo ","  @wo         { constoken Comma }
+  "."                  { constoken Dot }
+  "|"                  { constoken Pipe }
+  "*"                  { constoken Asterisk }
+  @ident               { tokenize (Ident . readIdentifier) }
+  @string              { tokenize (String . readCssString) }
+  "#" @name            { tokenize (THash . readIdentifier . drop 1) }
+  @float               { tokenize (Decimal . read) }
+  @int                 { tokenize (Integer . read) }
+  @wo "+" @wo          { constoken Plus }
+  @wo ">" @wo          { constoken Greater }
+  @wo $tl @wo          { constoken Tilde }
+  "[" @wo              { constoken BOpen }
+  @wo "]"              { constoken BClose }
+  @psb "after"         { constoken (PseudoElement After) }
+  @psb "before"        { constoken (PseudoElement Before) }
+  @psb "first-letter"  { constoken (PseudoElement FirstLetter) }
+  @psb "first-line"    { constoken (PseudoElement FirstLine) }
+  @pse "marker"        { constoken (PseudoElement Marker) }
+  @pse "selection"     { constoken (PseudoElement Selection) }
+  @psc "active"        { constoken (PseudoClass Active) }
+  @psc "checked"       { constoken (PseudoClass Checked) }
+  @psc "disabled"      { constoken (PseudoClass Disabled) }
+  @psc "empty"         { constoken (PseudoClass Empty) }
+  @psc "enabled"       { constoken (PseudoClass Enabled) }
+  @psc "first-child"   { constoken (PseudoClass FirstChild) }
+  @psc "first-of-type" { constoken (PseudoClass FirstOfType) }
+  @psc "focus"         { constoken (PseudoClass Focus) }
+  @psc "hover"         { constoken (PseudoClass Hover) }
+  @psc "in-range"      { constoken (PseudoClass InRange) }
+  @psc "invalid"       { constoken (PseudoClass Invalid) }
+  @psc "last-child"    { constoken (PseudoClass LastChild) }
+  @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
+  @psc "link"          { constoken (PseudoClass Link) }
+  @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
+  @psc "only-child"    { constoken (PseudoClass OnlyChild) }
+  @psc "optional"      { constoken (PseudoClass Optional) }
+  @psc "out-of-range"  { constoken (PseudoClass OutOfRange) }
+  @psc "read-only"     { constoken (PseudoClass ReadOnly) }
+  @psc "read-write"    { constoken (PseudoClass ReadWrite) }
+  @psc "required"      { constoken (PseudoClass Required) }
+  @psc "root"          { constoken (PseudoClass Root) }
+  @psc "target"        { constoken (PseudoClass Target) }
+  @psc "valid"         { constoken (PseudoClass Valid) }
+  @psc "visited"       { constoken (PseudoClass Visited) }
+  $w @wo               { constoken Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
 
 {
@@ -105,6 +137,7 @@ data Token =
     | Space
     | BOpen
     | BClose
+    | PseudoClass PseudoClass
     | PseudoElement PseudoElement
     deriving (Eq,Show)
 }
