@@ -78,4 +78,23 @@ p:nth-child(4n+4)
 :nth-child(10n+9)
 foo:nth-child(0n+5)
 foo:nth-child(5)
-
+p
+p::first-letter
+span
+h1 em
+div * p
+div p *[href]
+body > p
+div ol>li p
+match + p
+h1.opener + h2
+h1 ~ pre
+*
+LI
+UL LI
+UL OL+LI
+H1 + *[REL=up]
+UL OL LI.red
+LI.red.level
+#x34y
+#s12:not(FOO)

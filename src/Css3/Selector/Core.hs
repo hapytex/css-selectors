@@ -813,7 +813,31 @@ instance ToCssSelector PseudoClass where
 
     specificity' = const (SelectorSpecificity 0 1 0)  -- TODO: add items in the not(...) function
     toSelectorGroup = toSelectorGroup . SPseudo
-    toPattern = undefined  -- TODO: convert to a pattern
+    toPattern Active = _constantP 'Active
+    toPattern Checked = _constantP 'Checked
+    toPattern Disabled = _constantP 'Disabled
+    toPattern Empty = _constantP 'Empty
+    toPattern Enabled = _constantP 'Enabled
+    toPattern FirstChild = _constantP 'FirstChild
+    toPattern FirstOfType = _constantP 'FirstOfType
+    toPattern Focus = _constantP 'Focus
+    toPattern Hover = _constantP 'Hover
+    toPattern InRange = _constantP 'InRange
+    toPattern Invalid = _constantP 'Invalid
+    toPattern LastChild = _constantP 'LastChild
+    toPattern LastOfType = _constantP 'LastOfType
+    toPattern Link = _constantP 'Link
+    toPattern OnlyOfType = _constantP 'OnlyOfType
+    toPattern OnlyChild = _constantP 'OnlyChild
+    toPattern Optional = _constantP 'Optional
+    toPattern OutOfRange = _constantP 'OutOfRange
+    toPattern ReadOnly = _constantP 'ReadOnly
+    toPattern ReadWrite = _constantP 'ReadWrite
+    toPattern Required = _constantP 'Required
+    toPattern Root = _constantP 'Root
+    toPattern Target = _constantP 'Target
+    toPattern Valid = _constantP 'Valid
+    toPattern Visited = _constantP 'Visited
     -- normalize = undefined  -- TODO: normalize item in the not(...), etc. function(s).
 
 instance ToCssSelector PseudoElement where
