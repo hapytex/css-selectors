@@ -11,7 +11,7 @@ A module that defines the tree of types to represent and manipulate a css select
 -}
 module Css3.Selector.Core (
     -- * ToCssSelector typeclass
-    ToCssSelector(..)
+    ToCssSelector(toCssSelector, toSelectorGroup, specificity', toPattern, normalize)
     -- * Selectors and combinators
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
@@ -20,7 +20,7 @@ module Css3.Selector.Core (
     , combinatorText, combine
     , (.>), (.+), (.~)
     -- * Filters
-    , SelectorFilter(..), filters, filters', addFilters, (.@)
+    , SelectorFilter(SHash, SClass, SAttrib, SPseudo), filters, filters', addFilters, (.@)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -289,10 +289,11 @@ filters = reverse . filters'
 
 -- | A type that sums up the different ways to filter a type selector: with an
 -- id (hash), a class, and an attribute.
-data SelectorFilter =
-      SHash Hash -- ^ A 'Hash' object as filter.
+data SelectorFilter
+    = SHash Hash -- ^ A 'Hash' object as filter.
     | SClass Class -- ^ A 'Class' object as filter.
     | SAttrib Attrib -- ^ An 'Attrib' object as filter.
+    | SPseudo PseudoClass -- ^ A 'PseudoClass' object as filter.
     deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable SelectorFilter
@@ -725,13 +726,16 @@ instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
     toCssSelector (SClass c) = toCssSelector c
     toCssSelector (SAttrib a) = toCssSelector a
+    toCssSelector (SPseudo p) = toCssSelector p
     toSelectorGroup = toSelectorGroup . Filter (SimpleSelector Universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
+    specificity' (SPseudo p) = specificity' p
     toPattern (SHash h) = ConP 'SHash [toPattern h]
     toPattern (SClass c) = ConP 'SClass [toPattern c]
     toPattern (SAttrib a) = ConP 'SAttrib [toPattern a]
+    toPattern (SPseudo p) = ConP 'SPseudo [toPattern p]
 
 instance ToCssSelector Selector where
     toCssSelector (Selector s) = toCssSelector s
@@ -760,6 +764,14 @@ instance ToCssSelector PseudoSelectorSequence where
     toPattern (ss :.:: pe) = ConP '(:.::) [toPattern ss, toPattern pe]
     normalize (SelectorSequence ss) = SelectorSequence (normalize ss)
     normalize (ss :.:: pe) = normalize ss :.:: normalize pe
+
+instance ToCssSelector PseudoClass where
+    toCssSelector = pack . (':' :) . go
+      where go = undefined
+    specificity' = const (SelectorSpecificity 0 1 0)  -- TODO: add items in the not(...) function
+    toSelectorGroup = toSelectorGroup . SPseudo
+    toPattern = undefined  -- TODO: convert to a pattern
+    normalize = undefined  -- normalize item in the not(...) function
 
 instance ToCssSelector PseudoElement where
     toCssSelector = pack . (':' :) . (':' :) . go
@@ -874,12 +886,14 @@ instance Binary SelectorFilter where
   put (SHash h) = putWord8 0 >> put h
   put (SClass c) = putWord8 1 >> put c
   put (SAttrib a) = putWord8 2 >> put a
+  put (SPseudo p) = putWord8 3 >> put p
   get = do
     w <- getWord8
     case w of
       0 -> SHash <$> get
       1 -> SClass <$> get
       2 -> SAttrib <$> get
+      3 -> SPseudo <$> get
       _ -> fail "An error occurred when deserializing a SelectorFilter object."
 
 instance Binary Attrib where
@@ -1013,6 +1027,15 @@ instance ToMarkup Selector where
 instance ToMarkup SelectorSequence where
     toMarkup = _cssToMarkup
 
+instance ToMarkup PseudoSelectorSequence where
+    toMarkup = _cssToMarkup
+
+instance ToMarkup PseudoClass where
+    toMarkup = _cssToMarkup
+
+instance ToMarkup PseudoElement where
+    toMarkup = _cssToMarkup
+
 instance ToMarkup SelectorFilter where
     toMarkup = _cssToMarkup
 
@@ -1039,6 +1062,15 @@ instance ToJavascript Selector where
 instance ToJavascript SelectorSequence where
     toJavascript = _cssToJavascript
 
+instance ToJavascript PseudoSelectorSequence where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript PseudoClass where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript PseudoElement where
+    toJavascript = _cssToJavascript
+
 instance ToJavascript SelectorFilter where
     toJavascript = _cssToJavascript
 
@@ -1055,6 +1087,15 @@ instance ToJSON SelectorSequence where
     toJSON = _cssToJson
 
 instance ToJSON SelectorFilter where
+    toJSON = _cssToJson
+
+instance ToJSON PseudoSelectorSequence where
+    toJSON = _cssToJson
+
+instance ToJSON PseudoClass where
+    toJSON = _cssToJson
+
+instance ToJSON PseudoElement where
     toJSON = _cssToJson
 
 instance ToJSON Attrib where
@@ -1112,10 +1153,11 @@ instance Arbitrary AttributeCombinator where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SelectorFilter where
-    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary]
+    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary, SPseudo <$> arbitrary]
     shrink (SHash x) = SHash <$> shrink x
     shrink (SClass x) = SClass <$> shrink x
     shrink (SAttrib x) = SAttrib <$> shrink x
+    shrink (SPseudo x) = SPseudo <$> shrink x
 
 instance Arbitrary AttributeName where
     arbitrary = AttributeName <$> arbitrary <*> _arbitraryIdent
