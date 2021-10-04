@@ -18,7 +18,8 @@ module Css3.Selector.Core (
     , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(SelectorSequence, (:.::)), (.::)
     , PseudoClass(
           Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
-        , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+        , NthChild, NthLastChild, NthLastOfType, NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required
+        , Root, Target, Valid, Visited
         ), (.:)
     , SelectorSequence(..)
     , combinatorText, combine
@@ -82,7 +83,7 @@ import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), 
 #elif MIN_VERSION_template_haskell(2,16,0)
 import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q, unsafeTExpCoerce)
 #else
-import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q)
+import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), Q)
 #endif
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary, shrink), arbitraryBoundedEnum)
@@ -501,7 +502,11 @@ data PseudoClass
   | LastChild
   | LastOfType
   | Link
-  -- TODO: Not, NthChild | NthLastChild | NthLastOfType | NthOfType
+  -- TODO: Not
+  | NthChild Nth
+  | NthLastChild Nth
+  | NthLastOfType Nth
+  | NthOfType Nth
   | OnlyOfType
   | OnlyChild
   | Optional
@@ -513,7 +518,7 @@ data PseudoClass
   | Target
   | Valid
   | Visited
-  deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
+  deriving (Data, Eq, Generic, Ord, Read, Show)
 
 instance Hashable PseudoClass
 
@@ -639,6 +644,7 @@ instance IsString PseudoClass where
             go "last-child" = LastChild
             go "last-of-type" = LastOfType
             go "link" = Link
+            -- TODO: items with an Nth
             go "only-of-type" = OnlyOfType
             go "only-child" = OnlyChild
             go "optional" = Optional
@@ -799,8 +805,12 @@ instance ToCssSelector PseudoSelectorSequence where
     normalize (SelectorSequence ss) = SelectorSequence (normalize ss)
     normalize (ss :.:: pe) = normalize ss :.:: normalize pe
 
+_nthToPat :: Nth -> Pat
+_nthToPat (Nth n b) = ConP 'Nth [f n, f b]
+    where f = LitP . IntegerL . fromIntegral
+
 instance ToCssSelector PseudoClass where
-    toCssSelector = pack . (':' :) . go
+    toCssSelector = cons ':' . go
       where go Active = "active"
             go Checked = "checked"
             go Disabled = "disabled"
@@ -815,6 +825,10 @@ instance ToCssSelector PseudoClass where
             go LastChild = "last-child"
             go LastOfType = "last-of-type"
             go Link = "link"
+            go (NthChild nth) = "nth-child(" <> nthToText nth <> ")"
+            go (NthLastChild nth) = "nth-last-child(" <> nthToText nth <> ")"
+            go (NthLastOfType nth) = "nth-last-of-type(" <> nthToText nth <> ")"
+            go (NthOfType nth) = "nth-of-type(" <> nthToText nth <> ")"
             go OnlyOfType = "only-of-type"
             go OnlyChild = "only-child"
             go Optional = "optional"
@@ -843,6 +857,10 @@ instance ToCssSelector PseudoClass where
     toPattern LastChild = _constantP 'LastChild
     toPattern LastOfType = _constantP 'LastOfType
     toPattern Link = _constantP 'Link
+    toPattern (NthChild nth) = ConP 'NthChild [_nthToPat nth]
+    toPattern (NthLastChild nth) = ConP 'NthLastChild [_nthToPat nth]
+    toPattern (NthLastOfType nth) = ConP 'NthLastOfType [_nthToPat nth]
+    toPattern (NthOfType nth) = ConP 'NthOfType [_nthToPat nth]
     toPattern OnlyOfType = _constantP 'OnlyOfType
     toPattern OnlyChild = _constantP 'OnlyChild
     toPattern Optional = _constantP 'Optional
@@ -919,6 +937,10 @@ _putEnum = putWord8 . fromIntegral . fromEnum
 _getEnum :: Enum a => Get a
 _getEnum = toEnum . fromIntegral <$> getWord8
 
+instance Binary Nth where
+  put (Nth n b) = put n >> put b
+  get = Nth <$> get <*> get
+
 instance Binary SelectorSpecificity where
   put (SelectorSpecificity a b c) = put a >> put b >> put c
   get = SelectorSpecificity <$> get <*> get <*> get
@@ -944,8 +966,74 @@ instance Binary PseudoSelectorSequence where
       _ -> fail "An error occured while deserializing a PseudoSelectorSequence."
 
 instance Binary PseudoClass where
-  put = _putEnum
-  get = _getEnum
+  put Active = putWord8 0
+  put Checked = putWord8 1
+  put Disabled = putWord8 2
+  put Empty = putWord8 3
+  put Enabled = putWord8 4
+  put FirstChild = putWord8 5
+  put FirstOfType = putWord8 6
+  put Focus = putWord8 7
+  put Hover = putWord8 8
+  put InRange = putWord8 9
+  put Invalid = putWord8 10
+  -- put  -- TODO: Lang
+  put LastChild = putWord8 12
+  put LastOfType = putWord8 13
+  put Link = putWord8 14
+  -- put  -- TODO: Not
+  put (NthChild nth) = putWord8 16 >> put nth
+  put (NthLastChild nth) = putWord8 17 >> put nth
+  put (NthLastOfType nth) = putWord8 18 >> put nth
+  put (NthOfType nth) = putWord8 19 >> put nth
+  put OnlyOfType = putWord8 20
+  put OnlyChild = putWord8 21
+  put Optional = putWord8 22
+  put OutOfRange = putWord8 23
+  put ReadOnly = putWord8 24
+  put ReadWrite = putWord8 25
+  put Required = putWord8 26
+  put Root = putWord8 27
+  put Target = putWord8 28
+  put Valid = putWord8 29
+  put Visited = putWord8 30
+
+  get = do
+    w <- getWord8
+    case w of
+      0 -> pure Active
+      1 -> pure Checked
+      2 -> pure Disabled
+      3 -> pure Empty
+      4 -> pure Enabled
+      5 -> pure FirstChild
+      6 -> pure FirstOfType
+      7 -> pure Focus
+      8 -> pure Hover
+      9 -> pure InRange
+      10 -> pure Invalid
+      -- 11  -- TODO: Lang
+      12 -> pure LastChild
+      13 -> pure LastOfType
+      14 -> pure Link
+      -- 15  -- TODO: Not
+      16 -> NthChild <$> get
+      17 -> NthLastChild <$> get
+      18 -> NthLastOfType <$> get
+      19 -> NthOfType <$> get
+      20 -> pure OnlyOfType
+      21 -> pure OnlyChild
+      22 -> pure Optional
+      23 -> pure OutOfRange
+      24 -> pure ReadOnly
+      25 -> pure ReadWrite
+      26 -> pure Required
+      27 -> pure Root
+      28 -> pure Target
+      29 -> pure Valid
+      30 -> pure Visited
+      _ -> fail "An error occured while deserialzing a PseudoClass object."
+
 
 instance Binary PseudoElement where
   put = _putEnum
@@ -1205,6 +1293,9 @@ instance Arbitrary Class where
     arbitrary = Class <$> _arbitraryIdent
     shrink (Class a) = Class <$> _shrinkIdent a
 
+instance Arbitrary Nth where
+    arbitrary = Nth <$> arbitrary <*> arbitrary
+
 instance Arbitrary Namespace where
     arbitrary = frequency [(3, pure NAny), (1, Namespace <$> _arbitraryIdent)]
     shrink NAny = []
@@ -1221,8 +1312,8 @@ instance Arbitrary TypeSelector where
 
 instance Arbitrary SelectorSequence where
     arbitrary = addFilters . SimpleSelector <$> arbitrary <*> listOf arbitrary
-    shrink (SimpleSelector _) = []
-    shrink (Filter ss sf) = ss : (Filter ss <$> shrink sf)
+    shrink (SimpleSelector ss) = SimpleSelector <$> shrink ss
+    shrink (Filter ss sf) = ss : ((`Filter` sf) <$> shrink ss) ++ (Filter ss <$> shrink sf)
 
 instance Arbitrary PseudoSelectorSequence where
     arbitrary = frequency [(3, SelectorSequence <$> arbitrary), (1, (:.::) <$> arbitrary <*> arbitrary)]
@@ -1263,7 +1354,11 @@ instance Arbitrary Selector where
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
 
 instance Arbitrary PseudoClass where
-    arbitrary = arbitraryBoundedEnum
+    arbitrary = oneof (map pure [
+        Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
+      , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+      ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])
+
 
 instance Arbitrary PseudoElement where
     arbitrary = arbitraryBoundedEnum
