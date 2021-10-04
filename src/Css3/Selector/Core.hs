@@ -19,7 +19,7 @@ module Css3.Selector.Core (
     , PseudoClass(
           Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
         , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
-        )
+        ), (.:)
     , SelectorSequence(..)
     , combinatorText, combine
     , (.>), (.+), (.~)
@@ -28,7 +28,7 @@ module Css3.Selector.Core (
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
-    , PseudoClass, ElementName(..), TypeSelector(..), pattern Universal, (.|)
+    , ElementName(..), TypeSelector(..), pattern Universal, (.|)
     -- * Attributes
     , Attrib(..), AttributeCombinator(..), AttributeName(..), AttributeValue
     , (.=), (.~=), (.|=), (.^=), (.$=), (.*=)
@@ -71,7 +71,7 @@ import Data.Semigroup(Semigroup((<>)))
 #endif
 import Data.String(IsString(fromString))
 import qualified Data.Text as T
-import Data.Text(Text, cons, inits, intercalate, pack, tails, unpack)
+import Data.Text(Text, cons, inits, intercalate, pack, snoc, tails, unpack)
 
 import GHC.Exts(IsList(Item, fromList, toList))
 import GHC.Generics(Generic)
@@ -128,8 +128,8 @@ nthToText Odd = "odd"
 nthToText (Nth n 0) = snoc (pack (show n)) 'n'
 nthToText (Nth 0 b) = pack (show b)
 nthToText (Nth n b)
-  | b <= 0 = pack (show n <> 'n' : show b)
-  | otherwise = (show n <> 'n' : '+' : show b)
+  | b <= 0 = pack (show n ++ 'n' : show b)
+  | otherwise = pack (show n ++ 'n' : '+' : show b)
 
 -- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.

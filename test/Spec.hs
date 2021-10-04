@@ -33,7 +33,9 @@ tests = [
         testProperty "Encode-decode css identity: attribute" (encodeDecodeCss' @Attrib),
         testProperty "Encode-decode css identity: attribute name" (encodeDecodeCss' @AttributeName),
         testProperty "Encode-decode css identity: class" (encodeDecodeCss' @Class),
-        testProperty "Encode-decode css identity: hash" (encodeDecodeCss' @Hash)
+        testProperty "Encode-decode css identity: pseudo class" (encodeDecodeCss' @PseudoClass),
+        testProperty "Encode-decode css identity: pseudo element" (encodeDecodeCss' @PseudoElement),
+        testProperty "Encode-decode css identity: pseudo selector sequence" (encodeDecodeCss' @PseudoSelectorSequence)
     ],
     testGroup "SelectorSequences" [
         testProperty "Adding and removing filters" addRemFilters
@@ -57,7 +59,10 @@ tests = [
         testProperty "Binary identity: attribute" (binaryEquivalent @Attrib),
         testProperty "Binary identity: attribute name" (binaryEquivalent @AttributeName),
         testProperty "Binary identity: class" (binaryEquivalent @Class),
-        testProperty "Binary identity: hash" (binaryEquivalent @Hash)
+        testProperty "Binary identity: hash" (binaryEquivalent @Hash),
+        testProperty "Binary identity: pseudo class" (binaryEquivalent @PseudoClass),
+        testProperty "Binary identity: pseudo element" (binaryEquivalent @PseudoElement),
+        testProperty "Binary identity: pseudo selector sequence" (binaryEquivalent @PseudoSelectorSequence)
     ],
     testGroup "Check binary equality" [
         testProperty "Binary uniqness: selector group" (uniqnessEncoding @SelectorGroup),
@@ -70,7 +75,10 @@ tests = [
         testProperty "Binary uniqness: attribute" (uniqnessEncoding @Attrib),
         testProperty "Binary uniqness: attribute name" (uniqnessEncoding @AttributeName),
         testProperty "Binary uniqness: class" (uniqnessEncoding @Class),
-        testProperty "Binary uniqness: hash" (uniqnessEncoding @Hash)
+        testProperty "Binary uniqness: hash" (uniqnessEncoding @Hash),
+        testProperty "Binary uniqness: pseudo class" (uniqnessEncoding @PseudoClass),
+        testProperty "Binary uniqness: pseudo element" (uniqnessEncoding @PseudoElement),
+        testProperty "Binary uniqness: pseudo selector sequence" (uniqnessEncoding @PseudoSelectorSequence)
     ],
     testGroup "Check hash constraint for the Hashable instances" [
         testProperty "Different hash implies different items: selector group" (hashingDifferent @SelectorGroup),
@@ -83,7 +91,10 @@ tests = [
         testProperty "Different hash implies different items: attribute" (hashingDifferent @Attrib),
         testProperty "Different hash implies different items: attribute name" (hashingDifferent @AttributeName),
         testProperty "Different hash implies different items: class" (hashingDifferent @Class),
-        testProperty "Different hash implies different items: hash" (hashingDifferent @Hash)
+        testProperty "Different hash implies different items: hash" (hashingDifferent @Hash),
+        testProperty "Different hash implies different items: hash" (hashingDifferent @PseudoClass),
+        testProperty "Different hash implies different items: hash" (hashingDifferent @PseudoElement),
+        testProperty "Different hash implies different items: hash" (hashingDifferent @PseudoSelectorSequence)
     ]
   ]
 
