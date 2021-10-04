@@ -24,7 +24,7 @@ module Css3.Selector.Core (
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
-    , ElementName(..), TypeSelector(..), pattern Universal, (.|)
+    , PseudoClass, ElementName(..), TypeSelector(..), pattern Universal, (.|)
     -- * Attributes
     , Attrib(..), AttributeCombinator(..), AttributeName(..), AttributeValue
     , (.=), (.~=), (.|=), (.^=), (.$=), (.*=)
@@ -380,6 +380,13 @@ attrib = flip Attrib
     -> ElementName -- ^ The 'ElementName' for the 'TypeSelector'.
     -> TypeSelector -- ^ A 'TypeSelector' object constructed with the 'Namespace' and 'ElementName'.
 (.|) = TypeSelector
+
+
+-- | Filter a given 'SelectorSequence' with a given 'PseudoClass'.
+(.:) :: SelectorSequence -- ^ The given 'SelectorSequence' to filter.
+    -> PseudoClass -- ^ The given 'PseudoClass' to filter the 'SelectorSequence' further.
+    -> SelectorSequence -- ^ A 'SelectorSequence' that is filtered additionally with the given 'PseudoClass'.
+(.:) = (. SPseudo) . Filter
 
 -- | The namespace of a css selector tag. The namespace can be 'NAny' (all
 -- possible namespaces), or a namespace with a given text (this text can be
