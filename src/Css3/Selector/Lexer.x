@@ -11,6 +11,7 @@ import Css3.Selector.Core(
       , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       )
   , PseudoClass(..)
+  , Nth(Nth)
   )
 }
 
@@ -139,5 +140,6 @@ data Token =
     | BClose
     | PseudoClass PseudoClass
     | PseudoElement PseudoElement
+    | Nth Nth
     deriving (Eq,Show)
 }

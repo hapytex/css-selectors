@@ -1318,7 +1318,7 @@ instance Arbitrary SelectorSequence where
 instance Arbitrary PseudoSelectorSequence where
     arbitrary = frequency [(3, SelectorSequence <$> arbitrary), (1, (:.::) <$> arbitrary <*> arbitrary)]
     shrink (SelectorSequence ss) = SelectorSequence <$> shrink ss
-    shrink (ss :.:: pe) = SelectorSequence ss : ((:.:: pe) <$> shrink ss)
+    shrink (ss :.:: pe) = SelectorSequence ss : ((ss :.::) <$> shrink pe) ++ ((:.:: pe) <$> shrink ss)
 
 instance Arbitrary SelectorCombinator where
     arbitrary = arbitraryBoundedEnum
