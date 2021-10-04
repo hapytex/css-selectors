@@ -11,16 +11,20 @@ A module that defines the tree of types to represent and manipulate a css select
 -}
 module Css3.Selector.Core (
     -- * ToCssSelector typeclass
-    ToCssSelector(..)
+    ToCssSelector(toCssSelector, toSelectorGroup, specificity', toPattern, normalize)
     -- * Selectors and combinators
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
     , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(SelectorSequence, (:.::)), (.::)
+    , PseudoClass(
+          Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
+        , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+        )
     , SelectorSequence(..)
     , combinatorText, combine
     , (.>), (.+), (.~)
     -- * Filters
-    , SelectorFilter(..), filters, filters', addFilters, (.@)
+    , SelectorFilter(SHash, SClass, SAttrib, SPseudo), filters, filters', addFilters, (.@)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -33,6 +37,8 @@ module Css3.Selector.Core (
     , Class(..), (...)
     -- * Hashes
     , Hash(..), (.#)
+    -- * Nth items
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -103,6 +109,27 @@ instance NFData SelectorSpecificity
 specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calculate the specificity value from.
     -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
+
+data Nth = Nth { linear :: Int, constant :: Int } deriving (Data, Eq, Generic, Ord, Read, Show)
+
+instance Hashable Nth
+
+instance NFData Nth
+
+pattern Even :: Nth
+pattern Even = Nth 2 0
+
+pattern Odd :: Nth
+pattern Odd = Nth 2 1
+
+nthToText :: Nth -> Text
+nthToText Even = "even"
+nthToText Odd = "odd"
+nthToText (Nth n 0) = snoc (pack (show n)) 'n'
+nthToText (Nth 0 b) = pack (show b)
+nthToText (Nth n b)
+  | b <= 0 = pack (show n <> 'n' : show b)
+  | otherwise = (show n <> 'n' : '+' : show b)
 
 -- | A class that defines that the given type can be converted to a css selector
 -- value, and has a certain specificity.
@@ -289,10 +316,11 @@ filters = reverse . filters'
 
 -- | A type that sums up the different ways to filter a type selector: with an
 -- id (hash), a class, and an attribute.
-data SelectorFilter =
-      SHash Hash -- ^ A 'Hash' object as filter.
+data SelectorFilter
+    = SHash Hash -- ^ A 'Hash' object as filter.
     | SClass Class -- ^ A 'Class' object as filter.
     | SAttrib Attrib -- ^ An 'Attrib' object as filter.
+    | SPseudo PseudoClass -- ^ A 'PseudoClass' object as filter.
     deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable SelectorFilter
@@ -732,13 +760,16 @@ instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
     toCssSelector (SClass c) = toCssSelector c
     toCssSelector (SAttrib a) = toCssSelector a
+    toCssSelector (SPseudo p) = toCssSelector p
     toSelectorGroup = toSelectorGroup . Filter (SimpleSelector Universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
+    specificity' (SPseudo p) = specificity' p
     toPattern (SHash h) = ConP 'SHash [toPattern h]
     toPattern (SClass c) = ConP 'SClass [toPattern c]
     toPattern (SAttrib a) = ConP 'SAttrib [toPattern a]
+    toPattern (SPseudo p) = ConP 'SPseudo [toPattern p]
 
 instance ToCssSelector Selector where
     toCssSelector (Selector s) = toCssSelector s
@@ -767,6 +798,63 @@ instance ToCssSelector PseudoSelectorSequence where
     toPattern (ss :.:: pe) = ConP '(:.::) [toPattern ss, toPattern pe]
     normalize (SelectorSequence ss) = SelectorSequence (normalize ss)
     normalize (ss :.:: pe) = normalize ss :.:: normalize pe
+
+instance ToCssSelector PseudoClass where
+    toCssSelector = pack . (':' :) . go
+      where go Active = "active"
+            go Checked = "checked"
+            go Disabled = "disabled"
+            go Empty = "empty"
+            go Enabled = "enabled"
+            go FirstChild = "first-child"
+            go FirstOfType = "first-of-type"
+            go Focus = "focus"
+            go Hover = "hover"
+            go InRange = "in-range"
+            go Invalid = "invalid"
+            go LastChild = "last-child"
+            go LastOfType = "last-of-type"
+            go Link = "link"
+            go OnlyOfType = "only-of-type"
+            go OnlyChild = "only-child"
+            go Optional = "optional"
+            go OutOfRange = "out-of-range"
+            go ReadOnly = "read-only"
+            go ReadWrite = "read-write"
+            go Required = "required"
+            go Root = "root"
+            go Target = "target"
+            go Valid = "valid"
+            go Visited = "visited"
+
+    specificity' = const (SelectorSpecificity 0 1 0)  -- TODO: add items in the not(...) function
+    toSelectorGroup = toSelectorGroup . SPseudo
+    toPattern Active = _constantP 'Active
+    toPattern Checked = _constantP 'Checked
+    toPattern Disabled = _constantP 'Disabled
+    toPattern Empty = _constantP 'Empty
+    toPattern Enabled = _constantP 'Enabled
+    toPattern FirstChild = _constantP 'FirstChild
+    toPattern FirstOfType = _constantP 'FirstOfType
+    toPattern Focus = _constantP 'Focus
+    toPattern Hover = _constantP 'Hover
+    toPattern InRange = _constantP 'InRange
+    toPattern Invalid = _constantP 'Invalid
+    toPattern LastChild = _constantP 'LastChild
+    toPattern LastOfType = _constantP 'LastOfType
+    toPattern Link = _constantP 'Link
+    toPattern OnlyOfType = _constantP 'OnlyOfType
+    toPattern OnlyChild = _constantP 'OnlyChild
+    toPattern Optional = _constantP 'Optional
+    toPattern OutOfRange = _constantP 'OutOfRange
+    toPattern ReadOnly = _constantP 'ReadOnly
+    toPattern ReadWrite = _constantP 'ReadWrite
+    toPattern Required = _constantP 'Required
+    toPattern Root = _constantP 'Root
+    toPattern Target = _constantP 'Target
+    toPattern Valid = _constantP 'Valid
+    toPattern Visited = _constantP 'Visited
+    -- normalize = undefined  -- TODO: normalize item in the not(...), etc. function(s).
 
 instance ToCssSelector PseudoElement where
     toCssSelector = pack . (':' :) . (':' :) . go
@@ -881,12 +969,14 @@ instance Binary SelectorFilter where
   put (SHash h) = putWord8 0 >> put h
   put (SClass c) = putWord8 1 >> put c
   put (SAttrib a) = putWord8 2 >> put a
+  put (SPseudo p) = putWord8 3 >> put p
   get = do
     w <- getWord8
     case w of
       0 -> SHash <$> get
       1 -> SClass <$> get
       2 -> SAttrib <$> get
+      3 -> SPseudo <$> get
       _ -> fail "An error occurred when deserializing a SelectorFilter object."
 
 instance Binary Attrib where
@@ -1020,6 +1110,15 @@ instance ToMarkup Selector where
 instance ToMarkup SelectorSequence where
     toMarkup = _cssToMarkup
 
+instance ToMarkup PseudoSelectorSequence where
+    toMarkup = _cssToMarkup
+
+instance ToMarkup PseudoClass where
+    toMarkup = _cssToMarkup
+
+instance ToMarkup PseudoElement where
+    toMarkup = _cssToMarkup
+
 instance ToMarkup SelectorFilter where
     toMarkup = _cssToMarkup
 
@@ -1046,6 +1145,15 @@ instance ToJavascript Selector where
 instance ToJavascript SelectorSequence where
     toJavascript = _cssToJavascript
 
+instance ToJavascript PseudoSelectorSequence where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript PseudoClass where
+    toJavascript = _cssToJavascript
+
+instance ToJavascript PseudoElement where
+    toJavascript = _cssToJavascript
+
 instance ToJavascript SelectorFilter where
     toJavascript = _cssToJavascript
 
@@ -1062,6 +1170,15 @@ instance ToJSON SelectorSequence where
     toJSON = _cssToJson
 
 instance ToJSON SelectorFilter where
+    toJSON = _cssToJson
+
+instance ToJSON PseudoSelectorSequence where
+    toJSON = _cssToJson
+
+instance ToJSON PseudoClass where
+    toJSON = _cssToJson
+
+instance ToJSON PseudoElement where
     toJSON = _cssToJson
 
 instance ToJSON Attrib where
@@ -1119,10 +1236,11 @@ instance Arbitrary AttributeCombinator where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SelectorFilter where
-    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary]
+    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary, SPseudo <$> arbitrary]
     shrink (SHash x) = SHash <$> shrink x
     shrink (SClass x) = SClass <$> shrink x
     shrink (SAttrib x) = SAttrib <$> shrink x
+    shrink (SPseudo x) = SPseudo <$> shrink x
 
 instance Arbitrary AttributeName where
     arbitrary = AttributeName <$> arbitrary <*> _arbitraryIdent

@@ -87,6 +87,26 @@ tests = [
     ]
   ]
 
+-- Based on the w3c testkit: https://test.csswg.org/harness/suite/selectors-3_dev/
+validSelectors :: [String]
+validSelectors = [
+    "body > p"
+  , "div ol>li p"
+  , "*.pastoral"
+  , ".pastoral"
+  , "h1.pastoral"
+  , "p.pastoral.marine"
+  , "h1#chapter1"
+  , "#chapter1"
+  , "*#z98y"
+  , "math + p"
+  , "h1.opener + h2"
+  , "h1 ~ pre"
+  , "*"
+  , "div :first-child"
+  , "div *:first-child"
+  ]
+
 encodeDecode :: Char -> String -> Bool
 encodeDecode c b = readCssString (encodeString c b) == b
 

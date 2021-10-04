@@ -31,8 +31,9 @@ A css selector has the following structure:
      constructor;
   3. A `SelectorSequence` contains a `TypeSelector` (in case the `TypeSelector`
      is `Universal`, this does not need to be part of the css-selector
-     expression); and a set of zero or more `SelectorFilter`s;
-  4. A `SelectorFilter` is a `Hash`, a `Class`, or an `Attrib`;
+     expression); and a set of zero or more `SelectorFilter`s and with an optional
+     `PseudoElement`;
+  4. A `SelectorFilter` is a `Hash`, a `Class`, `Attrib`, or a `PseudoClass`;
   5. Both a `TypeSelector` and an `AttributeName` have a namespace. A namespace
      can be any (`*`), empty, or a namespace (which should be a valid
      identifier);
@@ -42,7 +43,8 @@ A css selector has the following structure:
      attribute should exist for the given tag, or an `Attrib` that specifies
      that the attribute exists, and that the value for this attribute satisfies
      a given constraint. This constraint is determined by the
-     `AttributeCombinator` and the value of the `Attrib` object.
+     `AttributeCombinator` and the value of the `Attrib` object;
+  9. A pseudo class is 
 
 ## Quasiquoter
 
