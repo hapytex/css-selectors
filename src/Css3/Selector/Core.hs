@@ -39,7 +39,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -116,6 +116,15 @@ data Nth = Nth { linear :: Int, constant :: Int } deriving (Data, Eq, Generic, O
 instance Hashable Nth
 
 instance NFData Nth
+
+nthValues :: Nth -> [Int]
+nthValues (Nth n c)
+  | n > 0 = let c' = c `mod` n in (if c' /= 0 then (c':) else id) [c'+n, c'+n ..]
+  | n < 0 = [ c, c+n .. 1 ]
+  | otherwise = [c | c > 0]
+
+nthValues0 :: Nth -> [Int]
+nthValues0 = map (subtract 1) . nthValues
 
 pattern Even :: Nth
 pattern Even = Nth 2 0

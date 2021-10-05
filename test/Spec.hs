@@ -92,9 +92,12 @@ tests = [
         testProperty "Different hash implies different items: attribute name" (hashingDifferent @AttributeName),
         testProperty "Different hash implies different items: class" (hashingDifferent @Class),
         testProperty "Different hash implies different items: hash" (hashingDifferent @Hash),
-        testProperty "Different hash implies different items: hash" (hashingDifferent @PseudoClass),
-        testProperty "Different hash implies different items: hash" (hashingDifferent @PseudoElement),
-        testProperty "Different hash implies different items: hash" (hashingDifferent @PseudoSelectorSequence)
+        testProperty "Different hash implies different items: pseudo class" (hashingDifferent @PseudoClass),
+        testProperty "Different hash implies different items: pseudo element" (hashingDifferent @PseudoElement),
+        testProperty "Different hash implies different items: pseudi selector sequence" (hashingDifferent @PseudoSelectorSequence)
+    ],
+    testGroup "Nths producing a list of integers" [
+        testProperty "Produces only (strictly) positive values" positiveNth
     ]
   ]
 
@@ -117,6 +120,9 @@ validSelectors = [
   , "div :first-child"
   , "div *:first-child"
   ]
+
+positiveNth :: Nth -> Bool
+positiveNth = all (0 <) . take 5000 . nthValues
 
 encodeDecode :: Char -> String -> Bool
 encodeDecode c b = readCssString (encodeString c b) == b
