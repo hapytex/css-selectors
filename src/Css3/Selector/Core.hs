@@ -119,7 +119,7 @@ instance NFData Nth
 
 nthValues :: Nth -> [Int]
 nthValues (Nth n c)
-  | n > 0 = let c' = c `mod` n in (if c' /= 0 then (c':) else id) [c'+n, c'+n ..]
+  | n > 0 = let {c' = c `mod` n; cn' = c' + n} in (if c' /= 0 then (c':) else id) [cn', cn' + n ..]
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
 
