@@ -103,7 +103,7 @@ tests = [
         testProperty "Produces only (strictly) positive values" positiveNth
       , testProperty "Normalizing produces the same list" normSameNth
       , testProperty "Normalizing is idempotent" normalizeNthIdempotent
-      , testProperty "Different normalized Nths have different values" differentNormalizedNthsAreDifferent
+      , testProperty "Different normalized Nths have different values" (withMaxSuccess 5000 differentNormalizedNthsAreDifferent)
     ]
   ]
 
@@ -143,8 +143,8 @@ normSameNth n = take 5000 (nthValues n) == take 5000 (nthValues (normalizeNth n)
 normalizeNthIdempotent :: Nth -> Bool
 normalizeNthIdempotent x = nx == normalizeNth nx where nx = normalizeNth x
 
-differentNormalizedNthsAreDifferent :: Nth -> Nth -> Bool
-differentNormalizedNthsAreDifferent n1 n2 = nn1 == nn2 || nthValues nn1 /= nthValues nn2
+differentNormalizedNthsAreDifferent :: Nth -> Nth -> Property
+differentNormalizedNthsAreDifferent n1 n2 = within 1000000 (nn1 == nn2 || nthValues nn1 /= nthValues nn2)
     where nn1 = normalizeNth n1
           nn2 = normalizeNth n2
 

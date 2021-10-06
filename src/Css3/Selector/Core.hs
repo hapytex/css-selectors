@@ -125,6 +125,7 @@ normalizeNth
   -> Nth -- ^ The normalized variant of the given 'Nth' object.
 normalizeNth nth@(Nth n c)
   | n <= 0 && c <= 0 = Nth 0 0
+  | n <= 0 && c + n <= 0 = Nth 0 c
   | n > 0 && c < 0 = let cn = c `mod` n in if cn /= 0 then Nth n cn else Nth n n
   | n > 0 && c == 0 = Nth n n
   | otherwise = nth
@@ -135,7 +136,8 @@ nthValues
   :: Nth  -- The 'Nth' object that specifies the given range.
   -> [Int]  -- ^ A list of one-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues (Nth n c)
-  | n > 0 = let {c' = c `mod` n; cn' = c' + n} in (if c' /= 0 then (c':) else id) [cn', cn' + n ..]
+  | n > 0 && c <= 0 = let {c' = c `mod` n; cn' = c' + n} in (if c' /= 0 then (c':) else id) [cn', cn' + n ..]
+  | n > 0 = [c, c+n ..]
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
 
