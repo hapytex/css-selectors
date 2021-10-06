@@ -135,7 +135,7 @@ nthValues
   :: Nth  -- The 'Nth' object that specifies the given range.
   -> [Int]  -- ^ A list of one-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues (Nth n c)
-  | n > 0 = let c' = c `mod` n in (if c' /= 0 then (c':) else id) [c'+n, c'+n ..]
+  | n > 0 = let {c' = c `mod` n; cn' = c' + n} in (if c' /= 0 then (c':) else id) [cn', cn' + n ..]
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
 
