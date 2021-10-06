@@ -117,23 +117,41 @@ instance Hashable Nth
 
 instance NFData Nth
 
-normalizeNth :: Nth -> Nth
+-- | Normalize the given 'Nth' object to a normalized one. If and only if the
+-- normalized variants are the same of two 'Nth' objects, then these will produce
+-- the same list of values. Normalization is idempotent: calling 'normalizeNth'
+-- on a normalized 'Nth' will produce the same 'Nth'.
+normalizeNth
+  :: Nth -- ^ The given 'Nth' item to normalize.
+  -> Nth -- ^ The normalized variant of the given 'Nth' object.
 normalizeNth nth@(Nth n c)
   | n <= 0 && c <= 0 = Nth 0 0
   | n > 0 && c < 0 = let cn = c `mod` n in if cn /= 0 then Nth n cn else Nth n n
   | n > 0 && c == 0 = Nth n n
   | otherwise = nth
 
-nthValues :: Nth -> [Int]
+-- | Obtain the one-based indices that match the given 'Nth' object. The CSS3 selectors
+-- are one-based: the first child has index 1.
+nthValues
+  :: Nth  -- The 'Nth' object that specifies the given range.
+  -> [Int]  -- ^ A list of one-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues (Nth n c)
   | n > 0 = let c' = c `mod` n in (if c' /= 0 then (c':) else id) [c'+n, c'+n ..]
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
 
-nthValues1 :: Nth -> [Int]
+-- | Obtain the one-based indices that match the given 'Nth' object. The CSS3 selectors
+-- are one-based: the first child has index 1. This is an alias of the 'nthValues' function.
+nthValues1
+  :: Nth  -- The 'Nth' object that specifies the given range.
+  -> [Int]  -- ^ A list of zero-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues1 = nthValues
 
-nthValues0 :: Nth -> [Int]
+-- | Obtain the zero-based indices that match the given 'Nth' object. One can use this for list/vector processing since
+-- the CSS3 selectors start with index 1. The 'nthValues1' can be used for one-based indexes.
+nthValues0
+  :: Nth  -- The 'Nth' object that specifies the given range.
+  -> [Int]  -- ^ A list of zero-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues0 = map (subtract 1) . nthValues
 
 pattern Even :: Nth
