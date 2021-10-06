@@ -62,7 +62,8 @@ tests = [
         testProperty "Binary identity: hash" (binaryEquivalent @Hash),
         testProperty "Binary identity: pseudo class" (binaryEquivalent @PseudoClass),
         testProperty "Binary identity: pseudo element" (binaryEquivalent @PseudoElement),
-        testProperty "Binary identity: pseudo selector sequence" (binaryEquivalent @PseudoSelectorSequence)
+        testProperty "Binary identity: pseudo selector sequence" (binaryEquivalent @PseudoSelectorSequence),
+        testProperty "Binary identity: nth" (binaryEquivalent @Nth)
     ],
     testGroup "Check binary equality" [
         testProperty "Binary uniqness: selector group" (uniqnessEncoding @SelectorGroup),
@@ -78,7 +79,8 @@ tests = [
         testProperty "Binary uniqness: hash" (uniqnessEncoding @Hash),
         testProperty "Binary uniqness: pseudo class" (uniqnessEncoding @PseudoClass),
         testProperty "Binary uniqness: pseudo element" (uniqnessEncoding @PseudoElement),
-        testProperty "Binary uniqness: pseudo selector sequence" (uniqnessEncoding @PseudoSelectorSequence)
+        testProperty "Binary uniqness: pseudo selector sequence" (uniqnessEncoding @PseudoSelectorSequence),
+        testProperty "Binary uniqness: nth" (uniqnessEncoding @Nth)
     ],
     testGroup "Check hash constraint for the Hashable instances" [
         testProperty "Different hash implies different items: selector group" (hashingDifferent @SelectorGroup),
@@ -94,10 +96,14 @@ tests = [
         testProperty "Different hash implies different items: hash" (hashingDifferent @Hash),
         testProperty "Different hash implies different items: pseudo class" (hashingDifferent @PseudoClass),
         testProperty "Different hash implies different items: pseudo element" (hashingDifferent @PseudoElement),
-        testProperty "Different hash implies different items: pseudo selector sequence" (hashingDifferent @PseudoSelectorSequence)
+        testProperty "Different hash implies different items: pseudo selector sequence" (hashingDifferent @PseudoSelectorSequence),
+        testProperty "Different hash implies different items: nth" (hashingDifferent @Nth)
     ],
-    testGroup "Nths producing a list of integers" [
+    testGroup "Nths" [
         testProperty "Produces only (strictly) positive values" positiveNth
+      , testProperty "Normalizing produces the same list" normSameNth
+      , testProperty "Normalizing is idempotent" normalizeNthIdempotent
+      , testProperty "Different normalized Nths have different values" differentNormalizedNthsAreDifferent
     ]
   ]
 
@@ -121,8 +127,26 @@ validSelectors = [
   , "div *:first-child"
   ]
 
+equivalentNths :: [(Nth, Nth)]
+equivalentNths = [
+    (Nth 2 1, Odd)
+  , (Nth 2 0, Even)
+  , (Nth 10 (-1), Nth 10 9)
+  ]
+
 positiveNth :: Nth -> Bool
 positiveNth = all (0 <) . take 5000 . nthValues
+
+normSameNth :: Nth -> Bool
+normSameNth n = take 5000 (nthValues n) == take 5000 (nthValues (normalizeNth n))
+
+normalizeNthIdempotent :: Nth -> Bool
+normalizeNthIdempotent x = nx == normalizeNth nx where nx = normalizeNth x
+
+differentNormalizedNthsAreDifferent :: Nth -> Nth -> Bool
+differentNormalizedNthsAreDifferent n1 n2 = nn1 == nn2 || nthValues nn1 /= nthValues nn2
+    where nn1 = normalizeNth n1
+          nn2 = normalizeNth n2
 
 encodeDecode :: Char -> String -> Bool
 encodeDecode c b = readCssString (encodeString c b) == b
@@ -133,13 +157,13 @@ encodeDecodeId b = readIdentifier (unpack (encodeIdentifier (pack b))) == b
 encodeDecodeCss :: SelectorGroup -> Bool
 encodeDecodeCss sg = sg == (parseCss . unpack . toCssSelector) sg
 
-binaryEquivalent :: (Binary a, Eq a, ToCssSelector a) => a -> Bool
+binaryEquivalent :: (Binary a, Eq a) => a -> Bool
 binaryEquivalent x = decode (encode x) == x
 
 hashingDifferent :: (Hashable a, Eq a) => Int -> a -> a -> Bool
 hashingDifferent slt xa xb = (hashWithSalt slt xa == hashWithSalt slt xb) || (xa /= xb)
 
-uniqnessEncoding :: (Binary a, Eq a, ToCssSelector a) => a -> a -> Bool
+uniqnessEncoding :: (Binary a, Eq a) => a -> a -> Bool
 uniqnessEncoding ca cb = (encode ca == encode cb) == (ca == cb)
 
 encodeDecodeCss' :: ToCssSelector a => a -> Bool

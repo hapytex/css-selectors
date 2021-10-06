@@ -39,7 +39,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -117,11 +117,21 @@ instance Hashable Nth
 
 instance NFData Nth
 
+normalizeNth :: Nth -> Nth
+normalizeNth nth@(Nth n c)
+  | n <= 0 && c <= 0 = Nth 0 0
+  | n > 0 && c < 0 = let cn = c `mod` n in if cn /= 0 then Nth n cn else Nth n n
+  | n > 0 && c == 0 = Nth n n
+  | otherwise = nth
+
 nthValues :: Nth -> [Int]
 nthValues (Nth n c)
   | n > 0 = let c' = c `mod` n in (if c' /= 0 then (c':) else id) [c'+n, c'+n ..]
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
+
+nthValues1 :: Nth -> [Int]
+nthValues1 = nthValues
 
 nthValues0 :: Nth -> [Int]
 nthValues0 = map (subtract 1) . nthValues
@@ -881,7 +891,11 @@ instance ToCssSelector PseudoClass where
     toPattern Target = _constantP 'Target
     toPattern Valid = _constantP 'Valid
     toPattern Visited = _constantP 'Visited
-    -- normalize = undefined  -- TODO: normalize item in the not(...), etc. function(s).
+    normalize (NthChild nth) = NthChild (normalizeNth nth)
+    normalize (NthLastChild nth) = NthLastChild (normalizeNth nth)
+    normalize (NthLastOfType nth) = NthLastOfType (normalizeNth nth)
+    normalize (NthOfType nth) = NthOfType (normalizeNth nth)
+    normalize pc = pc  -- TODO: normalize item in the not(...), etc. function(s).
 
 instance ToCssSelector PseudoElement where
     toCssSelector = pack . (':' :) . (':' :) . go
