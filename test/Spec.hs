@@ -94,7 +94,7 @@ tests = [
         testProperty "Different hash implies different items: hash" (hashingDifferent @Hash),
         testProperty "Different hash implies different items: pseudo class" (hashingDifferent @PseudoClass),
         testProperty "Different hash implies different items: pseudo element" (hashingDifferent @PseudoElement),
-        testProperty "Different hash implies different items: pseudi selector sequence" (hashingDifferent @PseudoSelectorSequence)
+        testProperty "Different hash implies different items: pseudo selector sequence" (hashingDifferent @PseudoSelectorSequence)
     ],
     testGroup "Nths producing a list of integers" [
         testProperty "Produces only (strictly) positive values" positiveNth

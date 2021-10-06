@@ -939,6 +939,10 @@ instance Default SelectorCombinator where
 instance Default AttributeCombinator where
     def = Exact
 
+-- | The default of the Nth instance is @n@, where all childs are selected.
+instance Default Nth where
+    def = Nth 1 0
+
 -- Binary instance
 _putEnum :: Enum a => a -> Put
 _putEnum = putWord8 . fromIntegral . fromEnum
