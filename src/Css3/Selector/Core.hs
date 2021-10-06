@@ -17,10 +17,9 @@ module Css3.Selector.Core (
     , SelectorCombinator(..), SelectorGroup(..)
     , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(SelectorSequence, (:.::)), (.::)
     , PseudoClass(
-          Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
-        , NthChild, NthLastChild, NthLastOfType, NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required
-        , Root, Target, Valid, Visited
-        ), (.:)
+          Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, NthChild, NthLastChild, NthLastOfType
+        , NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required, Root, Target, Valid, Visited
+        ), (.:), pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
     , SelectorSequence(..)
     , combinatorText, combine
     , (.>), (.+), (.~)
@@ -159,6 +158,9 @@ pattern Even = Nth 2 0
 
 pattern Odd :: Nth
 pattern Odd = Nth 2 1
+
+pattern Zero :: Nth
+pattern Zero = Nth 0 1
 
 nthToText :: Nth -> Text
 nthToText Even = "even"
@@ -529,15 +531,15 @@ data PseudoClass
   | Disabled
   | Empty
   | Enabled
-  | FirstChild
-  | FirstOfType
+  -- | FirstChild
+  -- | FirstOfType
   | Focus
   | Hover
   | InRange
   | Invalid
   -- TODO: Lang
-  | LastChild
-  | LastOfType
+  -- | LastChild
+  -- | LastOfType
   | Link
   -- TODO: Not
   | NthChild Nth
@@ -560,6 +562,18 @@ data PseudoClass
 instance Hashable PseudoClass
 
 instance NFData PseudoClass
+
+pattern FirstChild :: PseudoClass
+pattern FirstChild = NthChild Zero
+
+pattern FirstOfType :: PseudoClass
+pattern FirstOfType = NthOfType Zero
+
+pattern LastChild :: PseudoClass
+pattern LastChild = NthLastChild Zero
+
+pattern LastOfType :: PseudoClass
+pattern LastOfType = NthLastOfType Zero
 
 data PseudoElement
   = After
@@ -853,18 +867,18 @@ instance ToCssSelector PseudoClass where
             go Disabled = "disabled"
             go Empty = "empty"
             go Enabled = "enabled"
-            go FirstChild = "first-child"
-            go FirstOfType = "first-of-type"
             go Focus = "focus"
             go Hover = "hover"
             go InRange = "in-range"
             go Invalid = "invalid"
-            go LastChild = "last-child"
-            go LastOfType = "last-of-type"
             go Link = "link"
+            go FirstChild = "first-child"
             go (NthChild nth) = "nth-child(" <> nthToText nth <> ")"
+            go LastChild = "last-child"
             go (NthLastChild nth) = "nth-last-child(" <> nthToText nth <> ")"
+            go LastOfType = "last-of-type"
             go (NthLastOfType nth) = "nth-last-of-type(" <> nthToText nth <> ")"
+            go FirstOfType = "first-of-type"
             go (NthOfType nth) = "nth-of-type(" <> nthToText nth <> ")"
             go OnlyOfType = "only-of-type"
             go OnlyChild = "only-child"
@@ -885,14 +899,10 @@ instance ToCssSelector PseudoClass where
     toPattern Disabled = _constantP 'Disabled
     toPattern Empty = _constantP 'Empty
     toPattern Enabled = _constantP 'Enabled
-    toPattern FirstChild = _constantP 'FirstChild
-    toPattern FirstOfType = _constantP 'FirstOfType
     toPattern Focus = _constantP 'Focus
     toPattern Hover = _constantP 'Hover
     toPattern InRange = _constantP 'InRange
     toPattern Invalid = _constantP 'Invalid
-    toPattern LastChild = _constantP 'LastChild
-    toPattern LastOfType = _constantP 'LastOfType
     toPattern Link = _constantP 'Link
     toPattern (NthChild nth) = ConP 'NthChild [_nthToPat nth]
     toPattern (NthLastChild nth) = ConP 'NthLastChild [_nthToPat nth]
@@ -1016,32 +1026,28 @@ instance Binary PseudoClass where
   put Disabled = putWord8 2
   put Empty = putWord8 3
   put Enabled = putWord8 4
-  put FirstChild = putWord8 5
-  put FirstOfType = putWord8 6
-  put Focus = putWord8 7
-  put Hover = putWord8 8
-  put InRange = putWord8 9
-  put Invalid = putWord8 10
+  put Focus = putWord8 5
+  put Hover = putWord8 6
+  put InRange = putWord8 7
+  put Invalid = putWord8 8
   -- put  -- TODO: Lang
-  put LastChild = putWord8 12
-  put LastOfType = putWord8 13
-  put Link = putWord8 14
+  put Link = putWord8 10
   -- put  -- TODO: Not
-  put (NthChild nth) = putWord8 16 >> put nth
-  put (NthLastChild nth) = putWord8 17 >> put nth
-  put (NthLastOfType nth) = putWord8 18 >> put nth
-  put (NthOfType nth) = putWord8 19 >> put nth
-  put OnlyOfType = putWord8 20
-  put OnlyChild = putWord8 21
-  put Optional = putWord8 22
-  put OutOfRange = putWord8 23
-  put ReadOnly = putWord8 24
-  put ReadWrite = putWord8 25
-  put Required = putWord8 26
-  put Root = putWord8 27
-  put Target = putWord8 28
-  put Valid = putWord8 29
-  put Visited = putWord8 30
+  put (NthChild nth) = putWord8 12 >> put nth
+  put (NthLastChild nth) = putWord8 13 >> put nth
+  put (NthLastOfType nth) = putWord8 14 >> put nth
+  put (NthOfType nth) = putWord8 15 >> put nth
+  put OnlyOfType = putWord8 16
+  put OnlyChild = putWord8 17
+  put Optional = putWord8 18
+  put OutOfRange = putWord8 19
+  put ReadOnly = putWord8 20
+  put ReadWrite = putWord8 21
+  put Required = putWord8 22
+  put Root = putWord8 23
+  put Target = putWord8 24
+  put Valid = putWord8 25
+  put Visited = putWord8 26
 
   get = do
     w <- getWord8
@@ -1051,32 +1057,28 @@ instance Binary PseudoClass where
       2 -> pure Disabled
       3 -> pure Empty
       4 -> pure Enabled
-      5 -> pure FirstChild
-      6 -> pure FirstOfType
-      7 -> pure Focus
-      8 -> pure Hover
-      9 -> pure InRange
-      10 -> pure Invalid
+      5 -> pure Focus
+      6 -> pure Hover
+      7 -> pure InRange
+      8 -> pure Invalid
       -- 11  -- TODO: Lang
-      12 -> pure LastChild
-      13 -> pure LastOfType
-      14 -> pure Link
+      10 -> pure Link
       -- 15  -- TODO: Not
-      16 -> NthChild <$> get
-      17 -> NthLastChild <$> get
-      18 -> NthLastOfType <$> get
-      19 -> NthOfType <$> get
-      20 -> pure OnlyOfType
-      21 -> pure OnlyChild
-      22 -> pure Optional
-      23 -> pure OutOfRange
-      24 -> pure ReadOnly
-      25 -> pure ReadWrite
-      26 -> pure Required
-      27 -> pure Root
-      28 -> pure Target
-      29 -> pure Valid
-      30 -> pure Visited
+      12 -> NthChild <$> get
+      13 -> NthLastChild <$> get
+      14 -> NthLastOfType <$> get
+      15 -> NthOfType <$> get
+      16 -> pure OnlyOfType
+      17 -> pure OnlyChild
+      18 -> pure Optional
+      19 -> pure OutOfRange
+      20 -> pure ReadOnly
+      21 -> pure ReadWrite
+      22 -> pure Required
+      23 -> pure Root
+      24 -> pure Target
+      25 -> pure Valid
+      26 -> pure Visited
       _ -> fail "An error occured while deserialzing a PseudoClass object."
 
 
@@ -1400,8 +1402,8 @@ instance Arbitrary Selector where
 
 instance Arbitrary PseudoClass where
     arbitrary = oneof (map pure [
-        Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
-      , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+        Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
+      , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])
 
 

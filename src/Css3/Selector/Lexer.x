@@ -1,5 +1,7 @@
 --vim:ft=haskell
 {
+{-# LANGUAGE PatternSynonyms #-}
+
 module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
 
 import Data.Decimal(Decimal)
@@ -7,9 +9,10 @@ import Css3.Selector.Utils(readCssString, readIdentifier)
 import Css3.Selector.Core(
     PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection)
   , PseudoClass(
-        Active, Checked, Disabled, Empty, Enabled, FirstChild, FirstOfType, Focus, Hover, InRange, Invalid, LastChild, LastOfType, Link
+        Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link
       , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       )
+  , pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
   , PseudoClass(..)
   , Nth(Nth)
   )
