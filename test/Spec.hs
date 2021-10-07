@@ -104,6 +104,7 @@ tests = [
       , testProperty "Normalizing produces the same list" normSameNth
       , testProperty "Normalizing is idempotent" normalizeNthIdempotent
       , testProperty "Different normalized Nths have different values" (withMaxSuccess 5000 differentNormalizedNthsAreDifferent)
+      , testProperty "Intersection of two Nths" (withMaxSuccess 5000 )
     ]
   ]
 

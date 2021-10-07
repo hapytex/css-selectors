@@ -141,6 +141,10 @@ nthValues (Nth n c)
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
 
+nthContainsValue :: Nth -> Int -> Bool
+nthContainsValue (Nth 0 c) i = c == i && i > 0
+nthContainsValue (Nth n c) i = i > 0 && (i - c) `mod` n == 0
+
 -- | Obtain the one-based indices that match the given 'Nth' object. The CSS3 selectors
 -- are one-based: the first child has index 1. This is an alias of the 'nthValues' function.
 nthValues1
@@ -155,14 +159,23 @@ nthValues0
   -> [Int]  -- ^ A list of zero-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues0 = map (subtract 1) . nthValues
 
+intersectNth
+  :: Nth
+  -> Nth
+  -> Nth
+intersectNth (Nth 0 a) (Nth 0 b) = if a == b then Nth 0 a else Nth 0 (-1)
+intersectNth (Nth na ca) (Nth nb cb)
+  | na > 0 && nb > 0 = Nth (lcm na nb) (ca+cb)
+  | otherwise = undefined
+
 pattern Even :: Nth
 pattern Even = Nth 2 0
 
 pattern Odd :: Nth
 pattern Odd = Nth 2 1
 
-pattern Zero :: Nth
-pattern Zero = Nth 0 1
+pattern One :: Nth
+pattern One = Nth 0 1
 
 nthToText :: Nth -> Text
 nthToText Even = "even"
@@ -566,16 +579,16 @@ instance Hashable PseudoClass
 instance NFData PseudoClass
 
 pattern FirstChild :: PseudoClass
-pattern FirstChild = NthChild Zero
+pattern FirstChild = NthChild One
 
 pattern FirstOfType :: PseudoClass
-pattern FirstOfType = NthOfType Zero
+pattern FirstOfType = NthOfType One
 
 pattern LastChild :: PseudoClass
-pattern LastChild = NthLastChild Zero
+pattern LastChild = NthLastChild One
 
 pattern LastOfType :: PseudoClass
-pattern LastOfType = NthLastOfType Zero
+pattern LastOfType = NthLastOfType One
 
 data PseudoElement
   = After
