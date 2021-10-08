@@ -104,7 +104,8 @@ tests = [
       , testProperty "Normalizing produces the same list" normSameNth
       , testProperty "Normalizing is idempotent" normalizeNthIdempotent
       , testProperty "Different normalized Nths have different values" (withMaxSuccess 5000 differentNormalizedNthsAreDifferent)
-      , testProperty "Intersection of two Nths" (withMaxSuccess 5000 )
+      -- , testProperty "Intersection of two Nths" (withMaxSuccess 5000 )
+      , testProperty "nthContainsValue contains all values" nthContainsItems
     ]
   ]
 
@@ -127,6 +128,9 @@ validSelectors = [
   , "div :first-child"
   , "div *:first-child"
   ]
+
+nthContainsItems :: Nth -> Bool
+nthContainsItems nth = all (nthContainsValue nth) (take 5000 (nthValues nth))
 
 equivalentNths :: [(Nth, Nth)]
 equivalentNths = [

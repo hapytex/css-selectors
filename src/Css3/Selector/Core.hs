@@ -38,7 +38,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth, nthContainsValue
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
