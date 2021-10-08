@@ -124,8 +124,7 @@ normalizeNth
   :: Nth -- ^ The given 'Nth' item to normalize.
   -> Nth -- ^ The normalized variant of the given 'Nth' object.
 normalizeNth nth@(Nth n c)
-  | n <= 0 && c <= 0 = Nth 0 0
-  | n <= 0 && c + n <= 0 = Nth 0 c
+  | n <= 0 && c + n <= 0 = Nth 0 (max 0 c)
   | n > 0 && c < 0 = let cn = c `mod` n in if cn /= 0 then Nth n cn else Nth n n
   | n > 0 && c == 0 = Nth n n
   | otherwise = nth
