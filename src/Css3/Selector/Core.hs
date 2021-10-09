@@ -1355,7 +1355,12 @@ instance Arbitrary Class where
     shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Nth where
-    arbitrary = Nth <$> arbitrary <*> arbitrary
+    arbitrary = oneof [pure Even, pure Odd]
+    -- arbitrary = Nth <$> arbitrary <*> arbitrary
+    shrink nth
+      | nth == nnth = []
+      | otherwise = [nnth]
+      where nnth = normalizeNth nth
 
 instance Arbitrary Namespace where
     arbitrary = frequency [(3, pure NAny), (1, Namespace <$> _arbitraryIdent)]
