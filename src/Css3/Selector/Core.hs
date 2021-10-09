@@ -142,7 +142,7 @@ nthValues (Nth n c)
 
 nthContainsValue :: Nth -> Int -> Bool
 nthContainsValue (Nth 0 c) i = c == i && i > 0
-nthContainsValue (Nth n c) i = i > 0 && (i - c) `mod` n == 0
+nthContainsValue (Nth n c) i = i > 0 && (i - c) `div` n >= 0 && (i - c) `mod` n == 0
 
 -- | Obtain the one-based indices that match the given 'Nth' object. The CSS3 selectors
 -- are one-based: the first child has index 1. This is an alias of the 'nthValues' function.
