@@ -107,6 +107,7 @@ tests = [
       -- , testProperty "Intersection of two Nths" (withMaxSuccess 5000 )
       , testProperty "nthContainsValue contains all values" nthContainsSameItems
       , testProperty "nth contains same as its normalized counterpart" (withMaxSuccess 5000 normalizeContainsSame)
+      , testProperty "check if the two Nths produce a valid intersection" (withMaxSuccess 5000 intersectNthTest)
     ]
   ]
 
@@ -129,6 +130,10 @@ validSelectors = [
   , "div :first-child"
   , "div *:first-child"
   ]
+
+intersectNthTest :: Nth -> Nth -> Bool
+intersectNthTest na nb = all (\x -> nthContainsValue nn x == (nthContainsValue na x && nthContainsValue nb x)) [0 .. 2000]
+  where nn = intersectNth na nb
 
 nthContainsSameItems :: Nth -> Bool
 nthContainsSameItems nth = all (nthContainsValue nth) (take 5000 (nthValues nth))

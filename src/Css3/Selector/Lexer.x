@@ -12,7 +12,7 @@ import Css3.Selector.Core(
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link
       , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       )
-  , Nth(Nth), pattern Even, pattern Odd
+  , Nth, pattern Even, pattern Odd
   , pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
   , PseudoClass(..)
   )

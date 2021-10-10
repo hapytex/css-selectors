@@ -38,7 +38,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth, nthContainsValue
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -1355,8 +1355,8 @@ instance Arbitrary Class where
     shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Nth where
-    arbitrary = oneof [pure Even, pure Odd]
-    -- arbitrary = Nth <$> arbitrary <*> arbitrary
+    -- arbitrary = oneof [pure Even, pure Odd]
+    arbitrary = Nth <$> arbitrary <*> arbitrary
     shrink nth
       | nth == nnth = []
       | otherwise = [nnth]
