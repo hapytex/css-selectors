@@ -101,10 +101,10 @@ tokens :-
   @psc "last-child"    { constoken (PseudoClass LastChild) }
   @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
   @psc "link"          { constoken (PseudoClass Link) }
-  @psc "nth-child" @nthb { tokenize (PseudoClass . NthChild . parseNth) }
-  @psc "nth-last-child" @nthb { tokenize (PseudoClass . NthLastChild . parseNth) }
-  @psc "nth-last-of-type" @nthb { tokenize (PseudoClass . NthLastOfType . parseNth) }
-  @psc "nth-of-type" @nthb { tokenize (PseudoClass . NthOfType . parseNth) }
+  <foo> @psc "nth-child" @nthb { tokenize (PseudoClass . NthChild . parseNth) }
+  <foo> @psc "nth-last-child" @nthb { tokenize (PseudoClass . NthLastChild . parseNth) }
+  <foo> @psc "nth-last-of-type" @nthb { tokenize (PseudoClass . NthLastOfType . parseNth) }
+  <foo> @psc "nth-of-type" @nthb { tokenize (PseudoClass . NthOfType . parseNth) }
   @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
   @psc "only-child"    { constoken (PseudoClass OnlyChild) }
   @psc "optional"      { constoken (PseudoClass Optional) }
