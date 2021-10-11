@@ -60,6 +60,8 @@ tokens :-
   @n                      { constoken TN }
   "+"                     { constoken (TPM id) }
   "-"                     { constoken (TPM negate) }
+  "("                     { constoken TOpen }
+  ")"                     { constoken TClose }
   $w@wo                   { constoken TSpace }
 
 {
@@ -75,6 +77,8 @@ constoken = tokenize . const
 data Token
   = TPseudo (Nth -> PseudoClass)
   | TN
+  | TOpen
+  | TClose
   | TNth Nth
   | TSpace
   | TInt Int

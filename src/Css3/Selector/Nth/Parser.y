@@ -24,8 +24,15 @@ import Data.Text(pack)
     int    { TokenLoc (TInt $$) _ _}
     n      { TokenLoc TN _ _ }
     ' '    { TokenLoc TSpace _ _ }
+    '('    { TokenLoc TOpen _ _ }
+    ')'    { TokenLoc TClose _ _}
 
 %%
+
+PseudoNth
+    : '(' Nth ')'                                { (Nothing, $2) }
+    | Nth                                        { (Nothing, $1) }
+    ;
 
 Nth
     : nth                                        { $1 }
