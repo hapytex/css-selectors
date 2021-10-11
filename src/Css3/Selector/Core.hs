@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, DeriveGeneric, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveGeneric, FlexibleInstances, OverloadedStrings, PatternSynonyms, TemplateHaskellQuotes, TypeFamilies #-}
 
 {-|
 Module      : Css3.Selector.Core
@@ -722,6 +722,14 @@ instance IsString PseudoClass where
             go "valid" = Valid
             go "visited" = Visited
             go x = error ("The pseudo class \"" ++ x ++ "\" is not a valid pseudo class.")
+
+instance IsString ((->) Nth PseudoClass) where
+  fromString = go . map toLower
+    where go "nth-child" = NthChild
+          go "nth-last-child" = NthLastChild
+          go "nth-last-of-type" = NthLastOfType
+          go "nth-of-type" = NthLastOfType
+          go x = error ("There is no pseudo class \"" ++ x ++ "\" that takes an Nth object as parameter.")
 
 instance IsString PseudoElement where
     fromString = go . map toLower

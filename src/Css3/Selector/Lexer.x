@@ -117,7 +117,7 @@ tokens :-
   @psc "valid"         { constoken (PseudoClass Valid) }
   @psc "visited"       { constoken (PseudoClass Visited) }
   $w @wo               { constoken Space }
-  @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc      ;
+  @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc;
 
 {
 data TokenLoc = TokenLoc { token :: Token, original :: String, location :: AlexPosn }
