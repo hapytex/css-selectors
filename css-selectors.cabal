@@ -52,6 +52,7 @@ library
     , Decimal >=0.4.2
     , deepseq >=1.4.3.0
     , hashable >=1.2.7.0
+    , mtl >=1.0
     , QuickCheck >=2.8
     , shakespeare >=2.0
     , template-haskell >=2.11.1
