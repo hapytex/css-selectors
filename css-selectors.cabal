@@ -39,8 +39,6 @@ library
   other-modules:
        Css3.Selector.Lexer
      , Css3.Selector.Parser
-     , Css3.Selector.Nth.Lexer
-     , Css3.Selector.Nth.Parser
   build-depends:
       base >=4.7 && <5
     , aeson >=1.0
@@ -52,7 +50,6 @@ library
     , Decimal >=0.4.2
     , deepseq >=1.4.3.0
     , hashable >=1.2.7.0
-    , mtl >=1.0
     , QuickCheck >=2.8
     , shakespeare >=2.0
     , template-haskell >=2.11.1

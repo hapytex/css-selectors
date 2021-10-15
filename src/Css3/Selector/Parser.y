@@ -40,6 +40,12 @@ import Data.Text(pack)
     hash   { TokenLoc (THash $$) _ _ }
     pseude { TokenLoc (PseudoElement $$) _ _ }
     pseudc { TokenLoc (PseudoClass $$) _ _ }
+    pseudf { TokenLoc (PseudoFunction $$) _ _ }
+    pm     { TokenLoc (TPM $$) _ _ }
+    'n'    { TokenLoc TN _ _ }
+    int    { TokenLoc (TInt $$) _ _ }
+    nth    { TokenLoc (TNth $$) _ _ }
+    ')'    { TokenLoc TNthClose _ _ }
 
 %%
 
@@ -83,12 +89,39 @@ FilterList
 SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
     | pseudc                      { SPseudo $1 }
+    | pseudf Nth                  { SPseudo ($1 $2) }
     | Class                       { SClass $1 }
     | AttribBox                   { SAttrib $1 }
     ;
 
+Nth
+    : OptSpace Nth2 OptSpace ')'  { $2 }
+    ;
+
+Nth2
+    : nth                                       { $1 }
+    | PMOpt IntOpt 'n'                          { Nth ($1 $2) 0 }
+    | PMOpt IntOpt 'n' OptSpace pm OptSpace int { Nth ($1 $2) ($5 $7) }
+    | PMOpt int                                 { Nth 0 ($1 $2) }
+    ;
+
+PMOpt
+    :                             { id }
+    | pm                          { $1 }
+    ;
+
+IntOpt
+    :                             { 1 }
+    | int                         { $1 }
+    ;
+
+OptSpace
+    :                             { () }
+    | ' '                         { () }
+    ;
+
 AttribBox
-    : '[' Attrib ']'                       { $2 }
+    : '[' Attrib ']'              { $2 }
     ;
 
 Attrib
@@ -139,7 +172,7 @@ Ident
 {
 
 happyError :: [TokenLoc] -> a
-happyError [] = error "Unexpected end of string when parsing a css selector."
-happyError (~(TokenLoc _ s ~(AlexPn _ l c)):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
+happyError (~(TokenLoc _ s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
+happyError _ = error "Unexpected end of string when parsing a css selector."
 
 }
