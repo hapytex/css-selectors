@@ -89,20 +89,16 @@ FilterList
 SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
     | pseudc                      { SPseudo $1 }
-    | pseudf Nth                  { SPseudo ($1 $2) }
+    | pseudf OptSpace Nth         { SPseudo ($1 $3) }
     | Class                       { SClass $1 }
     | AttribBox                   { SAttrib $1 }
     ;
 
 Nth
-    : OptSpace Nth2 OptSpace ')'  { $2 }
-    ;
-
-Nth2
-    : nth                                       { $1 }
-    | PMOpt IntOpt 'n'                          { Nth ($1 $2) 0 }
-    | PMOpt IntOpt 'n' OptSpace pm OptSpace int { Nth ($1 $2) ($5 $7) }
-    | PMOpt int                                 { Nth 0 ($1 $2) }
+    : nth OptSpace ')'                                       { $1 }
+    | PMOpt IntOpt 'n' OptSpace ')'                          { Nth ($1 $2) 0 }
+    | PMOpt IntOpt 'n' OptSpace pm OptSpace int OptSpace ')' { Nth ($1 $2) ($5 $7) }
+    | PMOpt int OptSpace ')'                                 { Nth 0 ($1 $2) }
     ;
 
 PMOpt

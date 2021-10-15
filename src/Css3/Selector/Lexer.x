@@ -103,10 +103,10 @@ tokens :-
   @psc "last-child"    { constoken (PseudoClass LastChild) }
   @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
   @psc "link"          { constoken (PseudoClass Link) }
-  @psc "nth-child" @wo "("        { constAndBegin (PseudoFunction NthChild) nth_state }
-  @psc "nth-last-child" @wo "("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
-  @psc "nth-last-of-type" @wo "(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
-  @psc "nth-of-type" @wo "("      { constAndBegin (PseudoFunction NthOfType) nth_state }
+  @psc "nth-child("        { constAndBegin (PseudoFunction NthChild) nth_state }
+  @psc "nth-last-child("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
+  @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
+  @psc "nth-of-type("      { constAndBegin (PseudoFunction NthOfType) nth_state }
   @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
   @psc "only-child"    { constoken (PseudoClass OnlyChild) }
   @psc "optional"      { constoken (PseudoClass Optional) }
@@ -169,7 +169,7 @@ data Token
     | TNthClose
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
-tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))
+tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))
   where str' = take len str
 
 constoken :: Token -> AlexInput -> Int -> Alex TokenLoc
@@ -186,12 +186,6 @@ alexInitUserState = ()
 
 alexEOF :: Alex TokenLoc
 alexEOF = pure (TokenLoc undefined "" Nothing)
-
-alexComplementError :: Alex a -> Alex (a, Maybe String)
-alexComplementError ~(Alex al) = Alex (\s -> case al s of
-    Right (s', x) -> Right (s', (x, Nothing))
-    Left  message -> Right (s, (undefined, Just message))
-  )
 
 alexScanTokens :: String -> Either String [TokenLoc]
 alexScanTokens str = runAlex str loop
