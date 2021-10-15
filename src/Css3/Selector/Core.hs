@@ -116,6 +116,12 @@ instance Hashable Nth
 
 instance NFData Nth
 
+isEmpty :: Nth -> Bool
+isEmpty (Nth n c) = n <= 0 && c <= 0
+
+pattern NthEmpty :: Nth
+pattern NthEmpty = Nth 0 0
+
 -- | Normalize the given 'Nth' object to a normalized one. If and only if the
 -- normalized variants are the same of two 'Nth' objects, then these will produce
 -- the same list of values. Normalization is idempotent: calling 'normalizeNth'
@@ -158,14 +164,19 @@ nthValues0
   -> [Int]  -- ^ A list of zero-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues0 = map (subtract 1) . nthValues
 
-intersectNth
-  :: Nth
-  -> Nth
-  -> Nth
-intersectNth (Nth 0 a) (Nth 0 b) = if a == b then Nth 0 a else Nth 0 (-1)
-intersectNth (Nth na ca) (Nth nb cb)
-  | na > 0 && nb > 0 = Nth (lcm na nb) (ca+cb)
-  | otherwise = undefined
+intersectNth :: Nth -> Nth -> Nth
+intersectNth (Nth 0 r1) (Nth 0 r2)
+  | r1 == r2 && r1 > 0 = Nth 0 r1
+  | otherwise = Nth 0 0
+intersectNth na@(Nth m1 r1) nb@(Nth m2 r2)
+  | isEmpty na || isEmpty nb = Nth 0 0
+  | otherwise = Nth m (r `mod` m)
+  where r = r2 + m2 * (r1 - r2) * (m2 `inv` m1)
+        m = m2 * m1
+        a `inv` m = let (_, i, _) = gcd' a m in i `mod` m
+        gcd' 0 b = (b, 0, 1)
+        gcd' a b = (g, t - (b `div` a) * s, s)
+            where (g, s, t) = gcd' (b `mod` a) a
 
 pattern Even :: Nth
 pattern Even = Nth 2 0
@@ -656,6 +667,9 @@ instance Semigroup ElementName where
     (<>) EAny = id
     (<>) x = const x
 
+instance Semigroup Nth where
+    (<>) = intersectNth
+
 instance Monoid SelectorSpecificity where
     mempty = SelectorSpecificity 0 0 0
 #if __GLASGOW_HASKELL__ < 803
@@ -670,6 +684,12 @@ instance Monoid Namespace where
 
 instance Monoid ElementName where
     mempty = EAny
+#if __GLASGOW_HASKELL__ < 803
+    mappend = (<>)
+#endif
+
+instance Monoid Nth where
+    mempty = def
 #if __GLASGOW_HASKELL__ < 803
     mappend = (<>)
 #endif
