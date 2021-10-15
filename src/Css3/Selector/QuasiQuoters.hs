@@ -26,7 +26,10 @@ import Language.Haskell.TH.Syntax(Exp(AppE, VarE), Q, Type(ConT), dataToExpQ, li
 -- | Parse the string to a 'SelectorGroup'.
 parseCss :: String -- ^ The string to be parsed to a 'SelectorGroup'
     -> SelectorGroup -- ^ The selectorgroup that is the equivalent of the given 'String'.
-parseCss = cssselector . alexScanTokens . filter ('\r' /=)
+parseCss st = al (alexScanTokens st')
+  where st' = filter ('\r' /=) st
+        al (Left er) = error er
+        al (Right val) = cssselector val
 
 liftDataWithText :: Data a => a -> Q Exp
 liftDataWithText = dataToExpQ ((((AppE (VarE 'pack) <$>) . lift . unpack) <$>) . cast)

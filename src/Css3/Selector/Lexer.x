@@ -4,7 +4,6 @@
 
 module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
 
-import Data.Decimal(Decimal)
 import Css3.Selector.Utils(readCssString, readIdentifier)
 import Css3.Selector.Core(
     PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection)
@@ -16,9 +15,11 @@ import Css3.Selector.Core(
   , pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
   , PseudoClass(..)
   )
+
+import Data.Decimal(Decimal)
 }
 
-%wrapper "posn"
+%wrapper "monadUserState"
 
 $nonascii = [^\0-\xff]
 $w        = [\ \t\r\n\f]
@@ -61,6 +62,7 @@ $pm       = [\-\+]
 @nthb    = @wo\(@nth\)
 
 tokens :-
+ <0> {
   @wo "="  @wo         { constoken TEqual }
   @wo "~=" @wo         { constoken TIncludes }
   @wo "|=" @wo         { constoken TDashMatch }
@@ -101,10 +103,10 @@ tokens :-
   @psc "last-child"    { constoken (PseudoClass LastChild) }
   @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
   @psc "link"          { constoken (PseudoClass Link) }
-  <foo> @psc "nth-child" @nthb { tokenize (PseudoClass . NthChild . parseNth) }
-  <foo> @psc "nth-last-child" @nthb { tokenize (PseudoClass . NthLastChild . parseNth) }
-  <foo> @psc "nth-last-of-type" @nthb { tokenize (PseudoClass . NthLastOfType . parseNth) }
-  <foo> @psc "nth-of-type" @nthb { tokenize (PseudoClass . NthOfType . parseNth) }
+  @psc "nth-child("        { constAndBegin (PseudoFunction NthChild) nth_state }
+  @psc "nth-last-child("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
+  @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
+  @psc "nth-of-type("      { constAndBegin (PseudoFunction NthOfType) nth_state }
   @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
   @psc "only-child"    { constoken (PseudoClass OnlyChild) }
   @psc "optional"      { constoken (PseudoClass Optional) }
@@ -118,28 +120,23 @@ tokens :-
   @psc "visited"       { constoken (PseudoClass Visited) }
   $w @wo               { constoken Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc;
-
+ }
+ <nth_state> {
+  $w @wo               { constoken Space }
+  @e@v@e@n             { constoken (TNth Even) }
+  @o@d@d               { constoken (TNth Odd) }
+  @n                   { constoken TN }
+  "+"                  { constoken (TPM id) }
+  "-"                  { constoken (TPM negate) }
+  @int                 { tokenize (TInt . read) }
+  ")"                  { constAndBegin TNthClose state_initial }
+ }
 {
-data TokenLoc = TokenLoc { token :: Token, original :: String, location :: AlexPosn }
 
-parseNth :: String -> Nth
-parseNth ":nth-child(even)" = Even
-parseNth ":nth-child(odd)" = Odd
-parseNth ":nth-last-child(even)" = Even
-parseNth ":nth-last-child(odd)" = Odd
-parseNth ":nth-last-of-type(even)" = Even
-parseNth ":nth-last-of-type(odd)" = Odd
-parseNth ":nth-of-type(even)" = Even
-parseNth ":nth-of-type(odd)" = Odd
-parseNth x = error ("was \"" ++ x ++ "\"")
+data TokenLoc = TokenLoc { tokenType :: Token, original :: String, location :: Maybe AlexPosn }
 
-tokenize :: (String -> Token) -> AlexPosn -> String -> TokenLoc
-tokenize = flip . (>>= TokenLoc)
+type AlexUserState = ()
 
-constoken :: Token -> AlexPosn -> String -> TokenLoc
-constoken = tokenize . const
-
--- The token type:
 data Token
     = TIncludes
     | TEqual
@@ -163,6 +160,37 @@ data Token
     | BOpen
     | BClose
     | PseudoClass PseudoClass
+    | PseudoFunction (Nth -> PseudoClass)
     | PseudoElement PseudoElement
-    deriving (Eq,Show)
+    | TN
+    | TNth Nth
+    | TPM (Int -> Int)
+    | TInt Int
+    | TNthClose
+
+tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
+tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))
+  where str' = take len str
+
+constoken :: Token -> AlexInput -> Int -> Alex TokenLoc
+constoken = tokenize . const
+
+constAndBegin :: Token -> Int -> AlexInput -> Int -> Alex TokenLoc
+constAndBegin = andBegin . constoken
+
+state_initial :: Int
+state_initial = 0
+
+alexInitUserState :: AlexUserState
+alexInitUserState = ()
+
+alexEOF :: Alex TokenLoc
+alexEOF = pure (TokenLoc undefined "" Nothing)
+
+alexScanTokens :: String -> Either String [TokenLoc]
+alexScanTokens str = runAlex str loop
+  where loop :: Alex [TokenLoc]
+        loop = alexMonadScan >>= p
+        p (TokenLoc _ _ Nothing) = pure []
+        p toc = (toc:) <$> loop
 }
