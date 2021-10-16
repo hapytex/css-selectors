@@ -38,7 +38,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -116,8 +116,8 @@ instance Hashable Nth
 
 instance NFData Nth
 
-isEmpty :: Nth -> Bool
-isEmpty (Nth n c) = n <= 0 && c <= 0
+nthIsEmpty :: Nth -> Bool
+nthIsEmpty (Nth n c) = n <= 0 && c <= 0
 
 pattern NthEmpty :: Nth
 pattern NthEmpty = Nth 0 0
@@ -171,9 +171,12 @@ nthValues0 = map (subtract 1) . nthValues
 intersectNth :: Nth -> Nth -> Nth
 intersectNth (Nth 0 r1) (Nth 0 r2)
   | r1 == r2 && r1 > 0 = Nth 0 r1
-  | otherwise = Nth 0 0
+  | otherwise = NthEmpty
 intersectNth na@(Nth m1 r1) nb@(Nth m2 r2)
-  | isEmpty na || isEmpty nb = Nth 0 0
+  | na == nb = na
+  | nthIsEmpty na || nthIsEmpty nb = Nth 0 0
+  | m1 == m2 && m1 > 0 = Nth m1 (max r1 r2)
+  | gcd m1 m2 `mod` r1 - r2 /= 0 = NthEmpty
   | otherwise = Nth m (r `mod` m)
   where r = r2 + m2 * (r1 - r2) * (m2 `inv` m1)
         m = m2 * m1
