@@ -104,7 +104,7 @@ tests = [
       , testProperty "Normalizing produces the same list" normSameNth
       , testProperty "Normalizing is idempotent" normalizeNthIdempotent
       , testProperty "Different normalized Nths have different values" (withMaxSuccess 5000 differentNormalizedNthsAreDifferent)
-      -- , testProperty "Intersection of two Nths" (withMaxSuccess 5000 )
+      , testProperty "nthIsEmpty checks" (withMaxSuccess 5000 checkIfNthIsEmpty)
       , testProperty "nthContainsValue contains all values" nthContainsSameItems
       , testProperty "nth contains same as its normalized counterpart" (withMaxSuccess 5000 normalizeContainsSame)
       , testProperty "check if the two Nths produce a valid intersection" (withMaxSuccess 5000 intersectNthTest)
@@ -148,6 +148,9 @@ equivalentNths = [
   , (Nth 2 0, Even)
   , (Nth 10 (-1), Nth 10 9)
   ]
+
+checkIfNthIsEmpty :: Nth -> Bool
+checkIfNthIsEmpty nth = nthIsEmpty nth == null (nthValues nth)
 
 positiveNth :: Nth -> Bool
 positiveNth = all (0 <) . take 5000 . nthValues

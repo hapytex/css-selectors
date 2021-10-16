@@ -38,7 +38,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -116,8 +116,8 @@ instance Hashable Nth
 
 instance NFData Nth
 
-isEmpty :: Nth -> Bool
-isEmpty (Nth n c) = n <= 0 && c <= 0
+nthIsEmpty :: Nth -> Bool
+nthIsEmpty (Nth n c) = n <= 0 && c <= 0
 
 pattern NthEmpty :: Nth
 pattern NthEmpty = Nth 0 0
@@ -146,7 +146,11 @@ nthValues (Nth n c)
   | n < 0 = [ c, c+n .. 1 ]
   | otherwise = [c | c > 0]
 
-nthContainsValue :: Nth -> Int -> Bool
+-- | Check if the given 'Nth' object contains a given value.
+nthContainsValue
+  :: Nth -- ^ The given 'Nth' object that specifies a sequence.
+  -> Int  -- ^ The given index for which we check if it is contained in the given 'Nth' object.
+  -> Bool  -- ^ This function returns 'True' if the given item is a member of the given 'Nth' sequence; 'False' otherwise.
 nthContainsValue (Nth 0 c) i = c == i && i > 0
 nthContainsValue (Nth n c) i = i > 0 && (i - c) `div` n >= 0 && (i - c) `mod` n == 0
 
@@ -167,9 +171,12 @@ nthValues0 = map (subtract 1) . nthValues
 intersectNth :: Nth -> Nth -> Nth
 intersectNth (Nth 0 r1) (Nth 0 r2)
   | r1 == r2 && r1 > 0 = Nth 0 r1
-  | otherwise = Nth 0 0
+  | otherwise = NthEmpty
 intersectNth na@(Nth m1 r1) nb@(Nth m2 r2)
-  | isEmpty na || isEmpty nb = Nth 0 0
+  | na == nb = na
+  | nthIsEmpty na || nthIsEmpty nb = Nth 0 0
+  | m1 == m2 && m1 > 0 = Nth m1 (max r1 r2)
+  | gcd m1 m2 `mod` r1 - r2 /= 0 = NthEmpty
   | otherwise = Nth m (r `mod` m)
   where r = r2 + m2 * (r1 - r2) * (m2 `inv` m1)
         m = m2 * m1
@@ -178,16 +185,21 @@ intersectNth na@(Nth m1 r1) nb@(Nth m2 r2)
         gcd' a b = (g, t - (b `div` a) * s, s)
             where (g, s, t) = gcd' (b `mod` a) a
 
+-- | A pattern synonym that is used in CSS to specify a sequence that starts with two and each time increases with two.
 pattern Even :: Nth
 pattern Even = Nth 2 0
 
+-- | A pattern synonym that is used in CSS to specify a sequence that starts with one and each time increases with two.
 pattern Odd :: Nth
 pattern Odd = Nth 2 1
 
 pattern One :: Nth
 pattern One = Nth 0 1
 
-nthToText :: Nth -> Text
+-- | Convert the given 'Nth' object to text used by the CSS selector.
+nthToText
+  :: Nth  -- ^ The 'Nth' object for which we determine the textual presentation.
+  -> Text -- ^ The textual presentation of the 'Nth' object in a CSS selector.
 nthToText Even = "even"
 nthToText Odd = "odd"
 nthToText (Nth n 0) = snoc (pack (show n)) 'n'
@@ -349,7 +361,12 @@ instance Hashable PseudoSelectorSequence
 
 instance NFData PseudoSelectorSequence
 
-(.::) :: SelectorSequence -> PseudoElement -> PseudoSelectorSequence
+-- | Add a given 'PseudoElement' to the given 'SelectorSequence' to produce a 'PseudoSelectorSequence'. Since
+-- a 'PseudoElement' is an instance of 'IsString', this can thus be used to combine string literals.
+(.::)
+  :: SelectorSequence  -- ^ The given 'SelectorSequence' to which we add the pseudo element.
+  -> PseudoElement  -- ^ The given 'PseudoElement' to add to the 'SelectorSequence'.
+  -> PseudoSelectorSequence  -- ^ The corresponding 'PseudoSelectorSequence'.
 (.::) = (:.::)
 
 -- | Add a given list of 'SelectorFilter's to the given 'SelectorSequence'. The
@@ -588,15 +605,23 @@ instance Hashable PseudoClass
 
 instance NFData PseudoClass
 
+-- | A pattern synonym for @:nth-child(1)@. If 'NthChild (Nth 0 1)' is used, then
+-- this will render as @:first-child@.
 pattern FirstChild :: PseudoClass
 pattern FirstChild = NthChild One
 
+-- | A pattern synonym for @:nth-of-type(1)@. If 'NthOfType (Nth 0 1)' is used, then
+-- this will render as @:first-of-type@.
 pattern FirstOfType :: PseudoClass
 pattern FirstOfType = NthOfType One
 
+-- | A pattern synonym for @:nth-last-child(1)@. If 'NthLastChild (Nth 0 1)' is used, then
+-- this will render as @:last-child@.
 pattern LastChild :: PseudoClass
 pattern LastChild = NthLastChild One
 
+-- | A pattern synonym for @:nth-last-of-type(1)@. If 'NthLastOfType (Nth 0 1)' is used, then
+-- this will render as @:last-of-type@.
 pattern LastOfType :: PseudoClass
 pattern LastOfType = NthLastOfType One
 
