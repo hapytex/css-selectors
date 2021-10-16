@@ -186,11 +186,16 @@ intersectNth n1@(Nth m1 r1) n2@(Nth m2 r2)
   | nthIsEmpty n1 = NthEmpty
   | nthIsEmpty n2 = NthEmpty
   | nn1 == nn2 = nn1
-  | (r1-r2) `mod` g == 0 = Nth (m1*m2 `div` g) (r1 - (m1 * u * (r1 - r2) `div` g))
+  | (r1-r2) `mod` g == 0 = Nth lin lb
   | otherwise = NthEmpty
   where nn1 = normalizeNth n1
         nn2 = normalizeNth n2
         ~(g, u, v) = gcd' m1 m2
+        lin = m1*m2 `div` g
+        cnt = (r1 - (m1 * u * (r1 - r2) `div` g)) `mod` lin
+        la = (max 0 ((r1 - cnt + lin - 1) `div` lin)) * lin + cnt
+        lb = (max 0 ((r2 - la + lin - 1) `div` lin)) * lin + la
+
 
 gcd' :: Int -> Int -> (Int, Int, Int)
 gcd' 0 b = (b, 0, 1)
