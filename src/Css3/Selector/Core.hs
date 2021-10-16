@@ -15,7 +15,7 @@ module Css3.Selector.Core (
     -- * Selectors and combinators
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
-    , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(SelectorSequence, (:.::)), (.::)
+    , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(Sequence, (:.::)), (.::)
     , PseudoClass(
           Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, NthChild, NthLastChild, NthLastOfType
         , NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required, Root, Target, Valid, Visited
@@ -341,7 +341,7 @@ instance Hashable SelectorSequence
 instance NFData SelectorSequence
 
 data PseudoSelectorSequence
-    = SelectorSequence SelectorSequence
+    = Sequence SelectorSequence
     | SelectorSequence :.:: PseudoElement
     deriving (Data, Eq, Generic, Ord, Show)
 
@@ -600,12 +600,17 @@ pattern LastChild = NthLastChild One
 pattern LastOfType :: PseudoClass
 pattern LastOfType = NthLastOfType One
 
+-- | An enum type that contains the possible /pseudo elements/. A pseudo
+-- element is specified by two colon characters (@::@), followed by the name of
+-- the pseudo element. The 'After', 'Before', 'FirstLine' and 'FirstLetter'
+-- can be written with a single colon for backwards compatibility with
+-- CSS 1 and CSS 2.
 data PseudoElement
   = After
   | Before
   | FirstLetter
-  | FirstLine
-  | Marker
+  | FirstLine  -- ^ The @::first-line@ pseudo-element describes the contents of the first formatted line of an element.
+  | Marker  -- ^ The @::first-letter@ pseudo-element represents the first letter of an element, if it is not preceded by any other content (such as images or inline tables) on its line.
   | Selection
   deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
 
@@ -828,7 +833,7 @@ instance ToCssSelector Namespace where
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
     toCssSelector (Filter s f) = toCssSelector s <> toCssSelector f
-    toSelectorGroup = toSelectorGroup . SelectorSequence
+    toSelectorGroup = toSelectorGroup . Sequence
     specificity' (SimpleSelector s) = specificity' s
     specificity' (Filter s f) = specificity' s <> specificity' f
     toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
@@ -886,16 +891,16 @@ instance ToCssSelector Selector where
     normalize (Combined s1 c s2) = Combined (normalize s1) c (normalize s2)
 
 instance ToCssSelector PseudoSelectorSequence where
-    toCssSelector (SelectorSequence ss) = toCssSelector ss
+    toCssSelector (Sequence ss) = toCssSelector ss
     toCssSelector (ss :.:: pe)
       | def == ss = toCssSelector pe
       | otherwise = toCssSelector ss <> toCssSelector pe
     toSelectorGroup = toSelectorGroup . Selector
-    specificity' (SelectorSequence ss) = specificity' ss
+    specificity' (Sequence ss) = specificity' ss
     specificity' (ss :.:: pe) = specificity' ss <> specificity' pe
-    toPattern (SelectorSequence ss) = ConP 'SelectorSequence [toPattern ss]
+    toPattern (Sequence ss) = ConP 'Sequence [toPattern ss]
     toPattern (ss :.:: pe) = ConP '(:.::) [toPattern ss, toPattern pe]
-    normalize (SelectorSequence ss) = SelectorSequence (normalize ss)
+    normalize (Sequence ss) = Sequence (normalize ss)
     normalize (ss :.:: pe) = normalize ss :.:: normalize pe
 
 _nthToPat :: Nth -> Pat
@@ -1000,7 +1005,7 @@ instance Default Selector where
     def = Selector def
 
 instance Default PseudoSelectorSequence where
-    def = SelectorSequence def
+    def = Sequence def
 
 instance Default SelectorSequence where
     def = SimpleSelector def
@@ -1053,12 +1058,12 @@ instance Binary Selector where
       _ -> fail "An error occured while deserializing a Selector object."
 
 instance Binary PseudoSelectorSequence where
-  put (SelectorSequence ss) = putWord8 0 >> put ss
+  put (Sequence ss) = putWord8 0 >> put ss
   put (ss :.:: pe) = putWord8 1 >> put ss >> put pe
   get = do
     w <- getWord8
     case w of
-      0 -> SelectorSequence <$> get
+      0 -> Sequence <$> get
       1 -> (:.::) <$> get <*> get
       _ -> fail "An error occured while deserializing a PseudoSelectorSequence."
 
@@ -1409,9 +1414,9 @@ instance Arbitrary SelectorSequence where
     shrink (Filter ss sf) = ss : ((`Filter` sf) <$> shrink ss) ++ (Filter ss <$> shrink sf)
 
 instance Arbitrary PseudoSelectorSequence where
-    arbitrary = frequency [(3, SelectorSequence <$> arbitrary), (1, (:.::) <$> arbitrary <*> arbitrary)]
-    shrink (SelectorSequence ss) = SelectorSequence <$> shrink ss
-    shrink (ss :.:: pe) = SelectorSequence ss : ((ss :.::) <$> shrink pe) ++ ((:.:: pe) <$> shrink ss)
+    arbitrary = frequency [(3, Sequence <$> arbitrary), (1, (:.::) <$> arbitrary <*> arbitrary)]
+    shrink (Sequence ss) = Sequence <$> shrink ss
+    shrink (ss :.:: pe) = Sequence ss : ((ss :.::) <$> shrink pe) ++ ((:.:: pe) <$> shrink ss)
 
 instance Arbitrary SelectorCombinator where
     arbitrary = arbitraryBoundedEnum

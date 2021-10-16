@@ -71,7 +71,7 @@ Combinator
     ;
 
 PseudoSelectorSequence
-    : SimpleSelectorSequence        { SelectorSequence $1 }
+    : SimpleSelectorSequence        { Sequence $1 }
     | SimpleSelectorSequence pseude { $1 :.:: $2 }
     | pseude                        { def :.:: $1 }
     ;
