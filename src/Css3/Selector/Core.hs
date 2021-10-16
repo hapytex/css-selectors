@@ -110,13 +110,21 @@ specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calcul
     -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 
-data Nth = Nth { linear :: Int, constant :: Int } deriving (Data, Eq, Generic, Ord, Read, Show)
+-- | A data type that is used to select children and elements of type with the @:nth-child@, @:nth-last-child@, @:nth-last-of-type@ and @nth-of-type@.
+data Nth
+  = Nth {
+    linear :: Int  -- ^ The linear part of the 'Nth' object: the integral number before the @n@.
+  , constant :: Int  -- ^ The constant part of the 'Nth' object.
+  } deriving (Data, Eq, Generic, Ord, Read, Show)
 
 instance Hashable Nth
 
 instance NFData Nth
 
-nthIsEmpty :: Nth -> Bool
+-- | Check if the given 'Nth' object contains /no/ items.
+nthIsEmpty
+  :: Nth  -- ^ The given 'Nth' object object to check.
+  -> Bool  -- ^ 'True' if the given 'Nth' object does /not/ contain any items; 'False' otherwise.
 nthIsEmpty (Nth n c) = n <= 0 && c <= 0
 
 pattern NthEmpty :: Nth
@@ -168,7 +176,11 @@ nthValues0
   -> [Int]  -- ^ A list of zero-based indexes that contain the items selected by the 'Nth' object. The list can be infinite.
 nthValues0 = map (subtract 1) . nthValues
 
-intersectNth :: Nth -> Nth -> Nth
+-- | Construct an 'Nth' object that contains an item if and only if that item belongs to /both/ given 'Nth' objects.
+intersectNth
+  :: Nth  -- ^ The first 'Nth' for which we determine the intersection.
+  -> Nth  -- ^ The second 'Nth' for which we determine the intersection.
+  -> Nth  -- ^ An 'Nth' object that contains an element if and only if both the two given 'Nth' objects contain that element.
 intersectNth (Nth 0 r1) (Nth 0 r2)
   | r1 == r2 && r1 > 0 = Nth 0 r1
   | otherwise = NthEmpty
@@ -352,9 +364,11 @@ instance Hashable SelectorSequence
 
 instance NFData SelectorSequence
 
+-- | A 'SelectorSequence' with an optional 'PseudoElement' at the end. Each /element/ of a 'Selector' can
+-- have /at most/ one 'PseudoElement'.
 data PseudoSelectorSequence
-    = Sequence SelectorSequence
-    | SelectorSequence :.:: PseudoElement
+    = Sequence SelectorSequence  -- ^ A data constructor where there is no optional 'PseudoElement' involved.
+    | SelectorSequence :.:: PseudoElement  -- ^ A data constructor for a 'SelectorSequence' with a 'PseudoElement'.
     deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable PseudoSelectorSequence
@@ -566,7 +580,10 @@ instance Hashable AttributeCombinator
 
 instance NFData AttributeCombinator
 
--- https://www.w3schools.com/css/css_pseudo_classes.asp
+-- | A data type that contains the possible pseudo classes. In a CSS selector
+-- the pseudo classes are specified with a single colon, for example @:active@.
+-- These filter on the /state/ of the items. A full list of pseudo classes
+-- is available <https://www.w3schools.com/css/css_pseudo_classes.asp here>.
 data PseudoClass
   = Active
   | Checked
@@ -631,11 +648,11 @@ pattern LastOfType = NthLastOfType One
 -- can be written with a single colon for backwards compatibility with
 -- CSS 1 and CSS 2.
 data PseudoElement
-  = After
-  | Before
-  | FirstLetter
-  | FirstLine  -- ^ The @::first-line@ pseudo-element describes the contents of the first formatted line of an element.
-  | Marker  -- ^ The @::first-letter@ pseudo-element represents the first letter of an element, if it is not preceded by any other content (such as images or inline tables) on its line.
+  = After  -- ^ The @::after@ pseudo-elements can be used to describe generated content after an element’s content.
+  | Before  -- ^ The @::before@ pseudo-element can be used to describe generated content before an element’s content.
+  | FirstLetter  -- ^ The @::first-line@ pseudo-element describes the contents of the first formatted line of an element.
+  | FirstLine  -- ^ The @::first-letter@ pseudo-element represents the first letter of an element, if it is not preceded by any other content (such as images or inline tables) on its line.
+  | Marker
   | Selection
   deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
 
