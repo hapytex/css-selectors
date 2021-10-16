@@ -54,12 +54,6 @@ $pm       = [\-\+]
 @psc     = [:]
 @pse     = [:][:]
 @psb     = [:][:]?
-@even    = @e@v@e@n
-@odd     = @o@d@d
-@nth1    = $pm@int
-@nth2    = $pm?@int?@n($pm@wo@int)?
-@nth     = @wo(@even|@odd|@nth2)@wo
-@nthb    = @wo\(@nth\)
 
 tokens :-
  <0> {

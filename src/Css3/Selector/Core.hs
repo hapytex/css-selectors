@@ -38,7 +38,7 @@ module Css3.Selector.Core (
     -- * Hashes
     , Hash(..), (.#)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue, intersectNth, gcd' -- TODO: remove
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -181,9 +181,30 @@ intersectNth
   :: Nth  -- ^ The first 'Nth' for which we determine the intersection.
   -> Nth  -- ^ The second 'Nth' for which we determine the intersection.
   -> Nth  -- ^ An 'Nth' object that contains an element if and only if both the two given 'Nth' objects contain that element.
+-- intersectNth (Nth 0 r1) (Nth r2)
+intersectNth n1@(Nth m1 r1) n2@(Nth m2 r2)
+  | nthIsEmpty n1 = NthEmpty
+  | nthIsEmpty n2 = NthEmpty
+  | nn1 == nn2 = nn1
+  | (r1-r2) `mod` g == 0 = Nth (m1*m2 `div` g) (r1 - (m1 * u * (r1 - r2) `div` g))
+  | otherwise = NthEmpty
+  where nn1 = normalizeNth n1
+        nn2 = normalizeNth n2
+        ~(g, u, v) = gcd' m1 m2
+
+gcd' :: Int -> Int -> (Int, Int, Int)
+gcd' 0 b = (b, 0, 1)
+gcd' a b = (g, t - (b `div` a) * s, s)
+    where (g, s, t) = gcd' (b `mod` a) a
+
+{-
 intersectNth (Nth 0 r1) (Nth 0 r2)
   | r1 == r2 && r1 > 0 = Nth 0 r1
   | otherwise = NthEmpty
+intersectNth n1@(Nth 0 r1) n2
+  | nthContainsValue n2 r1 = n1
+intersectNth n1 n2@(Nth 0 r2)
+  | nthContainsValue n1 r2 = n2
 intersectNth na@(Nth m1 r1) nb@(Nth m2 r2)
   | na == nb = na
   | nthIsEmpty na || nthIsEmpty nb = Nth 0 0
@@ -192,10 +213,8 @@ intersectNth na@(Nth m1 r1) nb@(Nth m2 r2)
   | otherwise = Nth m (r `mod` m)
   where r = r2 + m2 * (r1 - r2) * (m2 `inv` m1)
         m = m2 * m1
-        a `inv` m = let (_, i, _) = gcd' a m in i `mod` m
-        gcd' 0 b = (b, 0, 1)
-        gcd' a b = (g, t - (b `div` a) * s, s)
-            where (g, s, t) = gcd' (b `mod` a) a
+        a `inv` n = let (_, i, _) = gcd' a m in i `mod` n
+-}
 
 -- | A pattern synonym that is used in CSS to specify a sequence that starts with two and each time increases with two.
 pattern Even :: Nth
@@ -1430,7 +1449,7 @@ instance Arbitrary Class where
     shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Nth where
-    arbitrary = Nth <$> arbitrary <*> arbitrary
+    arbitrary = Nth <$> ((1+) . abs <$> arbitrary) <*> arbitrary
     shrink nth
       | nth == nnth = []
       | otherwise = [nnth]
