@@ -1441,7 +1441,7 @@ _arbitraryIdent :: Gen Text
 _arbitraryIdent = pack <$> listOf1 arbitrary
 
 _arbitraryLanguage :: Gen Text
-_arbitraryLanguage = pack <$> (\x y -> [x, y] <$> elements ['a' .. 'z'] <*> elements ['a' .. 'z'])
+_arbitraryLanguage = pack <$> ((\x y -> [x, y]) <$> elements ['a' .. 'z'] <*> elements ['a' .. 'z'])
 
 _shrinkText :: Text -> [Text]
 _shrinkText = liftA2 (zipWith (<>)) inits (tails . T.drop 1)
