@@ -569,17 +569,12 @@ data PseudoClass
   | Disabled
   | Empty
   | Enabled
-  -- | FirstChild
-  -- | FirstOfType
   | Focus
   | Hover
   | InRange
   | Invalid
   -- TODO: Lang
-  -- | LastChild
-  -- | LastOfType
   | Link
-  -- TODO: Not
   | NthChild Nth
   | NthLastChild Nth
   | NthLastOfType Nth
@@ -1091,22 +1086,21 @@ instance Binary PseudoClass where
   put Invalid = putWord8 8
   -- put  -- TODO: Lang
   put Link = putWord8 10
-  -- put  -- TODO: Not
-  put (NthChild nth) = putWord8 12 >> put nth
-  put (NthLastChild nth) = putWord8 13 >> put nth
-  put (NthLastOfType nth) = putWord8 14 >> put nth
-  put (NthOfType nth) = putWord8 15 >> put nth
-  put OnlyOfType = putWord8 16
-  put OnlyChild = putWord8 17
-  put Optional = putWord8 18
-  put OutOfRange = putWord8 19
-  put ReadOnly = putWord8 20
-  put ReadWrite = putWord8 21
-  put Required = putWord8 22
-  put Root = putWord8 23
-  put Target = putWord8 24
-  put Valid = putWord8 25
-  put Visited = putWord8 26
+  put (NthChild nth) = putWord8 11 >> put nth
+  put (NthLastChild nth) = putWord8 12 >> put nth
+  put (NthLastOfType nth) = putWord8 13 >> put nth
+  put (NthOfType nth) = putWord8 14 >> put nth
+  put OnlyOfType = putWord8 15
+  put OnlyChild = putWord8 16
+  put Optional = putWord8 17
+  put OutOfRange = putWord8 18
+  put ReadOnly = putWord8 19
+  put ReadWrite = putWord8 20
+  put Required = putWord8 21
+  put Root = putWord8 22
+  put Target = putWord8 23
+  put Valid = putWord8 24
+  put Visited = putWord8 25
 
   get = do
     w <- getWord8
@@ -1120,24 +1114,23 @@ instance Binary PseudoClass where
       6 -> pure Hover
       7 -> pure InRange
       8 -> pure Invalid
-      -- 11  -- TODO: Lang
+      -- 9  -- TODO: Lang
       10 -> pure Link
-      -- 15  -- TODO: Not
-      12 -> NthChild <$> get
-      13 -> NthLastChild <$> get
-      14 -> NthLastOfType <$> get
-      15 -> NthOfType <$> get
-      16 -> pure OnlyOfType
-      17 -> pure OnlyChild
-      18 -> pure Optional
-      19 -> pure OutOfRange
-      20 -> pure ReadOnly
-      21 -> pure ReadWrite
-      22 -> pure Required
-      23 -> pure Root
-      24 -> pure Target
-      25 -> pure Valid
-      26 -> pure Visited
+      11 -> NthChild <$> get
+      12 -> NthLastChild <$> get
+      13 -> NthLastOfType <$> get
+      14 -> NthOfType <$> get
+      15 -> pure OnlyOfType
+      16 -> pure OnlyChild
+      17 -> pure Optional
+      18 -> pure OutOfRange
+      19 -> pure ReadOnly
+      20 -> pure ReadWrite
+      21 -> pure Required
+      22 -> pure Root
+      23 -> pure Target
+      24 -> pure Valid
+      25 -> pure Visited
       _ -> fail "An error occured while deserialzing a PseudoClass object."
 
 
