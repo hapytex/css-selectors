@@ -174,7 +174,7 @@ data Token
     | TLang
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
-tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))
+tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str (Just p))
   where str' = take len str
 
 constoken :: Token -> AlexInput -> Int -> Alex TokenLoc
