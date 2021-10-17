@@ -54,6 +54,7 @@ $pm       = [\-\+]
 @psc     = [:]
 @pse     = [:][:]
 @psb     = [:][:]?
+@lang    = [^\s\)]*
 
 tokens :-
  <0> {
@@ -97,6 +98,7 @@ tokens :-
   @psc "last-child"    { constoken (PseudoClass LastChild) }
   @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
   @psc "link"          { constoken (PseudoClass Link) }
+  @psc "lang(" @wo     { constAndBegin TLang lang_state }
   @psc "nth-child("        { constAndBegin (PseudoFunction NthChild) nth_state }
   @psc "nth-last-child("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
   @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
@@ -125,6 +127,11 @@ tokens :-
   "+"                  { constoken (TPM id) }
   "-"                  { constoken (TPM negate) }
   @int                 { tokenize (TInt . read) }
+  ")"                  { constAndBegin TNthClose state_initial }
+ }
+ <lang_state> {
+  @lang                { tokenize String }
+  $w @wo               { skip }
   ")"                  { constAndBegin TNthClose state_initial }
  }
 {
@@ -164,6 +171,7 @@ data Token
     | TInt Int
     | TNthClose
     | TNot
+    | TLang
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
 tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))

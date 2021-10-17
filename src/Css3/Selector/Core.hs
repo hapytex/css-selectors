@@ -17,7 +17,7 @@ module Css3.Selector.Core (
     , SelectorCombinator(..), SelectorGroup(..)
     , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(Sequence, (:.::)), (.::)
     , PseudoClass(
-          Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, NthChild, NthLastChild, NthLastOfType
+          Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Lang, Link, NthChild, NthLastChild, NthLastOfType
         , NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required, Root, Target, Valid, Visited
         ), (.:), pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
     , SelectorSequence(..)
@@ -88,7 +88,7 @@ import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(Integer
 #endif
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary, shrink), arbitraryBoundedEnum)
-import Test.QuickCheck.Gen(Gen, frequency, listOf, listOf1, oneof)
+import Test.QuickCheck.Gen(Gen, elements, frequency, listOf, listOf1, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
 import Text.Blaze.Internal(Markup)
@@ -589,7 +589,7 @@ data PseudoClass
   | Hover
   | InRange
   | Invalid
-  -- TODO: Lang
+  | Lang Text
   | Link
   | NthChild Nth
   | NthLastChild Nth
@@ -757,7 +757,7 @@ instance IsString PseudoClass where
             go "last-child" = LastChild
             go "last-of-type" = LastOfType
             go "link" = Link
-            -- TODO: items with an Nth
+            --  items with :lang(...) and :...(nth)
             go "only-of-type" = OnlyOfType
             go "only-child" = OnlyChild
             go "optional" = Optional
@@ -945,6 +945,7 @@ instance ToCssSelector PseudoClass where
             go InRange = "in-range"
             go Invalid = "invalid"
             go Link = "link"
+            go (Lang l) = "lang(" <> l <> ")"
             go FirstChild = "first-child"
             go (NthChild nth) = "nth-child(" <> nthToText nth <> ")"
             go LastChild = "last-child"
@@ -965,7 +966,7 @@ instance ToCssSelector PseudoClass where
             go Valid = "valid"
             go Visited = "visited"
 
-    specificity' = const (SelectorSpecificity 0 1 0)  -- TODO: add items in the not(...) function
+    specificity' = const (SelectorSpecificity 0 1 0)
     toSelectorGroup = toSelectorGroup . SPseudo
     toPattern Active = _constantP 'Active
     toPattern Checked = _constantP 'Checked
@@ -977,6 +978,7 @@ instance ToCssSelector PseudoClass where
     toPattern InRange = _constantP 'InRange
     toPattern Invalid = _constantP 'Invalid
     toPattern Link = _constantP 'Link
+    toPattern (Lang l) = ConP 'Lang [_textToPattern l]
     toPattern (NthChild nth) = ConP 'NthChild [_nthToPat nth]
     toPattern (NthLastChild nth) = ConP 'NthLastChild [_nthToPat nth]
     toPattern (NthLastOfType nth) = ConP 'NthLastOfType [_nthToPat nth]
@@ -996,7 +998,7 @@ instance ToCssSelector PseudoClass where
     normalize (NthLastChild nth) = NthLastChild (normalizeNth nth)
     normalize (NthLastOfType nth) = NthLastOfType (normalizeNth nth)
     normalize (NthOfType nth) = NthOfType (normalizeNth nth)
-    normalize pc = pc  -- TODO: normalize item in the not(...), etc. function(s).
+    normalize pc = pc
 
 instance ToCssSelector Negation where
     toCssSelector n = ":not("<> go n <> ")"
@@ -1125,7 +1127,7 @@ instance Binary PseudoClass where
   put Hover = putWord8 6
   put InRange = putWord8 7
   put Invalid = putWord8 8
-  -- put  -- TODO: Lang
+  put (Lang l) = putWord8 9 >> put l
   put Link = putWord8 10
   put (NthChild nth) = putWord8 11 >> put nth
   put (NthLastChild nth) = putWord8 12 >> put nth
@@ -1155,7 +1157,7 @@ instance Binary PseudoClass where
       6 -> pure Hover
       7 -> pure InRange
       8 -> pure Invalid
-      -- 9  -- TODO: Lang
+      9 -> Lang <$> get
       10 -> pure Link
       11 -> NthChild <$> get
       12 -> NthLastChild <$> get
@@ -1438,6 +1440,9 @@ instance ToJSON Attrib where
 _arbitraryIdent :: Gen Text
 _arbitraryIdent = pack <$> listOf1 arbitrary
 
+_arbitraryLanguage :: Gen Text
+_arbitraryLanguage = pack <$> (\x y -> [x, y] <$> elements ['a' .. 'z'] <*> elements ['a' .. 'z'])
+
 _shrinkText :: Text -> [Text]
 _shrinkText = liftA2 (zipWith (<>)) inits (tails . T.drop 1)
 
@@ -1492,7 +1497,7 @@ instance Arbitrary AttributeCombinator where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SelectorFilter where
-    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary, SPseudo <$> arbitrary, SNot <$> arbitrary]
+    arbitrary = frequency [(4, SHash <$> arbitrary), (4, SClass <$> arbitrary), (4, SAttrib <$> arbitrary), (4, SPseudo <$> arbitrary), (1, SNot <$> arbitrary)]
     shrink (SHash x) = SHash <$> shrink x
     shrink (SClass x) = SClass <$> shrink x
     shrink (SAttrib x) = SAttrib <$> shrink x
@@ -1529,7 +1534,7 @@ instance Arbitrary Selector where
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
 
 instance Arbitrary PseudoClass where
-    arbitrary = oneof (map pure [
+    arbitrary = oneof ((Lang <$> _arbitraryLanguage) : map pure [
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])

@@ -19,34 +19,35 @@ import Data.Text(pack)
 %error { happyError }
 
 %token
-    ','    { TokenLoc Comma _ _ }
-    '>'    { TokenLoc Greater _ _ }
-    '+'    { TokenLoc Plus _ _ }
-    '~'    { TokenLoc Tilde _ _ }
-    '.'    { TokenLoc Dot _ _ }
-    ' '    { TokenLoc Space _ _ }
-    '|'    { TokenLoc Pipe _ _ }
-    '*'    { TokenLoc Asterisk _ _ }
-    '['    { TokenLoc BOpen _ _ }
-    ']'    { TokenLoc BClose _ _ }
-    '='    { TokenLoc TEqual _ _ }
-    '^='   { TokenLoc TPrefixMatch _ _ }
-    '$='   { TokenLoc TSuffixMatch _ _ }
-    '*='   { TokenLoc TSubstringMatch _ _ }
-    '|='   { TokenLoc TDashMatch _ _ }
-    '~='   { TokenLoc TIncludes _ _ }
-    ident  { TokenLoc (Ident $$) _ _ }
-    string { TokenLoc (String $$) _ _ }
-    hash   { TokenLoc (THash $$) _ _ }
-    pseude { TokenLoc (PseudoElement $$) _ _ }
-    pseudc { TokenLoc (PseudoClass $$) _ _ }
-    pseudf { TokenLoc (PseudoFunction $$) _ _ }
-    pm     { TokenLoc (TPM $$) _ _ }
-    'n'    { TokenLoc TN _ _ }
-    int    { TokenLoc (TInt $$) _ _ }
-    nth    { TokenLoc (TNth $$) _ _ }
-    'not'  { TokenLoc TNot _ _ }
-    ')'    { TokenLoc TNthClose _ _ }
+    ','     { TokenLoc Comma _ _ }
+    '>'     { TokenLoc Greater _ _ }
+    '+'     { TokenLoc Plus _ _ }
+    '~'     { TokenLoc Tilde _ _ }
+    '.'     { TokenLoc Dot _ _ }
+    ' '     { TokenLoc Space _ _ }
+    '|'     { TokenLoc Pipe _ _ }
+    '*'     { TokenLoc Asterisk _ _ }
+    '['     { TokenLoc BOpen _ _ }
+    ']'     { TokenLoc BClose _ _ }
+    '='     { TokenLoc TEqual _ _ }
+    '^='    { TokenLoc TPrefixMatch _ _ }
+    '$='    { TokenLoc TSuffixMatch _ _ }
+    '*='    { TokenLoc TSubstringMatch _ _ }
+    '|='    { TokenLoc TDashMatch _ _ }
+    '~='    { TokenLoc TIncludes _ _ }
+    ident   { TokenLoc (Ident $$) _ _ }
+    string  { TokenLoc (String $$) _ _ }
+    hash    { TokenLoc (THash $$) _ _ }
+    pseude  { TokenLoc (PseudoElement $$) _ _ }
+    pseudc  { TokenLoc (PseudoClass $$) _ _ }
+    pseudf  { TokenLoc (PseudoFunction $$) _ _ }
+    pm      { TokenLoc (TPM $$) _ _ }
+    'n'     { TokenLoc TN _ _ }
+    int     { TokenLoc (TInt $$) _ _ }
+    nth     { TokenLoc (TNth $$) _ _ }
+    'not('  { TokenLoc TNot _ _ }
+    'lang(' { TokenLoc TLang _ _ }
+    ')'     { TokenLoc TNthClose _ _ }
 
 %%
 
@@ -93,7 +94,8 @@ SelectorAddition
     | pseudf OptSpace Nth         { SPseudo ($1 $3) }
     | Class                       { SClass $1 }
     | AttribBox                   { SAttrib $1 }
-    | 'not' Negation ')'          { SNot $2 }
+    | 'not(' Negation ')'         { SNot $2 }
+    | 'lang(' string ')'          { SPseudo (Lang (pack $2)) }
     ;
 
 Negation
