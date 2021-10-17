@@ -24,7 +24,7 @@ module Css3.Selector.Core (
     , combinatorText, combine
     , (.>), (.+), (.~)
     -- * Filters
-    , SelectorFilter(SHash, SClass, SAttrib, SPseudo), filters, filters', addFilters, (.@)
+    , SelectorFilter(SHash, SClass, SAttrib, SPseudo, SNot), filters, filters', addFilters, (.@)
     -- * Namespaces
     , Namespace(..), pattern NEmpty
     -- * Type selectors
@@ -37,6 +37,8 @@ module Css3.Selector.Core (
     , Class(..), (...)
     -- * Hashes
     , Hash(..), (.#)
+    -- * Negation
+    , Negation(NTypeSelector, NHash, NClass, NAttrib, NPseudo, NPseudoElement)
     -- * Nth items
     , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue
     -- * Specificity
@@ -126,9 +128,6 @@ nthIsEmpty
   :: Nth  -- ^ The given 'Nth' object object to check.
   -> Bool  -- ^ 'True' if the given 'Nth' object does /not/ contain any items; 'False' otherwise.
 nthIsEmpty (Nth n c) = n <= 0 && c <= 0
-
-pattern NthEmpty :: Nth
-pattern NthEmpty = Nth 0 0
 
 -- | Normalize the given 'Nth' object to a normalized one. If and only if the
 -- normalized variants are the same of two 'Nth' objects, then these will produce
@@ -396,11 +395,28 @@ data SelectorFilter
     | SClass Class -- ^ A 'Class' object as filter.
     | SAttrib Attrib -- ^ An 'Attrib' object as filter.
     | SPseudo PseudoClass -- ^ A 'PseudoClass' object as filter.
+    | SNot Negation  -- ^ A @:not(…)@ clause that contains a simple selector to negate.
     deriving (Data, Eq, Generic, Ord, Show)
 
 instance Hashable SelectorFilter
 
 instance NFData SelectorFilter
+
+-- | A data type that contains all possible items that can be used in a @:not(…)@ clause.
+-- Since a @:not(…)@ cannot be nested in another @:not(…)@, we see an 'SNot' as a special
+-- case, and not as a 'PseudoClass'.
+data Negation
+    = NTypeSelector TypeSelector  -- ^ A 'TypeSelector' for the @:not(…)@ clause.
+    | NHash Hash  -- ^ A 'Hash' for the @:not(…)@ clause.
+    | NClass Class  -- ^ A 'Class' for the @:not(…)@ clause.
+    | NAttrib Attrib  -- ^ An 'Attrib' for the @:not(…)@ clause.
+    | NPseudo PseudoClass  -- ^ A 'PseudoClass' for the @:not(…)@ clause.
+    | NPseudoElement PseudoElement  -- ^ A 'PseudoElement' for the @:not(…)@ clause.
+    deriving (Data, Eq, Generic, Ord, Show)
+
+instance Hashable Negation
+
+instance NFData Negation
 
 -- | A css attribute can come in two flavors: either a constraint that the
 -- attribute should exists, or a constraint that a certain attribute should have
@@ -872,15 +888,18 @@ instance ToCssSelector SelectorFilter where
     toCssSelector (SClass c) = toCssSelector c
     toCssSelector (SAttrib a) = toCssSelector a
     toCssSelector (SPseudo p) = toCssSelector p
+    toCssSelector (SNot n) = toCssSelector n
     toSelectorGroup = toSelectorGroup . Filter (SimpleSelector Universal)
     specificity' (SHash h) = specificity' h
     specificity' (SClass c) = specificity' c
     specificity' (SAttrib a) = specificity' a
     specificity' (SPseudo p) = specificity' p
+    specificity' (SNot n) = specificity' n  -- Selectors inside the negation pseudo-class are counted like any other, but the negation itself does not count as a pseudo-class.
     toPattern (SHash h) = ConP 'SHash [toPattern h]
     toPattern (SClass c) = ConP 'SClass [toPattern c]
     toPattern (SAttrib a) = ConP 'SAttrib [toPattern a]
     toPattern (SPseudo p) = ConP 'SPseudo [toPattern p]
+    toPattern (SNot n) = ConP 'SNot [toPattern n]
 
 instance ToCssSelector Selector where
     toCssSelector (Selector s) = toCssSelector s
@@ -978,6 +997,28 @@ instance ToCssSelector PseudoClass where
     normalize (NthLastOfType nth) = NthLastOfType (normalizeNth nth)
     normalize (NthOfType nth) = NthOfType (normalizeNth nth)
     normalize pc = pc  -- TODO: normalize item in the not(...), etc. function(s).
+
+instance ToCssSelector Negation where
+    toCssSelector n = ":not("<> go n <> ")"
+      where go (NTypeSelector t) = toCssSelector t
+            go (NHash h) = toCssSelector h
+            go (NClass c) = toCssSelector c
+            go (NAttrib a) = toCssSelector a
+            go (NPseudo p) = toCssSelector p
+            go (NPseudoElement p) = toCssSelector p
+    toSelectorGroup = toSelectorGroup . SNot
+    specificity' (NTypeSelector t) = specificity' t
+    specificity' (NHash h) = specificity' h
+    specificity' (NClass c) = specificity' c
+    specificity' (NAttrib a) = specificity' a
+    specificity' (NPseudo p) = specificity' p
+    specificity' (NPseudoElement p) = specificity' p
+    toPattern (NTypeSelector t) = ConP 'NTypeSelector [toPattern t]
+    toPattern (NHash h) = ConP 'NHash [toPattern h]
+    toPattern (NClass c) = ConP 'NClass [toPattern c]
+    toPattern (NAttrib a) = ConP 'NAttrib [toPattern a]
+    toPattern (NPseudo p) = ConP 'NPseudo [toPattern p]
+    toPattern (NPseudoElement p) = ConP 'NPseudoElement [toPattern p]
 
 instance ToCssSelector PseudoElement where
     toCssSelector = pack . (':' :) . (':' :) . go
@@ -1157,6 +1198,7 @@ instance Binary SelectorFilter where
   put (SClass c) = putWord8 1 >> put c
   put (SAttrib a) = putWord8 2 >> put a
   put (SPseudo p) = putWord8 3 >> put p
+  put (SNot n) = putWord8 4 >> put n
   get = do
     w <- getWord8
     case w of
@@ -1164,7 +1206,27 @@ instance Binary SelectorFilter where
       1 -> SClass <$> get
       2 -> SAttrib <$> get
       3 -> SPseudo <$> get
+      4 -> SNot <$> get
       _ -> fail "An error occurred when deserializing a SelectorFilter object."
+
+instance Binary Negation where
+  put (NTypeSelector t) = putWord8 0 >> put t
+  put (NHash h) = putWord8 1 >> put h
+  put (NClass c) = putWord8 2 >> put c
+  put (NAttrib a) = putWord8 3 >> put a
+  put (NPseudo p) = putWord8 4 >> put p
+  put (NPseudoElement p) = putWord8 5 >> put p
+  get = do
+    w <- getWord8
+    case w of
+      0 -> NTypeSelector <$> get
+      1 -> NHash <$> get
+      2 -> NClass <$> get
+      3 -> NAttrib <$> get
+      4 -> NPseudo <$> get
+      5 -> NPseudoElement <$> get
+      _ -> fail "An error occurred when deserializing a Negation object."
+
 
 instance Binary Attrib where
   put (Exist e) = putWord8 0 >> put e
@@ -1430,11 +1492,21 @@ instance Arbitrary AttributeCombinator where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SelectorFilter where
-    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary, SPseudo <$> arbitrary]
+    arbitrary = oneof [SHash <$> arbitrary, SClass <$> arbitrary, SAttrib <$> arbitrary, SPseudo <$> arbitrary, SNot <$> arbitrary]
     shrink (SHash x) = SHash <$> shrink x
     shrink (SClass x) = SClass <$> shrink x
     shrink (SAttrib x) = SAttrib <$> shrink x
     shrink (SPseudo x) = SPseudo <$> shrink x
+    shrink (SNot x) = SNot <$> shrink x
+
+instance Arbitrary Negation where
+    arbitrary = oneof [NTypeSelector <$> arbitrary, NHash <$> arbitrary, NClass <$> arbitrary, NAttrib <$> arbitrary, NPseudo <$> arbitrary, NPseudoElement <$> arbitrary]
+    shrink (NTypeSelector x) = NTypeSelector <$> shrink x
+    shrink (NHash x) = NHash <$> shrink x
+    shrink (NClass x) = NClass <$> shrink x
+    shrink (NAttrib x) = NAttrib <$> shrink x
+    shrink (NPseudo x) = NPseudo <$> shrink x
+    shrink (NPseudoElement x) = NPseudoElement <$> shrink x
 
 instance Arbitrary AttributeName where
     arbitrary = AttributeName <$> arbitrary <*> _arbitraryIdent

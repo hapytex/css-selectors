@@ -101,6 +101,8 @@ tokens :-
   @psc "nth-last-child("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
   @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
   @psc "nth-of-type("      { constAndBegin (PseudoFunction NthOfType) nth_state }
+  @psc @n@o@t "(" @wo      { constoken TNot }
+  @wo ")"                  { constoken TNthClose }
   @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
   @psc "only-child"    { constoken (PseudoClass OnlyChild) }
   @psc "optional"      { constoken (PseudoClass Optional) }
@@ -161,6 +163,7 @@ data Token
     | TPM (Int -> Int)
     | TInt Int
     | TNthClose
+    | TNot
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
 tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))

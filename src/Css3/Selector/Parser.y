@@ -45,6 +45,7 @@ import Data.Text(pack)
     'n'    { TokenLoc TN _ _ }
     int    { TokenLoc (TInt $$) _ _ }
     nth    { TokenLoc (TNth $$) _ _ }
+    'not'  { TokenLoc TNot _ _ }
     ')'    { TokenLoc TNthClose _ _ }
 
 %%
@@ -92,6 +93,17 @@ SelectorAddition
     | pseudf OptSpace Nth         { SPseudo ($1 $3) }
     | Class                       { SClass $1 }
     | AttribBox                   { SAttrib $1 }
+    | 'not' Negation ')'          { SNot $2 }
+    ;
+
+Negation
+    : hash                        { NHash (Hash (pack $1)) }
+    | Class                       { NClass $1 }
+    | AttribBox                   { NAttrib $1 }
+    | pseudc                      { NPseudo $1 }
+    | pseudf OptSpace Nth         { NPseudo ($1 $3) }
+    | Type                        { NTypeSelector $1 }
+    | pseude                      { NPseudoElement $1 }
     ;
 
 Nth
