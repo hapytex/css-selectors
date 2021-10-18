@@ -9,11 +9,20 @@ import Data.Hashable(Hashable(hashWithSalt))
 import Data.Text(pack, unpack)
 
 import Test.Framework (defaultMain, testGroup)
+import Test.Framework.Options
+import Test.Framework.Runners.Options
+
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 
+-- options :: TestOptions
+-- options = mempty { topt_maximum_test_size=Just 1 }
+
+-- runnerOptions :: RunnerOptions
+-- runnerOptions = mempty {ropt_test_options=Just options }
+
 main :: IO ()
-main = defaultMain tests
+main = defaultMain tests -- runnerOptions
 
 tests = [
     testGroup "Encode-decode strings" [
