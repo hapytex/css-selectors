@@ -17,6 +17,9 @@ import Css3.Selector.Core(
   )
 
 import Data.Decimal(Decimal)
+#if __GLASGOW_HASKELL__ < 803
+import Data.Semigroup(Semigroup((<>)))
+#endif
 }
 
 %wrapper "monadUserState"
@@ -207,9 +210,7 @@ instance Show Token where
     show TLang = "tlang"
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
-#if __GLASGOW_HASKELL__ < 804
-tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))
-#elif __GLASGOW__HASKELL >= 808
+#if __GLASGOW_HASKELL__ > 807
 tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))
 #else
 tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))
