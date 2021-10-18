@@ -1,5 +1,5 @@
 --vim:ft=haskell
-{
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
