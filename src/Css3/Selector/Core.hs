@@ -1537,7 +1537,7 @@ instance Arbitrary Selector where
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
 
 instance Arbitrary PseudoClass where
-    arbitrary = oneof (pure (Lang "en") : map pure [
+    arbitrary = oneof ((Lang <$> _arbitraryLanguage) : map pure [
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])
