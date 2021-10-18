@@ -1,5 +1,4 @@
 --vim:ft=haskell
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
@@ -207,7 +206,7 @@ instance Show Token where
     show TLang = "tlang"
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
-tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))
+tokenize f (p, _, _, str) len = pure (ap (flip TokenLoc) f str' (Just p))
   where str' = take len str
 
 constoken :: Token -> AlexInput -> Int -> Alex TokenLoc

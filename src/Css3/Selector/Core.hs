@@ -1538,6 +1538,7 @@ instance Arbitrary Selector where
 
 instance Arbitrary PseudoClass where
     arbitrary = oneof (map pure [
+    arbitrary = oneof (pure (Lang "en") : map pure [
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType] ++ [pure (Lang "en")])
