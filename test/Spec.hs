@@ -15,14 +15,8 @@ import Test.Framework.Runners.Options
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 
--- options :: TestOptions
--- options = mempty { topt_maximum_test_size=Just 1 }
-
--- runnerOptions :: RunnerOptions
--- runnerOptions = mempty {ropt_test_options=Just options }
-
 main :: IO ()
-main = defaultMain tests -- runnerOptions
+main = defaultMain tests
 
 tests = [
     testGroup "Encode-decode strings" [
