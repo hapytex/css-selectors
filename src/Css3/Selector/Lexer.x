@@ -98,7 +98,7 @@ tokens :-
   @psc "last-child"    { constoken (PseudoClass LastChild) }
   @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
   @psc "link"          { constoken (PseudoClass Link) }
-  @psc "lang(" @wo     { constAndBegin TLang lang_state }
+  @psc "lang("         { constAndBegin TLang lang_state }
   @psc "nth-child("        { constAndBegin (PseudoFunction NthChild) nth_state }
   @psc "nth-last-child("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
   @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
@@ -136,7 +136,7 @@ tokens :-
  }
 {
 
-data TokenLoc = TokenLoc { tokenType :: Token, original :: String, location :: Maybe AlexPosn }
+data TokenLoc = TokenLoc { tokenType :: Token, original :: String, location :: Maybe AlexPosn } deriving Show
 
 type AlexUserState = ()
 
@@ -173,8 +173,41 @@ data Token
     | TNot
     | TLang
 
+instance Show Token where
+    show TIncludes = "tincludes"
+    show TEqual = "tequal"
+    show TDashMatch = "tdashmatch"
+    show TPrefixMatch = "tprefixmatch"
+    show TSuffixMatch = "tsuffixmatch"
+    show TSubstringMatch = "tsubstringmatch"
+    show (Ident s) = "ident " <> s
+    show (String s) = "string" <> s
+    show (THash s) = "thash " <> s
+    show (Decimal d) = "decimal " <> show d
+    show (Integer i) = "integer " <> show i
+    show Comma = "comma"
+    show Plus = "plus"
+    show Greater = "greater"
+    show Tilde = "tilde"
+    show Dot = "dot"
+    show Pipe = "pipe"
+    show Asterisk = "asterisk"
+    show Space = "space"
+    show BOpen = "bopen"
+    show BClose = "bclose"
+    show (PseudoClass s) = "pseudoclass " <> show s
+    show (PseudoFunction _) = "pseudofunction"
+    show (PseudoElement e) = "pseudoelement " <> show e
+    show TN = "tn"
+    show (TNth n) = "tnth " <> show n
+    show (TPM _) = "tpm"
+    show (TInt i) = "tint " <> show i
+    show TNthClose = "tnthclose"
+    show TNot = "tnot"
+    show TLang = "tlang"
+
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
-tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str (Just p))
+tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))
   where str' = take len str
 
 constoken :: Token -> AlexInput -> Int -> Alex TokenLoc

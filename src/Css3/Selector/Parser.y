@@ -106,6 +106,7 @@ Negation
     | pseudf OptSpace Nth         { NPseudo ($1 $3) }
     | Type                        { NTypeSelector $1 }
     | pseude                      { NPseudoElement $1 }
+    | 'lang(' string ')'          { NPseudo (Lang (pack $2)) }
     ;
 
 Nth
@@ -182,7 +183,7 @@ Ident
 {
 
 happyError :: [TokenLoc] -> a
-happyError (~(TokenLoc _ s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
+happyError (~(TokenLoc t s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token type " <> show t <>  ": \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
 happyError _ = error "Unexpected end of string when parsing a css selector."
 
 }

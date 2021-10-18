@@ -560,6 +560,9 @@ instance NFData AttributeName
 -- | We use 'Text' as the type to store an attribute value.
 type AttributeValue = Text
 
+-- | We use 'Text' to specify the language in the @:lang()@ pseudo class.
+type Language = Text
+
 -- | The possible ways to match an attribute with a given value in a css
 -- selector.
 data AttributeCombinator =
@@ -589,7 +592,7 @@ data PseudoClass
   | Hover
   | InRange
   | Invalid
-  | Lang Text
+  | Lang Language
   | Link
   | NthChild Nth
   | NthLastChild Nth
@@ -1534,7 +1537,7 @@ instance Arbitrary Selector where
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
 
 instance Arbitrary PseudoClass where
-    arbitrary = oneof ((Lang <$> _arbitraryLanguage) : map pure [
+    arbitrary = oneof (pure (Lang "en") : map pure [
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])
