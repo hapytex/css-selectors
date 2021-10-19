@@ -88,7 +88,7 @@ import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(Integer
 #endif
 
 import Test.QuickCheck.Arbitrary(Arbitrary(arbitrary, shrink), arbitraryBoundedEnum)
-import Test.QuickCheck.Gen(Gen, frequency, listOf, listOf1, oneof)
+import Test.QuickCheck.Gen(Gen, elements, frequency, listOf, listOf1, oneof)
 
 import Text.Blaze(ToMarkup(toMarkup), text)
 import Text.Blaze.Internal(Markup)
@@ -1537,7 +1537,7 @@ instance Arbitrary Selector where
     shrink (Combined x y z) = z : (Combined x y <$> shrink z) ++ ((\sx -> Combined sx y z) <$> shrink x)
 
 instance Arbitrary PseudoClass where
-    arbitrary = oneof (map pure ([Lang "en"] ++ [
+    arbitrary = oneof ((Lang <$> elements _arbitraryLanguages) : map pure ([
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ]) ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])

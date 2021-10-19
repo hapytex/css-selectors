@@ -8,6 +8,8 @@ import Data.Function(on)
 import Data.Hashable(Hashable(hashWithSalt))
 import Data.Text(pack, unpack)
 
+import Debug.Trace(trace)
+
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Options
 import Test.Framework.Runners.Options
@@ -186,8 +188,8 @@ hashingDifferent slt xa xb = (hashWithSalt slt xa == hashWithSalt slt xb) || (xa
 uniqnessEncoding :: (Binary a, Eq a) => a -> a -> Bool
 uniqnessEncoding ca cb = (encode ca == encode cb) == (ca == cb)
 
-encodeDecodeCss' :: ToCssSelector a => a -> Bool
-encodeDecodeCss' sg = (parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg
+encodeDecodeCss' :: (Show a, ToCssSelector a) => a -> Bool
+encodeDecodeCss' sg = trace (show sg) ((parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg)
 
 buildPattern1 :: SelectorGroup -> Bool
 buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force evaluation
