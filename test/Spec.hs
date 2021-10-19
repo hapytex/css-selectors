@@ -189,7 +189,7 @@ uniqnessEncoding :: (Binary a, Eq a) => a -> a -> Bool
 uniqnessEncoding ca cb = (encode ca == encode cb) == (ca == cb)
 
 encodeDecodeCss' :: (Show a, ToCssSelector a) => a -> Bool
-encodeDecodeCss' sg = trace (show sg) ((parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg)
+encodeDecodeCss' sg = (parseCss . unpack . toCssSelector . toSelectorGroup) sg == toSelectorGroup sg
 
 buildPattern1 :: SelectorGroup -> Bool
 buildPattern1 x = toPattern x == toPattern x -- we use equality checks to force evaluation

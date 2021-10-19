@@ -57,7 +57,7 @@ $pm       = [\-\+]
 @psc     = [:]
 @pse     = [:][:]
 @psb     = [:][:]?
-@lang    = [^A-Za-z\-]+
+@lang    = [A-Za-z\-]+
 
 tokens :-
  <0> {
