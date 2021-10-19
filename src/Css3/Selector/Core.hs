@@ -80,9 +80,9 @@ import GHC.Generics(Generic)
 
 import Language.Haskell.TH.Lib(appE, conE)
 #if MIN_VERSION_template_haskell(2,17,0)
-import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q, unsafeCodeCoerce)
+import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), Q, unsafeCodeCoerce)
 #elif MIN_VERSION_template_haskell(2,16,0)
-import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(StringL), Name, Pat(ConP, ListP, ViewP), Q, unsafeTExpCoerce)
+import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), Q, unsafeTExpCoerce)
 #else
 import Language.Haskell.TH.Syntax(Lift(lift), Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), Q)
 #endif
