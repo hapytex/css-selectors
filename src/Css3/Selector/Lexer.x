@@ -210,7 +210,7 @@ instance Show Token where
     show TLang = "tlang"
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
-#if __GLASGOW_HASKELL__ > 807
+#if __GLASGOW_HASKELL__ > 805
 tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))
 #else
 tokenize f (p, _, _, str) len = pure (Control.Monad.ap (flip TokenLoc) f str' (Just p))
