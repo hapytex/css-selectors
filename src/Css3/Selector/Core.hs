@@ -15,7 +15,7 @@ module Css3.Selector.Core (
     -- * Selectors and combinators
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
-    , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection), PseudoSelectorSequence(Sequence, (:.::)), (.::)
+    , PseudoElement(After, Before, FirstLetter, FirstLine), PseudoSelectorSequence(Sequence, (:.::)), (.::)
     , PseudoClass(
           Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Lang, Link, NthChild, NthLastChild, NthLastOfType
         , NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required, Root, Target, Valid, Visited
@@ -40,7 +40,7 @@ module Css3.Selector.Core (
     -- * Negation
     , Negation(NTypeSelector, NHash, NClass, NAttrib, NPseudo, NPseudoElement)
     -- * Nth items
-    , Nth(Nth, linear, constant), pattern Even, pattern Odd, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue
+    , Nth(Nth, linear, constant), pattern Even, pattern Odd, pattern One, nthValues, nthIsEmpty, nthValues0, nthValues1, normalizeNth, nthContainsValue
     -- * Specificity
     , SelectorSpecificity(..), specificity, specificityValue
     -- * Read and write binary content
@@ -112,7 +112,8 @@ specificityValue :: SelectorSpecificity -- ^ The 'SelectorSpecificity' to calcul
     -> Int  -- ^ The specificity level of the 'SelectorSpecificity'. If the value is higher, the rules in the css selector take precedence.
 specificityValue (SelectorSpecificity a b c) = 100*a + 10*b + c
 
--- | A data type that is used to select children and elements of type with the @:nth-child@, @:nth-last-child@, @:nth-last-of-type@ and @nth-of-type@.
+-- | A data type that is used to select children and elements of type with the @:nth-child@, @:nth-last-child@, @:nth-last-of-type@ and @:nth-of-type@.
+-- if the 'One' is used as argument, then the pseudo classes are @:first-child@, @:first-of-type@, @:last-child@, and @:last-of-type@.
 data Nth
   = Nth {
     linear :: Int  -- ^ The linear part of the 'Nth' object: the integral number before the @n@.
@@ -183,6 +184,7 @@ pattern Even = Nth 2 0
 pattern Odd :: Nth
 pattern Odd = Nth 2 1
 
+-- | An 'Nth' item that spans a collection with only @1@ as value. This is used to transform @:nth-child@ to @:first-child@ for example.
 pattern One :: Nth
 pattern One = Nth 0 1
 
@@ -500,7 +502,6 @@ attrib = flip Attrib
     -> TypeSelector -- ^ A 'TypeSelector' object constructed with the 'Namespace' and 'ElementName'.
 (.|) = TypeSelector
 
-
 -- | Filter a given 'SelectorSequence' with a given 'PseudoClass'.
 (.:) :: SelectorSequence -- ^ The given 'SelectorSequence' to filter.
     -> PseudoClass -- ^ The given 'PseudoClass' to filter the 'SelectorSequence' further.
@@ -583,32 +584,32 @@ instance NFData AttributeCombinator
 -- These filter on the /state/ of the items. A full list of pseudo classes
 -- is available <https://www.w3schools.com/css/css_pseudo_classes.asp here>.
 data PseudoClass
-  = Active
-  | Checked
-  | Disabled
-  | Empty
-  | Enabled
-  | Focus
-  | Hover
-  | InRange
-  | Invalid
-  | Lang Language
-  | Link
-  | NthChild Nth
-  | NthLastChild Nth
-  | NthLastOfType Nth
-  | NthOfType Nth
-  | OnlyOfType
-  | OnlyChild
-  | Optional
-  | OutOfRange
-  | ReadOnly
-  | ReadWrite
-  | Required
-  | Root
-  | Target
-  | Valid
-  | Visited
+  = Active  -- ^ The @:active@ pseudo class.
+  | Checked  -- ^ The @:checked@ pseudo class.
+  | Disabled  -- ^ The @:disabled@ pseudo class.
+  | Empty  -- ^ The @:empty@ pseudo class.
+  | Enabled  -- ^ The @:enabled@ pseudo class.
+  | Focus  -- ^ The @:focus@ pseudo class.
+  | Hover  -- ^ The @:hover@ pseudo class.
+  | InRange  -- ^ The @:in-range@ pseudo class.
+  | Invalid  -- ^ The @:invalid@ pseudo class.
+  | Lang Language  -- ^ The @:lang(…)@ pseudo class, the language parameter is at the moment a 'Text' object, but only uppercase, lowercase and hyphens are characters that can be parsed.
+  | Link  -- ^ The @:link@ pseudo class.
+  | NthChild Nth  -- ^ The @:nth-child(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:first-child@.
+  | NthLastChild Nth  -- ^ The @:nth-last-child(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:last-child@.
+  | NthLastOfType Nth  -- ^ The @:nth-last-of-type(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:last-of-type@.
+  | NthOfType Nth  -- ^ The @:nth-of-type(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:first-of-type@.
+  | OnlyOfType  -- ^ The @:active@ pseudo class.
+  | OnlyChild  -- ^ The @:active@ pseudo class.
+  | Optional  -- ^ The @:active@ pseudo class.
+  | OutOfRange  -- ^ The @:active@ pseudo class.
+  | ReadOnly  -- ^ The @:active@ pseudo class.
+  | ReadWrite  -- ^ The @:active@ pseudo class.
+  | Required  -- ^ The @:active@ pseudo class.
+  | Root  -- ^ The @:active@ pseudo class.
+  | Target  -- ^ The @:active@ pseudo class.
+  | Valid  -- ^ The @:active@ pseudo class.
+  | Visited  -- ^ The @:active@ pseudo class.
   deriving (Data, Eq, Generic, Ord, Read, Show)
 
 instance Hashable PseudoClass
@@ -645,8 +646,6 @@ data PseudoElement
   | Before  -- ^ The @::before@ pseudo-element can be used to describe generated content before an element’s content.
   | FirstLetter  -- ^ The @::first-line@ pseudo-element describes the contents of the first formatted line of an element.
   | FirstLine  -- ^ The @::first-letter@ pseudo-element represents the first letter of an element, if it is not preceded by any other content (such as images or inline tables) on its line.
-  | Marker
-  | Selection
   deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
 
 instance Hashable PseudoElement
@@ -788,7 +787,6 @@ instance IsString PseudoElement where
             go "before" = Before
             go "first-letter" = FirstLetter
             go "first-line" = FirstLine
-            go "selection" = Selection
             go x = error ("The pseudo element \"" ++ x ++ "\" is not a valid pseudo element.")
 
 
@@ -1031,8 +1029,6 @@ instance ToCssSelector PseudoElement where
             go Before = "before"
             go FirstLetter = "first-letter"
             go FirstLine = "first-line"
-            go Marker = "marker"
-            go Selection = "selection"
     specificity' = const (SelectorSpecificity 0 0 1)
     toSelectorGroup = toSelectorGroup . (def :.::)
     toPattern = _constantP . go
@@ -1040,8 +1036,6 @@ instance ToCssSelector PseudoElement where
             go Before = 'Before
             go FirstLetter = 'FirstLetter
             go FirstLine = 'FirstLine
-            go Marker = 'Marker
-            go Selection = 'Selection
 
 -- Custom Eq and Ord instances
 instance Eq SelectorSpecificity where
@@ -1287,7 +1281,6 @@ instance Binary SelectorGroup where
   put (SelectorGroup g) = put g
   get = SelectorGroup <$> get
 
-
 -- Lift instances
 _apply :: Name -> [Q Exp] -> Q Exp
 _apply = foldl appE . conE
@@ -1300,7 +1293,6 @@ instance Lift SelectorGroup where
 #elif MIN_VERSION_template_haskell(2,16,0)
     liftTyped = unsafeTExpCoerce . lift
 #endif
-
 
 instance Lift Selector where
 #if MIN_VERSION_template_haskell(2,17,0)
@@ -1337,6 +1329,13 @@ instance Lift Attrib where
   liftTyped = unsafeTExpCoerce . lift
 #endif
 
+instance Lift PseudoSelectorSequence where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
 instance Lift PseudoClass where
 #if MIN_VERSION_template_haskell(2,17,0)
   liftTyped = unsafeCodeCoerce . lift
@@ -1345,6 +1344,20 @@ instance Lift PseudoClass where
 #endif
 
 instance Lift PseudoElement where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift Nth where
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = unsafeCodeCoerce . lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = unsafeTExpCoerce . lift
+#endif
+
+instance Lift Negation where
 #if MIN_VERSION_template_haskell(2,17,0)
   liftTyped = unsafeCodeCoerce . lift
 #elif MIN_VERSION_template_haskell(2,16,0)
@@ -1377,6 +1390,9 @@ instance ToMarkup SelectorFilter where
     toMarkup = _cssToMarkup
 
 instance ToMarkup Attrib where
+    toMarkup = _cssToMarkup
+
+instance ToMarkup Negation where
     toMarkup = _cssToMarkup
 
 -- ToJavaScript and ToJson instances
@@ -1414,6 +1430,9 @@ instance ToJavascript SelectorFilter where
 instance ToJavascript Attrib where
     toJavascript = _cssToJavascript
 
+instance ToJavascript Negation where
+    toJavascript = _cssToJavascript
+
 instance ToJSON SelectorGroup where
     toJSON = _cssToJson
 
@@ -1436,6 +1455,9 @@ instance ToJSON PseudoElement where
     toJSON = _cssToJson
 
 instance ToJSON Attrib where
+    toJSON = _cssToJson
+
+instance ToJSON Negation where
     toJSON = _cssToJson
 
 
@@ -1541,7 +1563,6 @@ instance Arbitrary PseudoClass where
         Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])
-
 
 instance Arbitrary PseudoElement where
     arbitrary = arbitraryBoundedEnum

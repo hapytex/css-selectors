@@ -7,14 +7,13 @@ module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens
 
 import Css3.Selector.Utils(readCssString, readIdentifier)
 import Css3.Selector.Core(
-    PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Selection)
+    PseudoElement(After, Before, FirstLetter, FirstLine)
   , PseudoClass(
-        Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link
+        Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, NthChild, NthLastChild, NthLastOfType, NthOfType
       , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       )
   , Nth, pattern Even, pattern Odd
   , pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
-  , PseudoClass(..)
   )
 
 import Data.Decimal(Decimal)
@@ -86,8 +85,6 @@ tokens :-
   @psb "before"        { constoken (PseudoElement Before) }
   @psb "first-letter"  { constoken (PseudoElement FirstLetter) }
   @psb "first-line"    { constoken (PseudoElement FirstLine) }
-  @pse "marker"        { constoken (PseudoElement Marker) }
-  @pse "selection"     { constoken (PseudoElement Selection) }
   @psc "active"        { constoken (PseudoClass Active) }
   @psc "checked"       { constoken (PseudoClass Checked) }
   @psc "disabled"      { constoken (PseudoClass Disabled) }
@@ -108,7 +105,7 @@ tokens :-
   @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
   @psc "nth-of-type("      { constAndBegin (PseudoFunction NthOfType) nth_state }
   @psc @n@o@t "(" @wo      { constoken TNot }
-  @wo ")"                  { constoken TNthClose }
+  @wo ")"                  { constoken TClose }
   @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
   @psc "only-child"    { constoken (PseudoClass OnlyChild) }
   @psc "optional"      { constoken (PseudoClass Optional) }
@@ -131,16 +128,16 @@ tokens :-
   "+"                  { constoken (TPM id) }
   "-"                  { constoken (TPM negate) }
   @int                 { tokenize (TInt . read) }
-  ")"                  { constAndBegin TNthClose state_initial }
+  ")"                  { constAndBegin TClose state_initial }
  }
  <lang_state> {
   @lang                { tokenize String }
   $w @wo               { skip }
-  ")"                  { constAndBegin TNthClose state_initial }
+  ")"                  { constAndBegin TClose state_initial }
  }
 {
 
-data TokenLoc = TokenLoc { tokenType :: Token, original :: String, location :: Maybe AlexPosn } deriving Show
+data TokenLoc = TokenLoc { tokenType :: Token, original :: String, location :: Maybe AlexPosn }
 
 type AlexUserState = ()
 
@@ -173,42 +170,9 @@ data Token
     | TNth Nth
     | TPM (Int -> Int)
     | TInt Int
-    | TNthClose
+    | TClose
     | TNot
     | TLang
-
-instance Show Token where
-    show TIncludes = "tincludes"
-    show TEqual = "tequal"
-    show TDashMatch = "tdashmatch"
-    show TPrefixMatch = "tprefixmatch"
-    show TSuffixMatch = "tsuffixmatch"
-    show TSubstringMatch = "tsubstringmatch"
-    show (Ident s) = "ident " <> s
-    show (String s) = "string" <> s
-    show (THash s) = "thash " <> s
-    show (Decimal d) = "decimal " <> show d
-    show (Integer i) = "integer " <> show i
-    show Comma = "comma"
-    show Plus = "plus"
-    show Greater = "greater"
-    show Tilde = "tilde"
-    show Dot = "dot"
-    show Pipe = "pipe"
-    show Asterisk = "asterisk"
-    show Space = "space"
-    show BOpen = "bopen"
-    show BClose = "bclose"
-    show (PseudoClass s) = "pseudoclass " <> show s
-    show (PseudoFunction _) = "pseudofunction"
-    show (PseudoElement e) = "pseudoelement " <> show e
-    show TN = "tn"
-    show (TNth n) = "tnth " <> show n
-    show (TPM _) = "tpm"
-    show (TInt i) = "tint " <> show i
-    show TNthClose = "tnthclose"
-    show TNot = "tnot"
-    show TLang = "tlang"
 
 tokenize :: (String -> Token) -> AlexInput -> Int -> Alex TokenLoc
 tokenize f (p, _, _, str) len = pure (TokenLoc (f str') str' (Just p))

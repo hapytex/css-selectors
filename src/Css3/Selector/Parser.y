@@ -47,7 +47,7 @@ import Data.Text(pack)
     nth     { TokenLoc (TNth $$) _ _ }
     'not('  { TokenLoc TNot _ _ }
     'lang(' { TokenLoc TLang _ _ }
-    ')'     { TokenLoc TNthClose _ _ }
+    ')'     { TokenLoc TClose _ _ }
 
 %%
 
@@ -183,7 +183,7 @@ Ident
 {
 
 happyError :: [TokenLoc] -> a
-happyError (~(TokenLoc t s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token type " <> show t <>  ": \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
+happyError (~(TokenLoc t s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
 happyError _ = error "Unexpected end of string when parsing a css selector."
 
 }
