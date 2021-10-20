@@ -19,7 +19,7 @@ module Css3.Selector.Core (
     , PseudoClass(
           Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Lang, Link, NthChild, NthLastChild, NthLastOfType
         , NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required, Root, Target, Valid, Visited
-        ), (.:), pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
+        ), (.:), pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType, Language
     , SelectorSequence(..)
     , combinatorText, combine
     , (.>), (.+), (.~)
@@ -561,7 +561,7 @@ instance NFData AttributeName
 -- | We use 'Text' as the type to store an attribute value.
 type AttributeValue = Text
 
--- | We use 'Text' to specify the language in the @:lang()@ pseudo class.
+-- | We use 'Text' to specify the language in the @:lang(…)@ pseudo class.
 type Language = Text
 
 -- | The possible ways to match an attribute with a given value in a css
@@ -599,39 +599,39 @@ data PseudoClass
   | NthLastChild Nth  -- ^ The @:nth-last-child(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:last-child@.
   | NthLastOfType Nth  -- ^ The @:nth-last-of-type(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:last-of-type@.
   | NthOfType Nth  -- ^ The @:nth-of-type(…)@ pseudo class, if the 'Nth' parameter is 'One', then it is equivalent to @:first-of-type@.
-  | OnlyOfType  -- ^ The @:active@ pseudo class.
-  | OnlyChild  -- ^ The @:active@ pseudo class.
-  | Optional  -- ^ The @:active@ pseudo class.
-  | OutOfRange  -- ^ The @:active@ pseudo class.
-  | ReadOnly  -- ^ The @:active@ pseudo class.
-  | ReadWrite  -- ^ The @:active@ pseudo class.
-  | Required  -- ^ The @:active@ pseudo class.
-  | Root  -- ^ The @:active@ pseudo class.
-  | Target  -- ^ The @:active@ pseudo class.
-  | Valid  -- ^ The @:active@ pseudo class.
-  | Visited  -- ^ The @:active@ pseudo class.
+  | OnlyOfType  -- ^ The @:only-of-type@ pseudo class.
+  | OnlyChild  -- ^ The @:only-child@ pseudo class.
+  | Optional  -- ^ The @:optional@ pseudo class.
+  | OutOfRange  -- ^ The @:out-of-range@ pseudo class.
+  | ReadOnly  -- ^ The @:read-only@ pseudo class.
+  | ReadWrite  -- ^ The @:rad-write@ pseudo class.
+  | Required  -- ^ The @:required@ pseudo class.
+  | Root  -- ^ The @:root@ pseudo class.
+  | Target  -- ^ The @:target@ pseudo class.
+  | Valid  -- ^ The @:valid@ pseudo class.
+  | Visited  -- ^ The @:visited@ pseudo class.
   deriving (Data, Eq, Generic, Ord, Read, Show)
 
 instance Hashable PseudoClass
 
 instance NFData PseudoClass
 
--- | A pattern synonym for @:nth-child(1)@. If 'NthChild (Nth 0 1)' is used, then
+-- | A pattern synonym for @:nth-child(1)@. If @NthChild (Nth 0 1)@ is used, then
 -- this will render as @:first-child@.
 pattern FirstChild :: PseudoClass
 pattern FirstChild = NthChild One
 
--- | A pattern synonym for @:nth-of-type(1)@. If 'NthOfType (Nth 0 1)' is used, then
+-- | A pattern synonym for @:nth-of-type(1)@. If @NthOfType (Nth 0 1)@ is used, then
 -- this will render as @:first-of-type@.
 pattern FirstOfType :: PseudoClass
 pattern FirstOfType = NthOfType One
 
--- | A pattern synonym for @:nth-last-child(1)@. If 'NthLastChild (Nth 0 1)' is used, then
+-- | A pattern synonym for @:nth-last-child(1)@. If @NthLastChild (Nth 0 1)@ is used, then
 -- this will render as @:last-child@.
 pattern LastChild :: PseudoClass
 pattern LastChild = NthLastChild One
 
--- | A pattern synonym for @:nth-last-of-type(1)@. If 'NthLastOfType (Nth 0 1)' is used, then
+-- | A pattern synonym for @:nth-last-of-type(1)@. If @NthLastOfType (Nth 0 1)@ is used, then
 -- this will render as @:last-of-type@.
 pattern LastOfType :: PseudoClass
 pattern LastOfType = NthLastOfType One
