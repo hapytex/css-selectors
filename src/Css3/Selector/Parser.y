@@ -3,7 +3,14 @@
 module Css3.Selector.Parser where
 
 import Css3.Selector.Core
-import Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
+import Css3.Selector.Lexer(
+    AlexPosn(AlexPn), TokenLoc(TokenLoc)
+  , Token(
+      TIncludes, TEqual, TDashMatch, TPrefixMatch, TSuffixMatch, TSubstringMatch, Ident, String, THash, Decimal
+    , Integer, Comma, Plus, Greater, Tilde, Dot, Pipe, Asterisk, Space, BOpen, BClose, PseudoClass, PseudoFunction
+    , PseudoElement, TN, TNth, TPM, TInt, TClose, TNot, TLang
+    )
+  )
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
 
@@ -181,9 +188,7 @@ Ident
     ;
 
 {
-
 happyError :: [TokenLoc] -> a
 happyError (~(TokenLoc t s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
 happyError _ = error "Unexpected end of string when parsing a css selector."
-
 }

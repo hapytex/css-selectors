@@ -3,7 +3,16 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-module Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..), alexScanTokens) where
+module Css3.Selector.Lexer(
+    AlexPosn(AlexPn)
+  , Token(
+      TIncludes, TEqual, TDashMatch, TPrefixMatch, TSuffixMatch, TSubstringMatch, Ident, String, THash, Decimal
+    , Integer, Comma, Plus, Greater, Tilde, Dot, Pipe, Asterisk, Space, BOpen, BClose, PseudoClass, PseudoFunction
+    , PseudoElement, TN, TNth, TPM, TInt, TClose, TNot, TLang
+    )
+  , TokenLoc(TokenLoc)
+  , alexScanTokens
+  ) where
 
 import Css3.Selector.Utils(readCssString, readIdentifier)
 import Css3.Selector.Core(
@@ -137,7 +146,7 @@ tokens :-
  }
 {
 
-data TokenLoc = TokenLoc { tokenType :: Token, original :: String, location :: Maybe AlexPosn }
+data TokenLoc = TokenLoc Token String (Maybe AlexPosn)
 
 type AlexUserState = ()
 

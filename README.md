@@ -25,26 +25,39 @@ A css selector has the following structure:
      *comma-separated*;
   2. A `Selector` is a custom linked list implementation where the "cons" (the
      `Combined` data constructor) contains a besides a reference to a
-     `SelectorSequence` (head) and a `Selector` (tail), it specifies what
-     `SelectorCombinator` is used. A `Selector` has at least one
-     `SelectorSequence`, this is constructoed with the `Selector` data
+     `PseudoSelectorSequence` (head) and a `Selector` (tail), it specifies what
+     `PseudoSelectorCombinator` is used. A `Selector` has at least one
+     `PseudoSelectorSequence`, this is constructoed with the `Selector` data
      constructor;
-  3. A `SelectorSequence` contains a `TypeSelector` (in case the `TypeSelector`
+  3. A `PseudoSelectorSequence` is a `Selector` sequence with an *optional* `PseudoElement`, that
+     pseudo element is written at the end of the `PseudoSelectorSequence` when specified in the CSS
+     selector;
+  4. A `SelectorSequence` contains a `TypeSelector` (in case the `TypeSelector`
      is `Universal`, this does not need to be part of the css-selector
-     expression); and a set of zero or more `SelectorFilter`s and with an optional
-     `PseudoElement`;
-  4. A `SelectorFilter` is a `Hash`, a `Class`, `Attrib`, or a `PseudoClass`;
-  5. Both a `TypeSelector` and an `AttributeName` have a namespace. A namespace
+     expression); and a set of zero or more `SelectorFilter`s;
+  5. A `SelectorFilter` is a `Hash`, a `Class`, `Attrib`, `PseudoClass`, or a `Negation`;
+  6. Both a `TypeSelector` and an `AttributeName` have a namespace. A namespace
      can be any (`*`), empty, or a namespace (which should be a valid
      identifier);
-  6. A `Hash` is a valid identifier prepended with a number sign (`#`);
-  7. A `Class` is a valid identifier prepended with a dot (`.`);
-  8. An `Attribute` can be an `Exist` object that imposes a constraint that the
+  7. A `Hash` is a valid identifier prepended with a number sign (`#`);
+  8. A `Class` is a valid identifier prepended with a dot (`.`);
+  9. An `Attribute` can be an `Exist` object that imposes a constraint that the
      attribute should exist for the given tag, or an `Attrib` that specifies
      that the attribute exists, and that the value for this attribute satisfies
      a given constraint. This constraint is determined by the
      `AttributeCombinator` and the value of the `Attrib` object;
-  9. A pseudo class is 
+  10. A `Negation` is written in a css selector with @:not(…)@. It can contain a `TypeSelector`, `Hash`,
+      `Class` or `PseudoClass`, it can *not* contain a nested @:not(…)@.
+  11. A `PseudoClass` is an identifier after a single colon (`:`). Some pseudo classes
+     are functions that are then called with a parameter. For the @:nth-child(…)@, @:nth-last-child(…)@,
+     @:nth-last-of-type(…)@, and @:nth-of-type(…)@ these functions take an `Nth` as parameter. This
+     parameter specifies which childs will be selected. The @:lang(…)@ pseudo class
+     takes the name of a language, for example `en-US`;
+  12. An `Nth` describes what childs are selected, for example `4n+2`, this is used as a function
+      parameter for the `NthChild`, `NthLastChild`, `NthLastOfType` and `NthOfType` pseudo classes; and
+  13. A `PseudoElement` is an optional item at the end of a `SelectorSequence`. Usually pseudo elements are
+      written with two colons in front, for example `::before` and `::after`. For backwards compatibility,
+      these can also be written as `:before` and `:after`.
 
 ## Quasiquoter
 
