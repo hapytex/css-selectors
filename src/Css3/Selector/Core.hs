@@ -15,10 +15,11 @@ module Css3.Selector.Core (
     -- * Selectors and combinators
     , Selector(..)
     , SelectorCombinator(..), SelectorGroup(..)
-    , PseudoElement(After, Before, FirstLetter, FirstLine), PseudoSelectorSequence(Sequence, (:.::)), (.::)
+    , PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Placeholder, Selection), PseudoSelectorSequence(Sequence, (:.::)), (.::)
     , PseudoClass(
-          Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Lang, Link, NthChild, NthLastChild, NthLastOfType
-        , NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly , ReadWrite, Required, Root, Target, Valid, Visited
+          Active, Checked, Default, Disabled, Empty, Enabled, Focus, Fullscreen, Hover, Indeterminate, InRange, Invalid, Lang
+        , Link, NthChild, NthLastChild, NthLastOfType, NthOfType, OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly
+        , ReadWrite, Required, Root, Target, Valid, Visited
         ), (.:), pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType, Language
     , SelectorSequence(..)
     , combinatorText, combine
@@ -586,11 +587,14 @@ instance NFData AttributeCombinator
 data PseudoClass
   = Active  -- ^ The @:active@ pseudo class.
   | Checked  -- ^ The @:checked@ pseudo class.
+  | Default  -- ^ The @:default@ pseudo class.
   | Disabled  -- ^ The @:disabled@ pseudo class.
   | Empty  -- ^ The @:empty@ pseudo class.
   | Enabled  -- ^ The @:enabled@ pseudo class.
   | Focus  -- ^ The @:focus@ pseudo class.
+  | Fullscreen  -- ^ The @:fullscreen@ pseudo class.
   | Hover  -- ^ The @:hover@ pseudo class.
+  | Indeterminate  -- ^ The @:indeterminate@ pseudo class.
   | InRange  -- ^ The @:in-range@ pseudo class.
   | Invalid  -- ^ The @:invalid@ pseudo class.
   | Lang Language  -- ^ The @:lang(…)@ pseudo class, the language parameter is at the moment a 'Text' object, but only uppercase, lowercase and hyphens are characters that can be parsed.
@@ -646,6 +650,9 @@ data PseudoElement
   | Before  -- ^ The @::before@ pseudo-element can be used to describe generated content before an element’s content.
   | FirstLetter  -- ^ The @::first-line@ pseudo-element describes the contents of the first formatted line of an element.
   | FirstLine  -- ^ The @::first-letter@ pseudo-element represents the first letter of an element, if it is not preceded by any other content (such as images or inline tables) on its line.
+  | Marker -- ^ The @::marker@ pseudo-element selects the markers of list items.
+  | Placeholder -- ^ The @::placeholder@ pseudo-element selects form elements with placeholder text, and let you style the placeholder text.
+  | Selection -- ^ The @::selection@ pseudo-element matches the portion of an element that is selected by a user.
   deriving (Bounded, Data, Enum, Eq, Generic, Ord, Read, Show)
 
 instance Hashable PseudoElement
@@ -747,13 +754,16 @@ instance IsString PseudoClass where
     fromString = go . map toLower
       where go "active" = Active
             go "checked" = Checked
+            go "default" = Default
             go "disabled" = Disabled
             go "empty" = Empty
             go "enabled" = Enabled
             go "first-child" = FirstChild
             go "first-of-type" = FirstOfType
             go "focus" = Focus
+            go "fullscreen" = Fullscreen
             go "hover" = Hover
+            go "indeterminate" = Indeterminate
             go "in-range" = InRange
             go "invalid" = Invalid
             go "last-child" = LastChild
@@ -787,6 +797,9 @@ instance IsString PseudoElement where
             go "before" = Before
             go "first-letter" = FirstLetter
             go "first-line" = FirstLine
+            go "marker" = Marker
+            go "placeholder" = Placeholder
+            go "selection" = Selection
             go x = error ("The pseudo element \"" ++ x ++ "\" is not a valid pseudo element.")
 
 
@@ -938,11 +951,14 @@ instance ToCssSelector PseudoClass where
     toCssSelector = cons ':' . go
       where go Active = "active"
             go Checked = "checked"
+            go Default = "default"
             go Disabled = "disabled"
             go Empty = "empty"
             go Enabled = "enabled"
             go Focus = "focus"
+            go Fullscreen = "fullscreen"
             go Hover = "hover"
+            go Indeterminate = "indeterminate"
             go InRange = "in-range"
             go Invalid = "invalid"
             go Link = "link"
@@ -971,11 +987,14 @@ instance ToCssSelector PseudoClass where
     toSelectorGroup = toSelectorGroup . SPseudo
     toPattern Active = _constantP 'Active
     toPattern Checked = _constantP 'Checked
+    toPattern Default = _constantP 'Default
     toPattern Disabled = _constantP 'Disabled
     toPattern Empty = _constantP 'Empty
     toPattern Enabled = _constantP 'Enabled
     toPattern Focus = _constantP 'Focus
+    toPattern Fullscreen = _constantP 'Fullscreen
     toPattern Hover = _constantP 'Hover
+    toPattern Indeterminate = _constantP 'Indeterminate
     toPattern InRange = _constantP 'InRange
     toPattern Invalid = _constantP 'Invalid
     toPattern Link = _constantP 'Link
@@ -1029,6 +1048,9 @@ instance ToCssSelector PseudoElement where
             go Before = "before"
             go FirstLetter = "first-letter"
             go FirstLine = "first-line"
+            go Marker = "marker"
+            go Placeholder = "placeholder"
+            go Selection = "selection"
     specificity' = const (SelectorSpecificity 0 0 1)
     toSelectorGroup = toSelectorGroup . (def :.::)
     toPattern = _constantP . go
@@ -1036,6 +1058,9 @@ instance ToCssSelector PseudoElement where
             go Before = 'Before
             go FirstLetter = 'FirstLetter
             go FirstLine = 'FirstLine
+            go Marker = 'Marker
+            go Placeholder = 'Placeholder
+            go Selection = 'Selection
 
 -- Custom Eq and Ord instances
 instance Eq SelectorSpecificity where
@@ -1117,60 +1142,66 @@ instance Binary PseudoSelectorSequence where
 instance Binary PseudoClass where
   put Active = putWord8 0
   put Checked = putWord8 1
-  put Disabled = putWord8 2
-  put Empty = putWord8 3
-  put Enabled = putWord8 4
-  put Focus = putWord8 5
-  put Hover = putWord8 6
-  put InRange = putWord8 7
-  put Invalid = putWord8 8
-  put (Lang l) = putWord8 9 >> put l
-  put Link = putWord8 10
-  put (NthChild nth) = putWord8 11 >> put nth
-  put (NthLastChild nth) = putWord8 12 >> put nth
-  put (NthLastOfType nth) = putWord8 13 >> put nth
-  put (NthOfType nth) = putWord8 14 >> put nth
-  put OnlyOfType = putWord8 15
-  put OnlyChild = putWord8 16
-  put Optional = putWord8 17
-  put OutOfRange = putWord8 18
-  put ReadOnly = putWord8 19
-  put ReadWrite = putWord8 20
-  put Required = putWord8 21
-  put Root = putWord8 22
-  put Target = putWord8 23
-  put Valid = putWord8 24
-  put Visited = putWord8 25
+  put Default = putWord8 2
+  put Disabled = putWord8 3
+  put Empty = putWord8 4
+  put Enabled = putWord8 5
+  put Focus = putWord8 6
+  put Fullscreen = putWord8 7
+  put Hover = putWord8 8
+  put Indeterminate = putWord8 9
+  put InRange = putWord8 10
+  put Invalid = putWord8 11
+  put (Lang l) = putWord8 12 >> put l
+  put Link = putWord8 13
+  put (NthChild nth) = putWord8 14 >> put nth
+  put (NthLastChild nth) = putWord8 15 >> put nth
+  put (NthLastOfType nth) = putWord8 16 >> put nth
+  put (NthOfType nth) = putWord8 17 >> put nth
+  put OnlyOfType = putWord8 18
+  put OnlyChild = putWord8 19
+  put Optional = putWord8 20
+  put OutOfRange = putWord8 21
+  put ReadOnly = putWord8 22
+  put ReadWrite = putWord8 23
+  put Required = putWord8 24
+  put Root = putWord8 25
+  put Target = putWord8 26
+  put Valid = putWord8 27
+  put Visited = putWord8 28
 
   get = do
     w <- getWord8
     case w of
       0 -> pure Active
       1 -> pure Checked
-      2 -> pure Disabled
-      3 -> pure Empty
-      4 -> pure Enabled
-      5 -> pure Focus
-      6 -> pure Hover
-      7 -> pure InRange
-      8 -> pure Invalid
-      9 -> Lang <$> get
-      10 -> pure Link
-      11 -> NthChild <$> get
-      12 -> NthLastChild <$> get
-      13 -> NthLastOfType <$> get
-      14 -> NthOfType <$> get
-      15 -> pure OnlyOfType
-      16 -> pure OnlyChild
-      17 -> pure Optional
-      18 -> pure OutOfRange
-      19 -> pure ReadOnly
-      20 -> pure ReadWrite
-      21 -> pure Required
-      22 -> pure Root
-      23 -> pure Target
-      24 -> pure Valid
-      25 -> pure Visited
+      2 -> pure Default
+      3 -> pure Disabled
+      4 -> pure Empty
+      5 -> pure Enabled
+      6 -> pure Focus
+      7 -> pure Fullscreen
+      8 -> pure Hover
+      9 -> pure Indeterminate
+      10 -> pure InRange
+      11 -> pure Invalid
+      12 -> Lang <$> get
+      13 -> pure Link
+      14 -> NthChild <$> get
+      15 -> NthLastChild <$> get
+      16 -> NthLastOfType <$> get
+      17 -> NthOfType <$> get
+      18 -> pure OnlyOfType
+      19 -> pure OnlyChild
+      20 -> pure Optional
+      21 -> pure OutOfRange
+      22 -> pure ReadOnly
+      23 -> pure ReadWrite
+      24 -> pure Required
+      25 -> pure Root
+      26 -> pure Target
+      27 -> pure Valid
+      28 -> pure Visited
       _ -> fail "An error occured while deserialzing a PseudoClass object."
 
 
@@ -1560,7 +1591,7 @@ instance Arbitrary Selector where
 
 instance Arbitrary PseudoClass where
     arbitrary = oneof ((Lang <$> elements _arbitraryLanguages) : map pure [
-        Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, OnlyOfType, OnlyChild
+        Active, Checked, Default, Disabled, Empty, Enabled, Focus, Fullscreen, Hover, Indeterminate, InRange, Invalid, Link, OnlyOfType, OnlyChild
       , Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       ] ++ map (<$> arbitrary) [NthChild, NthLastChild, NthLastOfType, NthOfType])
 

@@ -16,10 +16,11 @@ module Css3.Selector.Lexer(
 
 import Css3.Selector.Utils(readCssString, readIdentifier)
 import Css3.Selector.Core(
-    PseudoElement(After, Before, FirstLetter, FirstLine)
+    PseudoElement(After, Before, FirstLetter, FirstLine, Marker, Placeholder, Selection)
   , PseudoClass(
-        Active, Checked, Disabled, Empty, Enabled, Focus, Hover, InRange, Invalid, Link, NthChild, NthLastChild, NthLastOfType, NthOfType
-      , OnlyOfType, OnlyChild, Optional, OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
+        Active, Checked, Default, Disabled, Empty, Enabled, Focus, Fullscreen, Hover, Indeterminate, InRange
+      , Invalid, Link, NthChild, NthLastChild, NthLastOfType, NthOfType, OnlyOfType, OnlyChild, Optional
+      , OutOfRange, ReadOnly, ReadWrite, Required, Root, Target, Valid, Visited
       )
   , Nth, pattern Even, pattern Odd
   , pattern FirstChild, pattern FirstOfType, pattern LastChild, pattern LastOfType
@@ -94,15 +95,21 @@ tokens :-
   @psb "before"        { constoken (PseudoElement Before) }
   @psb "first-letter"  { constoken (PseudoElement FirstLetter) }
   @psb "first-line"    { constoken (PseudoElement FirstLine) }
+  @pse "marker"        { constoken (PseudoElement Marker) }
+  @pse "placeholder"   { constoken (PseudoElement Placeholder) }
+  @pse "selection"     { constoken (PseudoElement Selection) }
   @psc "active"        { constoken (PseudoClass Active) }
   @psc "checked"       { constoken (PseudoClass Checked) }
+  @psc "default"       { constoken (PseudoClass Default) }
   @psc "disabled"      { constoken (PseudoClass Disabled) }
   @psc "empty"         { constoken (PseudoClass Empty) }
   @psc "enabled"       { constoken (PseudoClass Enabled) }
   @psc "first-child"   { constoken (PseudoClass FirstChild) }
   @psc "first-of-type" { constoken (PseudoClass FirstOfType) }
   @psc "focus"         { constoken (PseudoClass Focus) }
+  @psc "fullscreen"    { constoken (PseudoClass Fullscreen) }
   @psc "hover"         { constoken (PseudoClass Hover) }
+  @psc "indeterminate" { constoken (PseudoClass Indeterminate) }
   @psc "in-range"      { constoken (PseudoClass InRange) }
   @psc "invalid"       { constoken (PseudoClass Invalid) }
   @psc "last-child"    { constoken (PseudoClass LastChild) }
