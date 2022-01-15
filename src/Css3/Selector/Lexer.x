@@ -56,12 +56,35 @@ $pm       = [\-\+]
 @string2 = \"([^\n\r\f\\\"] | \\@nl | @nonaesc )*\"   -- strings with double quotes
 @string  = @string1 | @string2
 
+
+@a       = a|A|\\0{0,4}(41|61)(\r\n|[ \t\r\n\f])?
+@b       = b|B|\\0{0,4}(42|62)(\r\n|[ \t\r\n\f])?
+@c       = c|C|\\0{0,4}(43|63)(\r\n|[ \t\r\n\f])?
 @d       = d|D|\\0{0,4}(44|64)(\r\n|[ \t\r\n\f])?
 @e       = e|E|\\0{0,4}(45|65)(\r\n|[ \t\r\n\f])?
+@f       = f|F|\\0{0,4}(46|66)(\r\n|[ \t\r\n\f])?
+@g       = g|G|\\0{0,4}(47|67)(\r\n|[ \t\r\n\f])?
+@h       = h|H|\\0{0,4}(48|68)(\r\n|[ \t\r\n\f])?
+@i       = i|I|\\0{0,4}(49|69)(\r\n|[ \t\r\n\f])?
+@j       = j|J|\\0{0,4}(4a|6a)(\r\n|[ \t\r\n\f])?
+@k       = k|K|\\0{0,4}(4b|6b)(\r\n|[ \t\r\n\f])?
+@l       = l|L|\\0{0,4}(4c|6c)(\r\n|[ \t\r\n\f])?
+@m       = m|M|\\0{0,4}(4d|6d)(\r\n|[ \t\r\n\f])?
 @n       = n|N|\\0{0,4}(4e|6e)(\r\n|[ \t\r\n\f])?|\\n
 @o       = o|O|\\0{0,4}(4f|6f)(\r\n|[ \t\r\n\f])?|\\o
+@p       = p|P|\\0{0,4}(50|70)(\r\n|[ \t\r\n\f])?
+@q       = q|Q|\\0{0,4}(51|71)(\r\n|[ \t\r\n\f])?
+@r       = r|R|\\0{0,4}(52|72)(\r\n|[ \t\r\n\f])?
+@s       = s|S|\\0{0,4}(53|73)(\r\n|[ \t\r\n\f])?
 @t       = t|T|\\0{0,4}(54|74)(\r\n|[ \t\r\n\f])?|\\t
-@v       = v|V|\\0{0,4}(58|78)(\r\n|[ \t\r\n\f])?|\\v
+@u       = u|U|\\0{0,4}(55|75)(\r\n|[ \t\r\n\f])?
+@v       = v|V|\\0{0,4}(56|76)(\r\n|[ \t\r\n\f])?|\\v
+@w       = w|W|\\0{0,4}(57|77)(\r\n|[ \t\r\n\f])?
+@x       = x|X|\\0{0,4}(58|78)(\r\n|[ \t\r\n\f])?
+@y       = y|Y|\\0{0,4}(59|79)(\r\n|[ \t\r\n\f])?
+@z       = z|Z|\\0{0,4}(5a|7a)(\r\n|[ \t\r\n\f])?
+
+
 @cmo     = \/\*
 @cmc     = \*\/
 @psc     = [:]
@@ -91,8 +114,8 @@ tokens :-
   @wo $tl @wo          { constoken Tilde }
   "[" @wo              { constoken BOpen }
   @wo "]"              { constoken BClose }
-  @psb "after"         { constoken (PseudoElement After) }
-  @psb "before"        { constoken (PseudoElement Before) }
+  @psb @a @f @t @e @r         { constoken (PseudoElement After) }
+  @psb @b @e @f @o @r @e        { constoken (PseudoElement Before) }
   @psb "first-letter"  { constoken (PseudoElement FirstLetter) }
   @psb "first-line"    { constoken (PseudoElement FirstLine) }
   @pse "marker"        { constoken (PseudoElement Marker) }
