@@ -83,7 +83,14 @@ $pm       = [\-\+]
 @x       = x|X|\\0{0,4}(58|78)(\r\n|[ \t\r\n\f])?
 @y       = y|Y|\\0{0,4}(59|79)(\r\n|[ \t\r\n\f])?
 @z       = z|Z|\\0{0,4}(5a|7a)(\r\n|[ \t\r\n\f])?
+@hyphen  = [\-]|\\0{0,4}2d
 
+@firsth  = @f@i@r@s@t@hyphen
+@nthh    = @n@t@h@hyphen
+@onlyh   = @o@n@l@y@hyphen
+@child   = @c@h@i@l@d
+@oftype  = @o@f@hyphen@t@y@p@e
+@lasth   = @l@a@s@t@hyphen
 
 @cmo     = \/\*
 @cmc     = \*\/
@@ -94,85 +101,85 @@ $pm       = [\-\+]
 
 tokens :-
  <0> {
-  @wo "="  @wo         { constoken TEqual }
-  @wo "~=" @wo         { constoken TIncludes }
-  @wo "|=" @wo         { constoken TDashMatch }
-  @wo "^=" @wo         { constoken TPrefixMatch }
-  @wo "$=" @wo         { constoken TSuffixMatch }
-  @wo "*=" @wo         { constoken TSubstringMatch }
-  @wo ","  @wo         { constoken Comma }
-  "."                  { constoken Dot }
-  "|"                  { constoken Pipe }
-  "*"                  { constoken Asterisk }
-  @ident               { tokenize (Ident . readIdentifier) }
-  @string              { tokenize (String . readCssString) }
-  "#" @name            { tokenize (THash . readIdentifier . drop 1) }
-  @float               { tokenize (Decimal . read) }
-  @int                 { tokenize (Integer . read) }
-  @wo "+" @wo          { constoken Plus }
-  @wo ">" @wo          { constoken Greater }
-  @wo $tl @wo          { constoken Tilde }
-  "[" @wo              { constoken BOpen }
-  @wo "]"              { constoken BClose }
-  @psb @a @f @t @e @r         { constoken (PseudoElement After) }
-  @psb @b @e @f @o @r @e        { constoken (PseudoElement Before) }
-  @psb "first-letter"  { constoken (PseudoElement FirstLetter) }
-  @psb "first-line"    { constoken (PseudoElement FirstLine) }
-  @pse "marker"        { constoken (PseudoElement Marker) }
-  @pse "placeholder"   { constoken (PseudoElement Placeholder) }
-  @pse "selection"     { constoken (PseudoElement Selection) }
-  @psc "active"        { constoken (PseudoClass Active) }
-  @psc "checked"       { constoken (PseudoClass Checked) }
-  @psc "default"       { constoken (PseudoClass Default) }
-  @psc "disabled"      { constoken (PseudoClass Disabled) }
-  @psc "empty"         { constoken (PseudoClass Empty) }
-  @psc "enabled"       { constoken (PseudoClass Enabled) }
-  @psc "first-child"   { constoken (PseudoClass FirstChild) }
-  @psc "first-of-type" { constoken (PseudoClass FirstOfType) }
-  @psc "focus"         { constoken (PseudoClass Focus) }
-  @psc "fullscreen"    { constoken (PseudoClass Fullscreen) }
-  @psc "hover"         { constoken (PseudoClass Hover) }
-  @psc "indeterminate" { constoken (PseudoClass Indeterminate) }
-  @psc "in-range"      { constoken (PseudoClass InRange) }
-  @psc "invalid"       { constoken (PseudoClass Invalid) }
-  @psc "last-child"    { constoken (PseudoClass LastChild) }
-  @psc "last-of-type"  { constoken (PseudoClass LastOfType) }
-  @psc "link"          { constoken (PseudoClass Link) }
-  @psc "lang("         { constAndBegin TLang lang_state }
-  @psc "nth-child("        { constAndBegin (PseudoFunction NthChild) nth_state }
-  @psc "nth-last-child("   { constAndBegin (PseudoFunction NthLastChild) nth_state }
-  @psc "nth-last-of-type(" { constAndBegin (PseudoFunction NthLastOfType) nth_state }
-  @psc "nth-of-type("      { constAndBegin (PseudoFunction NthOfType) nth_state }
-  @psc @n@o@t "(" @wo      { constoken TNot }
-  @wo ")"                  { constoken TClose }
-  @psc "only-of-type"  { constoken (PseudoClass OnlyOfType) }
-  @psc "only-child"    { constoken (PseudoClass OnlyChild) }
-  @psc "optional"      { constoken (PseudoClass Optional) }
-  @psc "out-of-range"  { constoken (PseudoClass OutOfRange) }
-  @psc "read-only"     { constoken (PseudoClass ReadOnly) }
-  @psc "read-write"    { constoken (PseudoClass ReadWrite) }
-  @psc "required"      { constoken (PseudoClass Required) }
-  @psc "root"          { constoken (PseudoClass Root) }
-  @psc "target"        { constoken (PseudoClass Target) }
-  @psc "valid"         { constoken (PseudoClass Valid) }
-  @psc "visited"       { constoken (PseudoClass Visited) }
-  $w @wo               { constoken Space }
+  @wo "="  @wo                            { constoken TEqual }
+  @wo "~=" @wo                            { constoken TIncludes }
+  @wo "|=" @wo                            { constoken TDashMatch }
+  @wo "^=" @wo                            { constoken TPrefixMatch }
+  @wo "$=" @wo                            { constoken TSuffixMatch }
+  @wo "*=" @wo                            { constoken TSubstringMatch }
+  @wo ","  @wo                            { constoken Comma }
+  "."                                     { constoken Dot }
+  "|"                                     { constoken Pipe }
+  "*"                                     { constoken Asterisk }
+  @ident                                  { tokenize (Ident . readIdentifier) }
+  @string                                 { tokenize (String . readCssString) }
+  "#" @name                               { tokenize (THash . readIdentifier . drop 1) }
+  @float                                  { tokenize (Decimal . read) }
+  @int                                    { tokenize (Integer . read) }
+  @wo "+" @wo                             { constoken Plus }
+  @wo ">" @wo                             { constoken Greater }
+  @wo $tl @wo                             { constoken Tilde }
+  "[" @wo                                 { constoken BOpen }
+  @wo "]"                                 { constoken BClose }
+  @psb @a@f@t@e@r                         { constoken (PseudoElement After) }
+  @psb @b@e@f@o@r@e                       { constoken (PseudoElement Before) }
+  @psb @firsth@l@e@t@t@e@r                { constoken (PseudoElement FirstLetter) }
+  @psb @firsth@l@i@n@e                    { constoken (PseudoElement FirstLine) }
+  @pse @m@a@r@k@e@r                       { constoken (PseudoElement Marker) }
+  @pse @p@l@a@c@e@h@o@l@d@e@r             { constoken (PseudoElement Placeholder) }
+  @pse @s@e@l@e@c@t@i@o@n                 { constoken (PseudoElement Selection) }
+  @psc @a@c@t@i@v@e                       { constoken (PseudoClass Active) }
+  @psc @c@h@e@c@k@e@d                     { constoken (PseudoClass Checked) }
+  @psc @d@e@f@a@u@l@t                     { constoken (PseudoClass Default) }
+  @psc @d@i@s@a@b@l@e@d                   { constoken (PseudoClass Disabled) }
+  @psc @e@m@p@t@y                         { constoken (PseudoClass Empty) }
+  @psc @e@n@a@b@l@e@d                     { constoken (PseudoClass Enabled) }
+  @psc @firsth@child                      { constoken (PseudoClass FirstChild) }
+  @psc @firsth@oftype                     { constoken (PseudoClass FirstOfType) }
+  @psc @f@o@c@u@s                         { constoken (PseudoClass Focus) }
+  @psc @f@u@l@l@s@c@r@e@e@n               { constoken (PseudoClass Fullscreen) }
+  @psc @h@o@v@e@r                         { constoken (PseudoClass Hover) }
+  @psc @i@n@d@e@t@e@r@m@i@n@a@t@e         { constoken (PseudoClass Indeterminate) }
+  @psc @i@n@hyphen@r@a@n@g@e              { constoken (PseudoClass InRange) }
+  @psc @i@n@v@a@l@i@d                     { constoken (PseudoClass Invalid) }
+  @psc @lasth@child                       { constoken (PseudoClass LastChild) }
+  @psc @lasth@oftype                      { constoken (PseudoClass LastOfType) }
+  @psc @l@i@n@k                           { constoken (PseudoClass Link) }
+  @psc @l@a@n@g "("                       { constAndBegin TLang lang_state }
+  @psc @nthh@child "("                    { constAndBegin (PseudoFunction NthChild) nth_state }
+  @psc @nthh@lasth@child "("              { constAndBegin (PseudoFunction NthLastChild) nth_state }
+  @psc @nthh@lasth@oftype "("             { constAndBegin (PseudoFunction NthLastOfType) nth_state }
+  @psc @nthh@oftype "("                   { constAndBegin (PseudoFunction NthOfType) nth_state }
+  @psc @n@o@t "(" @wo                     { constoken TNot }
+  @wo ")"                                 { constoken TClose }
+  @psc @onlyh@oftype                      { constoken (PseudoClass OnlyOfType) }
+  @psc @onlyh@child                       { constoken (PseudoClass OnlyChild) }
+  @psc @o@p@t@i@o@n@a@l                   { constoken (PseudoClass Optional) }
+  @psc @o@u@t@hyphen@o@f@hyphen@r@a@n@g@e { constoken (PseudoClass OutOfRange) }
+  @psc @r@e@a@d@hyphen@o@n@l@y            { constoken (PseudoClass ReadOnly) }
+  @psc @r@e@a@d@hyphen@w@r@i@t@e          { constoken (PseudoClass ReadWrite) }
+  @psc @r@e@q@u@i@r@e@d                   { constoken (PseudoClass Required) }
+  @psc @r@o@o@t                           { constoken (PseudoClass Root) }
+  @psc @t@a@r@g@e@t                       { constoken (PseudoClass Target) }
+  @psc @v@a@l@i@d                         { constoken (PseudoClass Valid) }
+  @psc @v@i@s@i@t@e@d                     { constoken (PseudoClass Visited) }
+  $w @wo                                  { constoken Space }
   @cmo $nostar* \*+ ($nostars $nostar* \*+)* @cmc;
  }
  <nth_state> {
-  $w @wo               { constoken Space }
-  @e@v@e@n             { constoken (TNth Even) }
-  @o@d@d               { constoken (TNth Odd) }
-  @n                   { constoken TN }
-  "+"                  { constoken (TPM id) }
-  "-"                  { constoken (TPM negate) }
-  @int                 { tokenize (TInt . read) }
-  ")"                  { constAndBegin TClose state_initial }
+  $w @wo                                  { constoken Space }
+  @e@v@e@n                                { constoken (TNth Even) }
+  @o@d@d                                  { constoken (TNth Odd) }
+  @n                                      { constoken TN }
+  "+"                                     { constoken (TPM id) }
+  "-"                                     { constoken (TPM negate) }
+  @int                                    { tokenize (TInt . read) }
+  ")"                                     { constAndBegin TClose state_initial }
  }
  <lang_state> {
-  @lang                { tokenize String }
-  $w @wo               { skip }
-  ")"                  { constAndBegin TClose state_initial }
+  @lang                                   { tokenize String }
+  $w @wo                                  { skip }
+  ")"                                     { constAndBegin TClose state_initial }
  }
 {
 
