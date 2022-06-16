@@ -46,7 +46,7 @@ library
     , binary >=0.2
     , blaze-markup >=0.8
     , bytestring >=0.9
-    , data-default >=0.7
+    , data-default-class >=0.0.1
     , Decimal >=0.4.2
     , deepseq >=1.4.3.0
     , hashable >=1.2.7.0

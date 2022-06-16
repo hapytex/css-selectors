@@ -62,7 +62,7 @@ import Data.Binary(Binary(put, get), Get, Put, decode, encode, getWord8, putWord
 import Data.ByteString.Lazy(ByteString)
 import Data.Char(toLower)
 import Data.Data(Data)
-import Data.Default(Default(def))
+import Data.Default.Class(Default(def))
 import Data.Function(on)
 import Data.Hashable(Hashable)
 import Data.List(sort, unfoldr)
