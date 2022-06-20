@@ -14,7 +14,7 @@ import Css3.Selector.Lexer(
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
 
-import Data.Default(def)
+import Data.Default.Class(def)
 #if __GLASGOW_HASKELL__ < 803
 import Data.Semigroup((<>))
 #endif
