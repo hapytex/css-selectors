@@ -119,4 +119,4 @@ toIdentifier :: (Text -> a) -- ^ The given function to wrap the 'Text' identifie
     -> String -- ^ The string to validate, and wrap into the given function.
     -> a -- ^ The identifier object to return if the identifier is valid.
 toIdentifier f ident | isValidIdentifier ident = f (pack ident)
-                     | otherwise = error ("The identifier " <> show ident <> " is not a valid identifier.")
+                     | otherwise = error ("The identifier \"" <> show ident <> "\" is not a valid identifier.")

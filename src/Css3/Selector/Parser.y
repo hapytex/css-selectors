@@ -3,10 +3,18 @@
 module Css3.Selector.Parser where
 
 import Css3.Selector.Core
-import Css3.Selector.Lexer(AlexPosn(..), Token(..), TokenLoc(..))
+import Css3.Selector.Lexer(
+    AlexPosn(AlexPn), TokenLoc(TokenLoc)
+  , Token(
+      TIncludes, TEqual, TDashMatch, TPrefixMatch, TSuffixMatch, TSubstringMatch, Ident, String, THash, Decimal
+    , Integer, Comma, Plus, Greater, Tilde, Dot, Pipe, Asterisk, Space, BOpen, BClose, PseudoClass, PseudoFunction
+    , PseudoElement, TN, TNth, TPM, TInt, TClose, TNot, TLang
+    )
+  )
 
 import Data.List.NonEmpty(NonEmpty((:|)), (<|))
 
+import Data.Default.Class(def)
 #if __GLASGOW_HASKELL__ < 803
 import Data.Semigroup((<>))
 #endif
@@ -18,25 +26,35 @@ import Data.Text(pack)
 %error { happyError }
 
 %token
-    ','    { TokenLoc Comma _ _ }
-    '>'    { TokenLoc Greater _ _ }
-    '+'    { TokenLoc Plus _ _ }
-    '~'    { TokenLoc Tilde _ _ }
-    '.'    { TokenLoc Dot _ _ }
-    ' '    { TokenLoc Space _ _ }
-    '|'    { TokenLoc Pipe _ _ }
-    '*'    { TokenLoc Asterisk _ _ }
-    '['    { TokenLoc BOpen _ _ }
-    ']'    { TokenLoc BClose _ _ }
-    '='    { TokenLoc TEqual _ _ }
-    '^='   { TokenLoc TPrefixMatch _ _ }
-    '$='   { TokenLoc TSuffixMatch _ _ }
-    '*='   { TokenLoc TSubstringMatch _ _ }
-    '|='   { TokenLoc TDashMatch _ _ }
-    '~='   { TokenLoc TIncludes _ _ }
-    ident  { TokenLoc (Ident $$) _ _ }
-    string { TokenLoc (String $$) _ _ }
-    hash   { TokenLoc (THash $$) _ _ }
+    ','     { TokenLoc Comma _ _ }
+    '>'     { TokenLoc Greater _ _ }
+    '+'     { TokenLoc Plus _ _ }
+    '~'     { TokenLoc Tilde _ _ }
+    '.'     { TokenLoc Dot _ _ }
+    ' '     { TokenLoc Space _ _ }
+    '|'     { TokenLoc Pipe _ _ }
+    '*'     { TokenLoc Asterisk _ _ }
+    '['     { TokenLoc BOpen _ _ }
+    ']'     { TokenLoc BClose _ _ }
+    '='     { TokenLoc TEqual _ _ }
+    '^='    { TokenLoc TPrefixMatch _ _ }
+    '$='    { TokenLoc TSuffixMatch _ _ }
+    '*='    { TokenLoc TSubstringMatch _ _ }
+    '|='    { TokenLoc TDashMatch _ _ }
+    '~='    { TokenLoc TIncludes _ _ }
+    ident   { TokenLoc (Ident $$) _ _ }
+    string  { TokenLoc (String $$) _ _ }
+    hash    { TokenLoc (THash $$) _ _ }
+    pseude  { TokenLoc (PseudoElement $$) _ _ }
+    pseudc  { TokenLoc (PseudoClass $$) _ _ }
+    pseudf  { TokenLoc (PseudoFunction $$) _ _ }
+    pm      { TokenLoc (TPM $$) _ _ }
+    'n'     { TokenLoc TN _ _ }
+    int     { TokenLoc (TInt $$) _ _ }
+    nth     { TokenLoc (TNth $$) _ _ }
+    'not('  { TokenLoc TNot _ _ }
+    'lang(' { TokenLoc TLang _ _ }
+    ')'     { TokenLoc TClose _ _ }
 
 %%
 
@@ -50,8 +68,8 @@ SelectorGroupList
     ;
 
 Selector
-    : SimpleSelectorSequence                      { Selector $1 }
-    | SimpleSelectorSequence Combinator Selector  { Combined $1 $2 $3 }
+    : PseudoSelectorSequence                      { Selector $1 }
+    | PseudoSelectorSequence Combinator Selector  { Combined $1 $2 $3 }
     ;
 
 Combinator
@@ -59,6 +77,12 @@ Combinator
     | '>'          { Child }
     | '~'          { Preceded }
     | ' '          { Descendant }
+    ;
+
+PseudoSelectorSequence
+    : SimpleSelectorSequence        { Sequence $1 }
+    | SimpleSelectorSequence pseude { $1 :.:: $2 }
+    | pseude                        { def :.:: $1 }
     ;
 
 SimpleSelectorSequence
@@ -73,12 +97,49 @@ FilterList
 
 SelectorAddition
     : hash                        { SHash (Hash (pack $1)) }
+    | pseudc                      { SPseudo $1 }
+    | pseudf OptSpace Nth         { SPseudo ($1 $3) }
     | Class                       { SClass $1 }
     | AttribBox                   { SAttrib $1 }
+    | 'not(' Negation ')'         { SNot $2 }
+    | 'lang(' string ')'          { SPseudo (Lang (pack $2)) }
+    ;
+
+Negation
+    : hash                        { NHash (Hash (pack $1)) }
+    | Class                       { NClass $1 }
+    | AttribBox                   { NAttrib $1 }
+    | pseudc                      { NPseudo $1 }
+    | pseudf OptSpace Nth         { NPseudo ($1 $3) }
+    | Type                        { NTypeSelector $1 }
+    | pseude                      { NPseudoElement $1 }
+    | 'lang(' string ')'          { NPseudo (Lang (pack $2)) }
+    ;
+
+Nth
+    : nth OptSpace ')'                                       { $1 }
+    | PMOpt IntOpt 'n' OptSpace ')'                          { Nth ($1 $2) 0 }
+    | PMOpt IntOpt 'n' OptSpace pm OptSpace int OptSpace ')' { Nth ($1 $2) ($5 $7) }
+    | PMOpt int OptSpace ')'                                 { Nth 0 ($1 $2) }
+    ;
+
+PMOpt
+    :                             { id }
+    | pm                          { $1 }
+    ;
+
+IntOpt
+    :                             { 1 }
+    | int                         { $1 }
+    ;
+
+OptSpace
+    :                             { () }
+    | ' '                         { () }
     ;
 
 AttribBox
-    : '[' Attrib ']'                       { $2 }
+    : '[' Attrib ']'              { $2 }
     ;
 
 Attrib
@@ -127,9 +188,7 @@ Ident
     ;
 
 {
-
 happyError :: [TokenLoc] -> a
-happyError [] = error "Unexpected end of string when parsing a css selector."
-happyError (~(TokenLoc _ s ~(AlexPn _ l c)):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
-
+happyError (~(TokenLoc t s ~(Just (AlexPn _ l c))):_) = error ("Can not parse the CSS selector: unpexected token \"" <> s <> "\" at location (" <> show l <> ", " <> show c <> ")")
+happyError _ = error "Unexpected end of string when parsing a css selector."
 }
