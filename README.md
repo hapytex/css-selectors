@@ -44,12 +44,12 @@ A css selector has the following structure:
      that the attribute exists, and that the value for this attribute satisfies
      a given constraint. This constraint is determined by the
      `AttributeCombinator` and the value of the `Attrib` object;
-  10. A `Negation` is written in a css selector with @:not(…)@. It can contain a `TypeSelector`, `Hash`,
-      `Class` or `PseudoClass`, it can *not* contain a nested @:not(…)@.
+  10. A `Negation` is written in a css selector with `:not(…)`. It can contain a `TypeSelector`, `Hash`,
+      `Class` or `PseudoClass`, it can *not* contain a nested `:not(…)`.
   11. A `PseudoClass` is an identifier after a single colon (`:`). Some pseudo classes
-     are functions that are then called with a parameter. For the @:nth-child(…)@, @:nth-last-child(…)@,
-     @:nth-last-of-type(…)@, and @:nth-of-type(…)@ these functions take an `Nth` as parameter. This
-     parameter specifies which childs will be selected. The @:lang(…)@ pseudo class
+     are functions that are then called with a parameter. For the `:nth-child(…)`, `:nth-last-child(…)`,
+     `:nth-last-of-type(…)`, and `:nth-of-type(…)` these functions take an `Nth` as parameter. This
+     parameter specifies which childs will be selected. The `:lang(…)` pseudo class
      takes the name of a language, for example `en-US`;
   12. An `Nth` describes what childs are selected, for example `4n+2`, this is used as a function
       parameter for the `NthChild`, `NthLastChild`, `NthLastOfType` and `NthOfType` pseudo classes; and
