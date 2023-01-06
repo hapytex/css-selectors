@@ -2,6 +2,10 @@
 
 For a full list of changes, see the history on [GitHub](https://github.com/hapytex/css-selectors).
 
+## Version 0.5.0.0
+
+Added pseudo-elements and pseudo-classes. The `Binary` instances are updated and *not* backedwards compatible.
+
 ## Version 0.4.0.0
 
 All css items are now a member of the `Generic` and the `Hashable` typeclass.
