@@ -81,7 +81,7 @@ import GHC.Generics(Generic)
 
 import Language.Haskell.TH.Lib(appE, conE)
 #if MIN_VERSION_template_haskell(2,17,0)
-import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), Q, unsafeCodeCoerce)
+import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Quote, Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), unsafeCodeCoerce)
 #elif MIN_VERSION_template_haskell(2,16,0)
 import Language.Haskell.TH.Syntax(Lift(lift, liftTyped), Exp(AppE, ConE, LitE), Lit(IntegerL, StringL), Name, Pat(ConP, ListP, LitP, ViewP), Q, unsafeTExpCoerce)
 #else
@@ -814,29 +814,41 @@ _textToPattern :: Text -> Pat
 _textToPattern t = ViewP (AppE (ConE '(==)) (AppE (ConE 'pack) (LitE (StringL (unpack t))))) (_constantP 'True)
 
 _constantP :: Name -> Pat
+#if MIN_VERSION_template_haskell(2,18,0)
+_constantP = flip (`ConP` []) []
+#else
 _constantP = (`ConP` [])
+#endif
+
+_conP :: Name -> [Pat] -> Pat
+#if MIN_VERSION_template_haskell(2,18,0)
+_conP = (`ConP` [])
+#else
+_conP = ConP
+#endif
+
 
 instance ToCssSelector SelectorGroup where
     toCssSelector (SelectorGroup g) = intercalate " , " (map toCssSelector (toList g))
     toSelectorGroup = id
     specificity' (SelectorGroup g) = foldMap specificity' g
-    toPattern (SelectorGroup g) = ConP 'SelectorGroup [go g]
-        where go (x :| xs) = ConP '(:|) [toPattern x, ListP (map toPattern xs)]
+    toPattern (SelectorGroup g) = _conP 'SelectorGroup [go g]
+        where go (x :| xs) = _conP '(:|) [toPattern x, ListP (map toPattern xs)]
     normalize (SelectorGroup g) = SelectorGroup (Data.List.NonEmpty.sort (normalize <$> g))
 
 instance ToCssSelector Class where
     toCssSelector = cons '.' . encodeIdentifier . unClass
     toSelectorGroup = toSelectorGroup . SClass
     specificity' = const (SelectorSpecificity 0 1 0)
-    toPattern (Class c) = ConP 'Class [_textToPattern c]
+    toPattern (Class c) = _conP 'Class [_textToPattern c]
 
 instance ToCssSelector Attrib where
     toCssSelector (Exist name) = "[" <> toCssSelector name <> "]"
     toCssSelector (Attrib name op val) = "[" <> toCssSelector name <> attributeCombinatorText op <> encodeText '"' val <> "]"
     toSelectorGroup = toSelectorGroup . SAttrib
     specificity' = const (SelectorSpecificity 0 1 0)
-    toPattern (Exist name) = ConP 'Exist [toPattern name]
-    toPattern (Attrib name op val) = ConP 'Attrib [toPattern name, _constantP (go op), _textToPattern val]
+    toPattern (Exist name) = _conP 'Exist [toPattern name]
+    toPattern (Attrib name op val) = _conP 'Attrib [toPattern name, _constantP (go op), _textToPattern val]
         where go Exact = 'Exact
               go Include = 'Include
               go DashMatch = 'DashMatch
@@ -849,13 +861,13 @@ instance ToCssSelector AttributeName where
     toCssSelector (AttributeName n e) = toCssSelector n <> "|" <> encodeIdentifier e
     toSelectorGroup = toSelectorGroup . Exist
     specificity' = mempty
-    toPattern (AttributeName n a) = ConP 'AttributeName [toPattern n, _textToPattern a]
+    toPattern (AttributeName n a) = _conP 'AttributeName [toPattern n, _textToPattern a]
 
 instance ToCssSelector Hash where
     toCssSelector = cons '#' . encodeIdentifier . unHash
     toSelectorGroup = toSelectorGroup . SHash
     specificity' = const (SelectorSpecificity 1 0 0)
-    toPattern (Hash h) = ConP 'Hash [_textToPattern h]
+    toPattern (Hash h) = _conP 'Hash [_textToPattern h]
 
 instance ToCssSelector Namespace where
     toCssSelector NAny = "*"
@@ -865,7 +877,7 @@ instance ToCssSelector Namespace where
     toPattern NAny = _constantP 'NAny
     -- used to make patterns more readable
     toPattern NEmpty = _constantP 'NEmpty
-    toPattern (Namespace t) = ConP 'Namespace [_textToPattern t]
+    toPattern (Namespace t) = _conP 'Namespace [_textToPattern t]
 
 instance ToCssSelector SelectorSequence where
     toCssSelector (SimpleSelector s) = toCssSelector s
@@ -873,8 +885,8 @@ instance ToCssSelector SelectorSequence where
     toSelectorGroup = toSelectorGroup . Sequence
     specificity' (SimpleSelector s) = specificity' s
     specificity' (Filter s f) = specificity' s <> specificity' f
-    toPattern (SimpleSelector s) = ConP 'SimpleSelector [toPattern s]
-    toPattern (Filter s f) = ConP 'Filter [toPattern s, toPattern f]
+    toPattern (SimpleSelector s) = _conP 'SimpleSelector [toPattern s]
+    toPattern (Filter s f) = _conP 'Filter [toPattern s, toPattern f]
     normalize = flip go []
         where go (Filter s f) = go s . (normalize f:)
               go (SimpleSelector s) = addFilters (SimpleSelector (normalize s)) . sort
@@ -886,7 +898,7 @@ instance ToCssSelector TypeSelector where
     specificity' (TypeSelector _ e) = specificity' e
     -- we use Universal, to make the generated pattern more convenient to read.
     toPattern Universal = _constantP 'Universal
-    toPattern (TypeSelector n t) = ConP 'TypeSelector [toPattern n, toPattern t]
+    toPattern (TypeSelector n t) = _conP 'TypeSelector [toPattern n, toPattern t]
 
 instance ToCssSelector ElementName where
     toCssSelector EAny = "*"
@@ -895,7 +907,7 @@ instance ToCssSelector ElementName where
     specificity' EAny = mempty
     specificity' (ElementName _) = SelectorSpecificity 0 0 1
     toPattern EAny = _constantP 'EAny
-    toPattern (ElementName e) = ConP 'ElementName [_textToPattern e]
+    toPattern (ElementName e) = _conP 'ElementName [_textToPattern e]
 
 instance ToCssSelector SelectorFilter where
     toCssSelector (SHash h) = toCssSelector h
@@ -909,11 +921,11 @@ instance ToCssSelector SelectorFilter where
     specificity' (SAttrib a) = specificity' a
     specificity' (SPseudo p) = specificity' p
     specificity' (SNot n) = specificity' n  -- Selectors inside the negation pseudo-class are counted like any other, but the negation itself does not count as a pseudo-class.
-    toPattern (SHash h) = ConP 'SHash [toPattern h]
-    toPattern (SClass c) = ConP 'SClass [toPattern c]
-    toPattern (SAttrib a) = ConP 'SAttrib [toPattern a]
-    toPattern (SPseudo p) = ConP 'SPseudo [toPattern p]
-    toPattern (SNot n) = ConP 'SNot [toPattern n]
+    toPattern (SHash h) = _conP 'SHash [toPattern h]
+    toPattern (SClass c) = _conP 'SClass [toPattern c]
+    toPattern (SAttrib a) = _conP 'SAttrib [toPattern a]
+    toPattern (SPseudo p) = _conP 'SPseudo [toPattern p]
+    toPattern (SNot n) = _conP 'SNot [toPattern n]
 
 instance ToCssSelector Selector where
     toCssSelector (Selector s) = toCssSelector s
@@ -921,8 +933,8 @@ instance ToCssSelector Selector where
     toSelectorGroup = toSelectorGroup . SelectorGroup . pure
     specificity' (Selector s) = specificity' s
     specificity' (Combined s1 _ s2) = specificity' s1 <> specificity' s2
-    toPattern (Selector s) = ConP 'Selector [toPattern s]
-    toPattern (Combined s1 c s2) = ConP 'Combined [toPattern s1, _constantP (go c), toPattern s2]
+    toPattern (Selector s) = _conP 'Selector [toPattern s]
+    toPattern (Combined s1 c s2) = _conP 'Combined [toPattern s1, _constantP (go c), toPattern s2]
         where go Descendant = 'Descendant
               go Child = 'Child
               go DirectlyPreceded = 'DirectlyPreceded
@@ -938,13 +950,13 @@ instance ToCssSelector PseudoSelectorSequence where
     toSelectorGroup = toSelectorGroup . Selector
     specificity' (Sequence ss) = specificity' ss
     specificity' (ss :.:: pe) = specificity' ss <> specificity' pe
-    toPattern (Sequence ss) = ConP 'Sequence [toPattern ss]
-    toPattern (ss :.:: pe) = ConP '(:.::) [toPattern ss, toPattern pe]
+    toPattern (Sequence ss) = _conP 'Sequence [toPattern ss]
+    toPattern (ss :.:: pe) = _conP '(:.::) [toPattern ss, toPattern pe]
     normalize (Sequence ss) = Sequence (normalize ss)
     normalize (ss :.:: pe) = normalize ss :.:: normalize pe
 
 _nthToPat :: Nth -> Pat
-_nthToPat (Nth n b) = ConP 'Nth [f n, f b]
+_nthToPat (Nth n b) = _conP 'Nth [f n, f b]
     where f = LitP . IntegerL . fromIntegral
 
 instance ToCssSelector PseudoClass where
@@ -998,11 +1010,11 @@ instance ToCssSelector PseudoClass where
     toPattern InRange = _constantP 'InRange
     toPattern Invalid = _constantP 'Invalid
     toPattern Link = _constantP 'Link
-    toPattern (Lang l) = ConP 'Lang [_textToPattern l]
-    toPattern (NthChild nth) = ConP 'NthChild [_nthToPat nth]
-    toPattern (NthLastChild nth) = ConP 'NthLastChild [_nthToPat nth]
-    toPattern (NthLastOfType nth) = ConP 'NthLastOfType [_nthToPat nth]
-    toPattern (NthOfType nth) = ConP 'NthOfType [_nthToPat nth]
+    toPattern (Lang l) = _conP 'Lang [_textToPattern l]
+    toPattern (NthChild nth) = _conP 'NthChild [_nthToPat nth]
+    toPattern (NthLastChild nth) = _conP 'NthLastChild [_nthToPat nth]
+    toPattern (NthLastOfType nth) = _conP 'NthLastOfType [_nthToPat nth]
+    toPattern (NthOfType nth) = _conP 'NthOfType [_nthToPat nth]
     toPattern OnlyOfType = _constantP 'OnlyOfType
     toPattern OnlyChild = _constantP 'OnlyChild
     toPattern Optional = _constantP 'Optional
@@ -1035,12 +1047,12 @@ instance ToCssSelector Negation where
     specificity' (NAttrib a) = specificity' a
     specificity' (NPseudo p) = specificity' p
     specificity' (NPseudoElement p) = specificity' p
-    toPattern (NTypeSelector t) = ConP 'NTypeSelector [toPattern t]
-    toPattern (NHash h) = ConP 'NHash [toPattern h]
-    toPattern (NClass c) = ConP 'NClass [toPattern c]
-    toPattern (NAttrib a) = ConP 'NAttrib [toPattern a]
-    toPattern (NPseudo p) = ConP 'NPseudo [toPattern p]
-    toPattern (NPseudoElement p) = ConP 'NPseudoElement [toPattern p]
+    toPattern (NTypeSelector t) = _conP 'NTypeSelector [toPattern t]
+    toPattern (NHash h) = _conP 'NHash [toPattern h]
+    toPattern (NClass c) = _conP 'NClass [toPattern c]
+    toPattern (NAttrib a) = _conP 'NAttrib [toPattern a]
+    toPattern (NPseudo p) = _conP 'NPseudo [toPattern p]
+    toPattern (NPseudoElement p) = _conP 'NPseudoElement [toPattern p]
 
 instance ToCssSelector PseudoElement where
     toCssSelector = pack . (':' :) . (':' :) . go
@@ -1313,7 +1325,11 @@ instance Binary SelectorGroup where
   get = SelectorGroup <$> get
 
 -- Lift instances
+#if MIN_VERSION_template_haskell(2,17,0)
+_apply :: Quote m => Name -> [m Exp] -> m Exp
+#else
 _apply :: Name -> [Q Exp] -> Q Exp
+#endif
 _apply = foldl appE . conE
 
 instance Lift SelectorGroup where
