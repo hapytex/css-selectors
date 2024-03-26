@@ -1535,7 +1535,7 @@ instance Arbitrary Class where
     shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Nth where
-    arbitrary = Nth <$> ((1+) . abs <$> arbitrary) <*> arbitrary
+    arbitrary = Nth . (1+) . abs <$> arbitrary <*> arbitrary
     shrink nth
       | nth == nnth = []
       | otherwise = [nnth]
