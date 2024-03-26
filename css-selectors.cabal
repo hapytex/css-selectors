@@ -66,7 +66,7 @@ test-suite css-selectors-test
   main-is:             Spec.hs
   build-depends:
       base
-    , binary >=0.2 && <0.8.8.0
+    , binary >=0.2
     , css-selectors
     , hashable >=1.2.7.0
     , text
