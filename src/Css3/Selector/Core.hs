@@ -813,17 +813,19 @@ instance IsList SelectorGroup where
 _textToPattern :: Text -> Pat
 _textToPattern t = ViewP (AppE (ConE '(==)) (AppE (ConE 'pack) (LitE (StringL (unpack t))))) (_constantP 'True)
 
-_constantP :: Name -> Pat
 #if MIN_VERSION_template_haskell(2,18,0)
+_constantP :: Name -> Pat
 _constantP = flip (`ConP` []) []
 #else
+_constantP :: Name -> Pat
 _constantP = (`ConP` [])
 #endif
 
-_conP :: Name -> [Pat] -> Pat
 #if MIN_VERSION_template_haskell(2,18,0)
+_conP :: Name -> [Pat] -> Pat
 _conP = (`ConP` [])
 #else
+_conP :: Name -> [Pat] -> Pat
 _conP = ConP
 #endif
 
@@ -1327,10 +1329,11 @@ instance Binary SelectorGroup where
 -- Lift instances
 #if MIN_VERSION_template_haskell(2,17,0)
 _apply :: Quote m => Name -> [m Exp] -> m Exp
+_apply = foldl appE . conE
 #else
 _apply :: Name -> [Q Exp] -> Q Exp
-#endif
 _apply = foldl appE . conE
+#endif
 
 instance Lift SelectorGroup where
     lift (SelectorGroup sg) = _apply 'SelectorGroup [liftNe sg]
@@ -1532,7 +1535,7 @@ instance Arbitrary Class where
     shrink (Class a) = Class <$> _shrinkIdent a
 
 instance Arbitrary Nth where
-    arbitrary = Nth <$> ((1+) . abs <$> arbitrary) <*> arbitrary
+    arbitrary = Nth . (1+) . abs <$> arbitrary <*> arbitrary
     shrink nth
       | nth == nnth = []
       | otherwise = [nnth]
