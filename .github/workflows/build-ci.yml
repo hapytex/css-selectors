@@ -60,7 +60,7 @@ jobs:
   linux5:
     strategy:
       matrix: 
-        resolver: [lts-10, lts-11, lts-12, lts-13, lts-14, lts-15, lts-16, lts-17, lts-18, lts-19, lts-20, lts-21]
+        resolver: [lts-10, lts-11, lts-12, lts-13, lts-14, lts-15, lts-16, lts-18, lts-19, lts-20, lts-21]
 
     name: Run the tests
     runs-on: ubuntu-latest
