@@ -1,0 +1,961 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE TypeSynonymInstances #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE FlexibleContexts #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE DeriveDataTypeable #-}</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- | Provides functionality for runtime Hamlet templates. Please use</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- &quot;Text.Hamlet.Runtime&quot; instead.</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Hamlet.RT</span><span>
+</span><span id="line-8"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Public API</span></span><span>
+</span><span id="line-9"></span><span>      </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier">HamletRT</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletData"><span class="hs-identifier">HamletData</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier">HamletMap</span></a></span><span>
+</span><span id="line-12"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletException"><span class="hs-identifier">HamletException</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#parseHamletRT"><span class="hs-identifier">parseHamletRT</span></a></span><span>
+</span><span id="line-14"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#renderHamletRT"><span class="hs-identifier">renderHamletRT</span></a></span><span>
+</span><span id="line-15"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier">renderHamletRT'</span></a></span><span>
+</span><span id="line-16"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier">SimpleDoc</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Shakespeare.Base.html"><span class="hs-identifier">Text.Shakespeare.Base</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Monoid</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">mconcat</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">liftM</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">forM</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Exception</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Typeable</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Typeable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html"><span class="hs-identifier">Text.Hamlet.Parse</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">intercalate</span></span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Blaze.Html</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Html</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Blaze.Internal</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">preEscapedString</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">preEscapedText</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Catch</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">MonadThrow</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">throwM</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">type</span><span> </span><span id="HamletMap"><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier hs-var">HamletMap</span></a></span></span><span> </span><span id="local-6989586621679453345"><span class="annot"><a href="#local-6989586621679453345"><span class="hs-identifier hs-type">url</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453345"><span class="hs-identifier hs-type">url</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">type</span><span> </span><span id="UrlRenderer"><span class="annot"><a href="Text.Hamlet.RT.html#UrlRenderer"><span class="hs-identifier hs-var">UrlRenderer</span></a></span></span><span> </span><span id="local-6989586621679453346"><span class="annot"><a href="#local-6989586621679453346"><span class="hs-identifier hs-type">url</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679453346"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">data</span><span> </span><span id="HamletData"><span class="annot"><a href="Text.Hamlet.RT.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span></span><span> </span><span id="local-6989586621679453327"><span class="annot"><a href="#local-6989586621679453327"><span class="hs-identifier hs-type">url</span></a></span></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span id="HDHtml"><span class="annot"><a href="Text.Hamlet.RT.html#HDHtml"><span class="hs-identifier hs-var">HDHtml</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Html</span></span><span>
+</span><span id="line-37"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="HDUrl"><span class="annot"><a href="Text.Hamlet.RT.html#HDUrl"><span class="hs-identifier hs-var">HDUrl</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679453327"><span class="hs-identifier hs-type">url</span></a></span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="HDUrlParams"><span class="annot"><a href="Text.Hamlet.RT.html#HDUrlParams"><span class="hs-identifier hs-var">HDUrlParams</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679453327"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="HDTemplate"><span class="annot"><a href="Text.Hamlet.RT.html#HDTemplate"><span class="hs-identifier hs-var">HDTemplate</span></a></span></span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-type">HamletRT</span></a></span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="HDBool"><span class="annot"><a href="Text.Hamlet.RT.html#HDBool"><span class="hs-identifier hs-var">HDBool</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="HDMaybe"><span class="annot"><a href="Text.Hamlet.RT.html#HDMaybe"><span class="hs-identifier hs-var">HDMaybe</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier hs-type">HamletMap</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453327"><span class="hs-identifier hs-type">url</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="HDList"><span class="annot"><a href="Text.Hamlet.RT.html#HDList"><span class="hs-identifier hs-var">HDList</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier hs-type">HamletMap</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453327"><span class="hs-identifier hs-type">url</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- FIXME switch to Text?</span><span>
+</span><span id="line-45"></span><span class="hs-keyword">data</span><span> </span><span id="SimpleDoc"><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-var">SimpleDoc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="SDRaw"><span class="annot"><a href="Text.Hamlet.RT.html#SDRaw"><span class="hs-identifier hs-var">SDRaw</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-46"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="SDVar"><span class="annot"><a href="Text.Hamlet.RT.html#SDVar"><span class="hs-identifier hs-var">SDVar</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span>
+</span><span id="line-47"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="SDUrl"><span class="annot"><a href="Text.Hamlet.RT.html#SDUrl"><span class="hs-identifier hs-var">SDUrl</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span>
+</span><span id="line-48"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="SDTemplate"><span class="annot"><a href="Text.Hamlet.RT.html#SDTemplate"><span class="hs-identifier hs-var">SDTemplate</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span>
+</span><span id="line-49"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="SDForall"><span class="annot"><a href="Text.Hamlet.RT.html#SDForall"><span class="hs-identifier hs-var">SDForall</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-type">SimpleDoc</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-50"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="SDMaybe"><span class="annot"><a href="Text.Hamlet.RT.html#SDMaybe"><span class="hs-identifier hs-var">SDMaybe</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-type">SimpleDoc</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-type">SimpleDoc</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-51"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="SDCond"><span class="annot"><a href="Text.Hamlet.RT.html#SDCond"><span class="hs-identifier hs-var">SDCond</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-type">SimpleDoc</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-type">SimpleDoc</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">newtype</span><span> </span><span id="HamletRT"><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="HamletRT"><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Text.Hamlet.RT.html#SimpleDoc"><span class="hs-identifier hs-type">SimpleDoc</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-keyword">data</span><span> </span><span id="HamletException"><span class="annot"><a href="Text.Hamlet.RT.html#HamletException"><span class="hs-identifier hs-var">HamletException</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="HamletParseException"><span class="annot"><a href="Text.Hamlet.RT.html#HamletParseException"><span class="hs-identifier hs-var">HamletParseException</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-56"></span><span>                     </span><span class="hs-glyph">|</span><span> </span><span id="HamletUnsupportedDocException"><span class="annot"><a href="Text.Hamlet.RT.html#HamletUnsupportedDocException"><span class="hs-identifier hs-var">HamletUnsupportedDocException</span></a></span></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#Doc"><span class="hs-identifier hs-type">Doc</span></a></span><span>
+</span><span id="line-57"></span><span>                     </span><span class="hs-glyph">|</span><span> </span><span id="HamletRenderException"><span class="annot"><a href="Text.Hamlet.RT.html#HamletRenderException"><span class="hs-identifier hs-var">HamletRenderException</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-58"></span><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679453366"><span id="local-6989586621679453378"><span id="local-6989586621679453382"><span class="annot"><span class="annottext">Int -&gt; HamletException -&gt; ShowS
+[HamletException] -&gt; ShowS
+HamletException -&gt; String
+(Int -&gt; HamletException -&gt; ShowS)
+-&gt; (HamletException -&gt; String)
+-&gt; ([HamletException] -&gt; ShowS)
+-&gt; Show HamletException
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; HamletException -&gt; ShowS
+showsPrec :: Int -&gt; HamletException -&gt; ShowS
+$cshow :: HamletException -&gt; String
+show :: HamletException -&gt; String
+$cshowList :: [HamletException] -&gt; ShowS
+showList :: [HamletException] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Typeable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679453391"><span id="local-6989586621679453395"><span id="local-6989586621679453398"><span class="annot"><span class="hs-identifier hs-type">Exception</span></span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletException"><span class="hs-identifier hs-type">HamletException</span></a></span></span></span></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span id="local-6989586621679453256"><span class="annot"><a href="Text.Hamlet.RT.html#parseHamletRT"><span class="hs-identifier hs-type">parseHamletRT</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679453256"><span class="hs-identifier hs-type">m</span></a></span><span>
+</span><span id="line-64"></span><span>              </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#HamletSettings"><span class="hs-identifier hs-type">HamletSettings</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679453256"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-type">HamletRT</span></a></span></span><span>
+</span><span id="line-65"></span><span id="parseHamletRT"><span class="annot"><span class="annottext">parseHamletRT :: forall (m :: * -&gt; *).
+MonadThrow m =&gt;
+HamletSettings -&gt; String -&gt; m HamletRT
+</span><a href="Text.Hamlet.RT.html#parseHamletRT"><span class="hs-identifier hs-var hs-var">parseHamletRT</span></a></span></span><span> </span><span id="local-6989586621679453411"><span class="annot"><span class="annottext">HamletSettings
+</span><a href="#local-6989586621679453411"><span class="hs-identifier hs-var">set</span></a></span></span><span> </span><span id="local-6989586621679453412"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453412"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HamletSettings -&gt; String -&gt; Result (Maybe NewlineStyle, [Doc])
+</span><a href="Text.Hamlet.Parse.html#parseDoc"><span class="hs-identifier hs-var">parseDoc</span></a></span><span> </span><span class="annot"><span class="annottext">HamletSettings
+</span><a href="#local-6989586621679453411"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453412"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-67"></span><span>        </span><span class="annot"><a href="Text.Hamlet.Parse.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span> </span><span id="local-6989586621679453415"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453415"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">HamletException -&gt; m HamletRT
+forall e a. Exception e =&gt; e -&gt; m a
+forall (m :: * -&gt; *) e a. (MonadThrow m, Exception e) =&gt; e -&gt; m a
+</span><span class="hs-identifier hs-var">throwM</span></span><span> </span><span class="annot"><span class="annottext">(HamletException -&gt; m HamletRT) -&gt; HamletException -&gt; m HamletRT
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; HamletException
+</span><a href="Text.Hamlet.RT.html#HamletParseException"><span class="hs-identifier hs-var">HamletParseException</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453415"><span class="hs-identifier hs-var">s'</span></a></span><span>
+</span><span id="line-68"></span><span>        </span><span class="annot"><a href="Text.Hamlet.Parse.html#Ok"><span class="hs-identifier hs-type">Ok</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe NewlineStyle
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453417"><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453417"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">([SimpleDoc] -&gt; HamletRT) -&gt; m [SimpleDoc] -&gt; m HamletRT
+forall (m :: * -&gt; *) a1 r. Monad m =&gt; (a1 -&gt; r) -&gt; m a1 -&gt; m r
+</span><span class="hs-identifier hs-var">liftM</span></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; HamletRT
+</span><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span><span> </span><span class="annot"><span class="annottext">(m [SimpleDoc] -&gt; m HamletRT) -&gt; m [SimpleDoc] -&gt; m HamletRT
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; [Doc] -&gt; m [SimpleDoc]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+forall {m :: * -&gt; *}. MonadThrow m =&gt; Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453417"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-69"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-70"></span><span>    </span><span id="local-6989586621679453419"><span class="annot"><span class="annottext">convert :: Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var hs-var">convert</span></a></span></span><span> </span><span id="local-6989586621679453482"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453482"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocForall"><span class="hs-identifier hs-type">DocForall</span></a></span><span> </span><span id="local-6989586621679453484"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453484"><span class="hs-identifier hs-var">deref</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#BindAs"><span class="hs-identifier hs-type">BindAs</span></a></span><span> </span><span class="annot"><span class="annottext">Ident
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Binding
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679453486"><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453486"><span class="hs-identifier hs-var">docs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-71"></span><span>       </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime Hamlet does not currently support 'as' patterns&quot;</span></span><span>
+</span><span id="line-72"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453488"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453488"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocForall"><span class="hs-identifier hs-type">DocForall</span></a></span><span> </span><span id="local-6989586621679453489"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453489"><span class="hs-identifier hs-var">deref</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#BindVar"><span class="hs-identifier hs-type">BindVar</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Shakespeare.Base.html#Ident"><span class="hs-identifier hs-type">Ident</span></a></span><span> </span><span id="local-6989586621679453492"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453492"><span class="hs-identifier hs-var">ident</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span id="local-6989586621679453493"><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453493"><span class="hs-identifier hs-var">docs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-73"></span><span>        </span><span id="local-6989586621679453494"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453494"><span class="hs-identifier hs-var">deref'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Deref -&gt; m [String]
+forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var">flattenDeref'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453488"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453489"><span class="hs-identifier hs-var">deref</span></a></span><span>
+</span><span id="line-74"></span><span>        </span><span id="local-6989586621679453496"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453496"><span class="hs-identifier hs-var">docs'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; [Doc] -&gt; m [SimpleDoc]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453493"><span class="hs-identifier hs-var">docs</span></a></span><span>
+</span><span id="line-75"></span><span>        </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String -&gt; [SimpleDoc] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDForall"><span class="hs-identifier hs-var">SDForall</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453494"><span class="hs-identifier hs-var">deref'</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453492"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453496"><span class="hs-identifier hs-var">docs'</span></a></span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#DocForall"><span class="hs-identifier hs-type">DocForall</span></a></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime Hamlet does not currently support tuple patterns&quot;</span></span><span>
+</span><span id="line-77"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453497"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453497"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocMaybe"><span class="hs-identifier hs-type">DocMaybe</span></a></span><span> </span><span id="local-6989586621679453499"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453499"><span class="hs-identifier hs-var">deref</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#BindAs"><span class="hs-identifier hs-type">BindAs</span></a></span><span> </span><span class="annot"><span class="annottext">Ident
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Binding
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679453500"><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453500"><span class="hs-identifier hs-var">jdocs</span></a></span></span><span> </span><span id="local-6989586621679453501"><span class="annot"><span class="annottext">Maybe [Doc]
+</span><a href="#local-6989586621679453501"><span class="hs-identifier hs-var">ndocs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-78"></span><span>       </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime Hamlet does not currently support 'as' patterns&quot;</span></span><span>
+</span><span id="line-79"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453502"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453502"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocMaybe"><span class="hs-identifier hs-type">DocMaybe</span></a></span><span> </span><span id="local-6989586621679453503"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453503"><span class="hs-identifier hs-var">deref</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#BindVar"><span class="hs-identifier hs-type">BindVar</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Shakespeare.Base.html#Ident"><span class="hs-identifier hs-type">Ident</span></a></span><span> </span><span id="local-6989586621679453504"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453504"><span class="hs-identifier hs-var">ident</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span id="local-6989586621679453505"><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453505"><span class="hs-identifier hs-var">jdocs</span></a></span></span><span> </span><span id="local-6989586621679453506"><span class="annot"><span class="annottext">Maybe [Doc]
+</span><a href="#local-6989586621679453506"><span class="hs-identifier hs-var">ndocs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-80"></span><span>        </span><span id="local-6989586621679453507"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453507"><span class="hs-identifier hs-var">deref'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Deref -&gt; m [String]
+forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var">flattenDeref'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453502"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453503"><span class="hs-identifier hs-var">deref</span></a></span><span>
+</span><span id="line-81"></span><span>        </span><span id="local-6989586621679453508"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453508"><span class="hs-identifier hs-var">jdocs'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; [Doc] -&gt; m [SimpleDoc]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">[Doc]
+</span><a href="#local-6989586621679453505"><span class="hs-identifier hs-var">jdocs</span></a></span><span>
+</span><span id="line-82"></span><span>        </span><span id="local-6989586621679453509"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453509"><span class="hs-identifier hs-var">ndocs'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">m [SimpleDoc]
+-&gt; ([Doc] -&gt; m [SimpleDoc]) -&gt; Maybe [Doc] -&gt; m [SimpleDoc]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; m [SimpleDoc]
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; [Doc] -&gt; m [SimpleDoc]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe [Doc]
+</span><a href="#local-6989586621679453506"><span class="hs-identifier hs-var">ndocs</span></a></span><span>
+</span><span id="line-83"></span><span>        </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String -&gt; [SimpleDoc] -&gt; [SimpleDoc] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDMaybe"><span class="hs-identifier hs-var">SDMaybe</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453507"><span class="hs-identifier hs-var">deref'</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453504"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453508"><span class="hs-identifier hs-var">jdocs'</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453509"><span class="hs-identifier hs-var">ndocs'</span></a></span><span>
+</span><span id="line-84"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#DocMaybe"><span class="hs-identifier hs-type">DocMaybe</span></a></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime Hamlet does not currently support tuple patterns&quot;</span></span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocContent"><span class="hs-identifier hs-type">DocContent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#ContentRaw"><span class="hs-identifier hs-type">ContentRaw</span></a></span><span> </span><span id="local-6989586621679453513"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453513"><span class="hs-identifier hs-var">s'</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDRaw"><span class="hs-identifier hs-var">SDRaw</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453513"><span class="hs-identifier hs-var">s'</span></a></span><span>
+</span><span id="line-86"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453514"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453514"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocContent"><span class="hs-identifier hs-type">DocContent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#ContentVar"><span class="hs-identifier hs-type">ContentVar</span></a></span><span> </span><span id="local-6989586621679453516"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453516"><span class="hs-identifier hs-var">deref</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-87"></span><span>        </span><span id="local-6989586621679453517"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453517"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Deref -&gt; m [String]
+forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var">flattenDeref'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453514"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453516"><span class="hs-identifier hs-var">deref</span></a></span><span>
+</span><span id="line-88"></span><span>        </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDVar"><span class="hs-identifier hs-var">SDVar</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453517"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-89"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453518"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453518"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocContent"><span class="hs-identifier hs-type">DocContent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#ContentUrl"><span class="hs-identifier hs-type">ContentUrl</span></a></span><span> </span><span id="local-6989586621679453520"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453520"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679453521"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453521"><span class="hs-identifier hs-var">deref</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-90"></span><span>        </span><span id="local-6989586621679453522"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453522"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Deref -&gt; m [String]
+forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var">flattenDeref'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453518"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453521"><span class="hs-identifier hs-var">deref</span></a></span><span>
+</span><span id="line-91"></span><span>        </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; [String] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDUrl"><span class="hs-identifier hs-var">SDUrl</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453520"><span class="hs-identifier hs-var">p</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453522"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-92"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453523"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453523"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocContent"><span class="hs-identifier hs-type">DocContent</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#ContentEmbed"><span class="hs-identifier hs-type">ContentEmbed</span></a></span><span> </span><span id="local-6989586621679453525"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453525"><span class="hs-identifier hs-var">deref</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-93"></span><span>        </span><span id="local-6989586621679453526"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453526"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Deref -&gt; m [String]
+forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var">flattenDeref'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453523"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453525"><span class="hs-identifier hs-var">deref</span></a></span><span>
+</span><span id="line-94"></span><span>        </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDTemplate"><span class="hs-identifier hs-var">SDTemplate</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453526"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-95"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocContent"><span class="hs-identifier hs-type">DocContent</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#ContentMsg"><span class="hs-identifier hs-type">ContentMsg</span></a></span><span class="hs-special">{</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-96"></span><span>        </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime hamlet does not currently support message interpolation&quot;</span></span><span>
+</span><span id="line-97"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocContent"><span class="hs-identifier hs-type">DocContent</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#ContentAttrs"><span class="hs-identifier hs-type">ContentAttrs</span></a></span><span class="hs-special">{</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-98"></span><span>        </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime hamlet does not currently support attrs interpolation&quot;</span></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span id="local-6989586621679453529"><span class="annot"><span class="annottext">x :: Doc
+</span><a href="#local-6989586621679453529"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#DocCond"><span class="hs-identifier hs-type">DocCond</span></a></span><span> </span><span id="local-6989586621679453531"><span class="annot"><span class="annottext">[(Deref, [Doc])]
+</span><a href="#local-6989586621679453531"><span class="hs-identifier hs-var">conds</span></a></span></span><span> </span><span id="local-6989586621679453532"><span class="annot"><span class="annottext">Maybe [Doc]
+</span><a href="#local-6989586621679453532"><span class="hs-identifier hs-var">els</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-101"></span><span>        </span><span id="local-6989586621679453533"><span class="annot"><span class="annottext">[([String], [SimpleDoc])]
+</span><a href="#local-6989586621679453533"><span class="hs-identifier hs-var">conds'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">((Deref, [Doc]) -&gt; m ([String], [SimpleDoc]))
+-&gt; [(Deref, [Doc])] -&gt; m [([String], [SimpleDoc])]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">(Deref, [Doc]) -&gt; m ([String], [SimpleDoc])
+forall {t :: * -&gt; *}.
+Traversable t =&gt;
+(Deref, t Doc) -&gt; m ([String], t SimpleDoc)
+</span><a href="#local-6989586621679453534"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[(Deref, [Doc])]
+</span><a href="#local-6989586621679453531"><span class="hs-identifier hs-var">conds</span></a></span><span>
+</span><span id="line-102"></span><span>        </span><span id="local-6989586621679453535"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453535"><span class="hs-identifier hs-var">els'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">m [SimpleDoc]
+-&gt; ([Doc] -&gt; m [SimpleDoc]) -&gt; Maybe [Doc] -&gt; m [SimpleDoc]
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; m [SimpleDoc]
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; [Doc] -&gt; m [SimpleDoc]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe [Doc]
+</span><a href="#local-6989586621679453532"><span class="hs-identifier hs-var">els</span></a></span><span>
+</span><span id="line-103"></span><span>        </span><span class="annot"><span class="annottext">SimpleDoc -&gt; m SimpleDoc
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m SimpleDoc) -&gt; SimpleDoc -&gt; m SimpleDoc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[([String], [SimpleDoc])] -&gt; [SimpleDoc] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDCond"><span class="hs-identifier hs-var">SDCond</span></a></span><span> </span><span class="annot"><span class="annottext">[([String], [SimpleDoc])]
+</span><a href="#local-6989586621679453533"><span class="hs-identifier hs-var">conds'</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453535"><span class="hs-identifier hs-var">els'</span></a></span><span>
+</span><span id="line-104"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-105"></span><span>        </span><span class="hs-comment">-- | See the comments in Text.Hamlet.Parse.testIncludeClazzes. The conditional</span><span>
+</span><span id="line-106"></span><span>        </span><span class="hs-comment">-- added there doesn't work for runtime Hamlet, so we remove it here.</span><span>
+</span><span id="line-107"></span><span>        </span><span id="local-6989586621679453534"><span class="annot"><span class="annottext">go :: (Deref, t Doc) -&gt; m ([String], t SimpleDoc)
+</span><a href="#local-6989586621679453534"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Shakespeare.Base.html#DerefBranch"><span class="hs-identifier hs-type">DerefBranch</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Shakespeare.Base.html#DerefIdent"><span class="hs-identifier hs-type">DerefIdent</span></a></span><span> </span><span id="local-6989586621679453562"><span class="annot"><span class="annottext">Ident
+</span><a href="#local-6989586621679453562"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Deref
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453563"><span class="annot"><span class="annottext">t Doc
+</span><a href="#local-6989586621679453563"><span class="hs-identifier hs-var">docs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Ident
+</span><a href="#local-6989586621679453562"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Ident -&gt; Ident -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Ident
+</span><a href="Text.Hamlet.Parse.html#specialOrIdent"><span class="hs-identifier hs-var">specialOrIdent</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-108"></span><span>            </span><span id="local-6989586621679453565"><span class="annot"><span class="annottext">t SimpleDoc
+</span><a href="#local-6989586621679453565"><span class="hs-identifier hs-var">docs''</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; t Doc -&gt; m (t SimpleDoc)
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; t a -&gt; m (t b)
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">t Doc
+</span><a href="#local-6989586621679453563"><span class="hs-identifier hs-var">docs'</span></a></span><span>
+</span><span id="line-109"></span><span>            </span><span class="annot"><span class="annottext">([String], t SimpleDoc) -&gt; m ([String], t SimpleDoc)
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;True&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">t SimpleDoc
+</span><a href="#local-6989586621679453565"><span class="hs-identifier hs-var">docs''</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>        </span><span class="annot"><a href="#local-6989586621679453534"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679453566"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453566"><span class="hs-identifier hs-var">deref</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453567"><span class="annot"><span class="annottext">t Doc
+</span><a href="#local-6989586621679453567"><span class="hs-identifier hs-var">docs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-111"></span><span>            </span><span id="local-6989586621679453568"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453568"><span class="hs-identifier hs-var">deref'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Deref -&gt; m [String]
+forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var">flattenDeref'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453529"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453566"><span class="hs-identifier hs-var">deref</span></a></span><span>
+</span><span id="line-112"></span><span>            </span><span id="local-6989586621679453569"><span class="annot"><span class="annottext">t SimpleDoc
+</span><a href="#local-6989586621679453569"><span class="hs-identifier hs-var">docs''</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; m SimpleDoc) -&gt; t Doc -&gt; m (t SimpleDoc)
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; t a -&gt; m (t b)
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; m SimpleDoc
+</span><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><span class="annottext">t Doc
+</span><a href="#local-6989586621679453567"><span class="hs-identifier hs-var">docs'</span></a></span><span>
+</span><span id="line-113"></span><span>            </span><span class="annot"><span class="annottext">([String], t SimpleDoc) -&gt; m ([String], t SimpleDoc)
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453568"><span class="hs-identifier hs-var">deref'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">t SimpleDoc
+</span><a href="#local-6989586621679453569"><span class="hs-identifier hs-var">docs''</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-114"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#DocWith"><span class="hs-identifier hs-type">DocWith</span></a></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime hamlet does not currently support $with&quot;</span></span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><a href="#local-6989586621679453419"><span class="hs-identifier hs-var">convert</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#DocCase"><span class="hs-identifier hs-type">DocCase</span></a></span><span class="hs-special">{</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; m SimpleDoc
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Runtime hamlet does not currently support $case&quot;</span></span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span id="local-6989586621679453294"><span id="local-6989586621679453295"><span class="annot"><a href="Text.Hamlet.RT.html#renderHamletRT"><span class="hs-identifier hs-type">renderHamletRT</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679453294"><span class="hs-identifier hs-type">m</span></a></span><span>
+</span><span id="line-118"></span><span>               </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-type">HamletRT</span></a></span><span>
+</span><span id="line-119"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier hs-type">HamletMap</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453295"><span class="hs-identifier hs-type">url</span></a></span><span>
+</span><span id="line-120"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#UrlRenderer"><span class="hs-identifier hs-type">UrlRenderer</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453295"><span class="hs-identifier hs-type">url</span></a></span><span>
+</span><span id="line-121"></span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679453294"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Html</span></span></span></span><span>
+</span><span id="line-122"></span><span id="renderHamletRT"><span class="annot"><span class="annottext">renderHamletRT :: forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+HamletRT -&gt; HamletMap url -&gt; UrlRenderer url -&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT"><span class="hs-identifier hs-var hs-var">renderHamletRT</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span id="local-6989586621679453302"><span id="local-6989586621679453303"><span class="annot"><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-type">renderHamletRT'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679453302"><span class="hs-identifier hs-type">m</span></a></span><span>
+</span><span id="line-125"></span><span>                </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="annot"><span class="hs-comment">-- ^ should embeded template (via ^{..}) be plain Html or actual templates?</span></span><span>
+</span><span id="line-126"></span><span>                </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-type">HamletRT</span></a></span><span>
+</span><span id="line-127"></span><span>                </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier hs-type">HamletMap</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453303"><span class="hs-identifier hs-type">url</span></a></span><span>
+</span><span id="line-128"></span><span>                </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679453303"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-129"></span><span>                </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679453302"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Html</span></span></span></span><span>
+</span><span id="line-130"></span><span id="renderHamletRT%27"><span class="annot"><span class="annottext">renderHamletRT' :: forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var hs-var">renderHamletRT'</span></a></span></span><span> </span><span id="local-6989586621679453584"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-type">HamletRT</span></a></span><span> </span><span id="local-6989586621679453585"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453585"><span class="hs-identifier hs-var">docs</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679453586"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453586"><span class="hs-identifier hs-var">scope0</span></a></span></span><span> </span><span id="local-6989586621679453587"><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-131"></span><span>    </span><span class="annot"><span class="annottext">([Html] -&gt; Html) -&gt; m [Html] -&gt; m Html
+forall (m :: * -&gt; *) a1 r. Monad m =&gt; (a1 -&gt; r) -&gt; m a1 -&gt; m r
+</span><span class="hs-identifier hs-var">liftM</span></span><span> </span><span class="annot"><span class="annottext">[Html] -&gt; Html
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">(m [Html] -&gt; m Html) -&gt; m [Html] -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(SimpleDoc -&gt; m Html) -&gt; [SimpleDoc] -&gt; m [Html]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+(a -&gt; m b) -&gt; t a -&gt; m (t b)
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; [a] -&gt; m [b]
+</span><span class="hs-identifier hs-var">mapM</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">HamletMap url -&gt; SimpleDoc -&gt; m Html
+forall {m :: * -&gt; *}.
+MonadThrow m =&gt;
+HamletMap url -&gt; SimpleDoc -&gt; m Html
+</span><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453586"><span class="hs-identifier hs-var">scope0</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453585"><span class="hs-identifier hs-var">docs</span></a></span><span>
+</span><span id="line-132"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-133"></span><span>    </span><span id="local-6989586621679453588"><span class="annot"><span class="annottext">go :: HamletMap url -&gt; SimpleDoc -&gt; m Html
+</span><a href="#local-6989586621679453588"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDRaw"><span class="hs-identifier hs-type">SDRaw</span></a></span><span> </span><span id="local-6989586621679453636"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453636"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Html -&gt; m Html
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Html -&gt; m Html) -&gt; Html -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Html
+</span><span class="hs-identifier hs-var">preEscapedString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453636"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-134"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453637"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453637"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDVar"><span class="hs-identifier hs-type">SDVar</span></a></span><span> </span><span id="local-6989586621679453638"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453638"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-135"></span><span>        </span><span id="local-6989586621679453639"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453639"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var">lookup'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453638"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453638"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453637"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-136"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453639"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-137"></span><span>            </span><span class="annot"><a href="Text.Hamlet.RT.html#HDHtml"><span class="hs-identifier hs-type">HDHtml</span></a></span><span> </span><span id="local-6989586621679453641"><span class="annot"><span class="annottext">Html
+</span><a href="#local-6989586621679453641"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Html -&gt; m Html
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Html
+</span><a href="#local-6989586621679453641"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-138"></span><span>            </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453638"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDHtml&quot;</span></span><span>
+</span><span id="line-139"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453644"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453644"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDUrl"><span class="hs-identifier hs-type">SDUrl</span></a></span><span> </span><span id="local-6989586621679453645"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453645"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span id="local-6989586621679453646"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453646"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-140"></span><span>        </span><span id="local-6989586621679453647"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453647"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var">lookup'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453646"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453646"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453644"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-141"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453645"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453647"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-142"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HDUrl"><span class="hs-identifier hs-type">HDUrl</span></a></span><span> </span><span id="local-6989586621679453648"><span class="annot"><span class="annottext">url
+</span><a href="#local-6989586621679453648"><span class="hs-identifier hs-var">u</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Html -&gt; m Html
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Html -&gt; m Html) -&gt; Html -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Html
+</span><span class="hs-identifier hs-var">preEscapedText</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Html) -&gt; Text -&gt; Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span> </span><span class="annot"><span class="annottext">url
+</span><a href="#local-6989586621679453648"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-143"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HDUrlParams"><span class="hs-identifier hs-type">HDUrlParams</span></a></span><span> </span><span id="local-6989586621679453649"><span class="annot"><span class="annottext">url
+</span><a href="#local-6989586621679453649"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span id="local-6989586621679453650"><span class="annot"><span class="annottext">[(Text, Text)]
+</span><a href="#local-6989586621679453650"><span class="hs-identifier hs-var">q</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-144"></span><span>                </span><span class="annot"><span class="annottext">Html -&gt; m Html
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(Html -&gt; m Html) -&gt; Html -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Html
+</span><span class="hs-identifier hs-var">preEscapedText</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Html) -&gt; Text -&gt; Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span> </span><span class="annot"><span class="annottext">url
+</span><a href="#local-6989586621679453649"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">[(Text, Text)]
+</span><a href="#local-6989586621679453650"><span class="hs-identifier hs-var">q</span></a></span><span>
+</span><span id="line-145"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453646"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDUrl&quot;</span></span><span>
+</span><span id="line-146"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453646"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDUrlParams&quot;</span></span><span>
+</span><span id="line-147"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453651"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453651"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDTemplate"><span class="hs-identifier hs-type">SDTemplate</span></a></span><span> </span><span id="local-6989586621679453652"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453652"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-148"></span><span>        </span><span id="local-6989586621679453653"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453653"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var">lookup'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453652"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453652"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453651"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-149"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453653"><span class="hs-identifier hs-var">v</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-150"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HDTemplate"><span class="hs-identifier hs-type">HDTemplate</span></a></span><span> </span><span id="local-6989586621679453654"><span class="annot"><span class="annottext">HamletRT
+</span><a href="#local-6989586621679453654"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span><span> </span><span class="annot"><span class="annottext">HamletRT
+</span><a href="#local-6989586621679453654"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453651"><span class="hs-identifier hs-var">scope</span></a></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span>
+</span><span id="line-151"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453652"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDTemplate&quot;</span></span><span>
+</span><span id="line-152"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HDHtml"><span class="hs-identifier hs-type">HDHtml</span></a></span><span> </span><span id="local-6989586621679453655"><span class="annot"><span class="annottext">Html
+</span><a href="#local-6989586621679453655"><span class="hs-identifier hs-var">h</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Html -&gt; m Html
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Html
+</span><a href="#local-6989586621679453655"><span class="hs-identifier hs-var">h</span></a></span><span>
+</span><span id="line-153"></span><span>            </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453652"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDHtml&quot;</span></span><span>
+</span><span id="line-154"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453656"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453656"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDForall"><span class="hs-identifier hs-type">SDForall</span></a></span><span> </span><span id="local-6989586621679453657"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453657"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679453658"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453658"><span class="hs-identifier hs-var">ident</span></a></span></span><span> </span><span id="local-6989586621679453659"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453659"><span class="hs-identifier hs-var">docs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-155"></span><span>        </span><span id="local-6989586621679453660"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453660"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var">lookup'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453657"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453657"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453656"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-156"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453660"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-157"></span><span>            </span><span class="annot"><a href="Text.Hamlet.RT.html#HDList"><span class="hs-identifier hs-type">HDList</span></a></span><span> </span><span id="local-6989586621679453661"><span class="annot"><span class="annottext">[HamletMap url]
+</span><a href="#local-6989586621679453661"><span class="hs-identifier hs-var">os</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-158"></span><span>                </span><span class="annot"><span class="annottext">([Html] -&gt; Html) -&gt; m [Html] -&gt; m Html
+forall (m :: * -&gt; *) a1 r. Monad m =&gt; (a1 -&gt; r) -&gt; m a1 -&gt; m r
+</span><span class="hs-identifier hs-var">liftM</span></span><span> </span><span class="annot"><span class="annottext">[Html] -&gt; Html
+forall a. Monoid a =&gt; [a] -&gt; a
+</span><span class="hs-identifier hs-var">mconcat</span></span><span> </span><span class="annot"><span class="annottext">(m [Html] -&gt; m Html) -&gt; m [Html] -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[HamletMap url] -&gt; (HamletMap url -&gt; m Html) -&gt; m [Html]
+forall (t :: * -&gt; *) (m :: * -&gt; *) a b.
+(Traversable t, Monad m) =&gt;
+t a -&gt; (a -&gt; m b) -&gt; m (t b)
+</span><span class="hs-identifier hs-var">forM</span></span><span> </span><span class="annot"><span class="annottext">[HamletMap url]
+</span><a href="#local-6989586621679453661"><span class="hs-identifier hs-var">os</span></a></span><span> </span><span class="annot"><span class="annottext">((HamletMap url -&gt; m Html) -&gt; m [Html])
+-&gt; (HamletMap url -&gt; m Html) -&gt; m [Html]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679453662"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453662"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-159"></span><span>                    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679453663"><span class="annot"><span class="annottext">scope' :: HamletMap url
+</span><a href="#local-6989586621679453663"><span class="hs-identifier hs-var hs-var">scope'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(([String], HamletData url) -&gt; ([String], HamletData url))
+-&gt; HamletMap url -&gt; HamletMap url
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679453664"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453664"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453665"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453665"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453658"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; [String]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453664"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453665"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453662"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url -&gt; HamletMap url -&gt; HamletMap url
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453656"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-160"></span><span>                    </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; HamletRT
+</span><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453659"><span class="hs-identifier hs-var">docs'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453663"><span class="hs-identifier hs-var">scope'</span></a></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span>
+</span><span id="line-161"></span><span>            </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453657"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDList&quot;</span></span><span>
+</span><span id="line-162"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453666"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453666"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDMaybe"><span class="hs-identifier hs-type">SDMaybe</span></a></span><span> </span><span id="local-6989586621679453667"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453667"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679453668"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453668"><span class="hs-identifier hs-var">ident</span></a></span></span><span> </span><span id="local-6989586621679453669"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453669"><span class="hs-identifier hs-var">jdocs</span></a></span></span><span> </span><span id="local-6989586621679453670"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453670"><span class="hs-identifier hs-var">ndocs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-163"></span><span>        </span><span id="local-6989586621679453671"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453671"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var">lookup'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453667"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453667"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453666"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-164"></span><span>        </span><span class="hs-special">(</span><span id="local-6989586621679453672"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453672"><span class="hs-identifier hs-var">scope'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453673"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453673"><span class="hs-identifier hs-var">docs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-165"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453671"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-166"></span><span>                </span><span class="annot"><a href="Text.Hamlet.RT.html#HDMaybe"><span class="hs-identifier hs-type">HDMaybe</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe (HamletMap url)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(HamletMap url, [SimpleDoc]) -&gt; m (HamletMap url, [SimpleDoc])
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453666"><span class="hs-identifier hs-var">scope</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453670"><span class="hs-identifier hs-var">ndocs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-167"></span><span>                </span><span class="annot"><a href="Text.Hamlet.RT.html#HDMaybe"><span class="hs-identifier hs-type">HDMaybe</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679453674"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453674"><span class="hs-identifier hs-var">o</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-168"></span><span>                    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679453675"><span class="annot"><span class="annottext">scope' :: HamletMap url
+</span><a href="#local-6989586621679453675"><span class="hs-identifier hs-var hs-var">scope'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(([String], HamletData url) -&gt; ([String], HamletData url))
+-&gt; HamletMap url -&gt; HamletMap url
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679453676"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453676"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453677"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453677"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679453668"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; [String]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453676"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453677"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453674"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url -&gt; HamletMap url -&gt; HamletMap url
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453666"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-169"></span><span>                    </span><span class="annot"><span class="annottext">(HamletMap url, [SimpleDoc]) -&gt; m (HamletMap url, [SimpleDoc])
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453675"><span class="hs-identifier hs-var">scope'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453669"><span class="hs-identifier hs-var">jdocs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-170"></span><span>                </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m (HamletMap url, [SimpleDoc])
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m (HamletMap url, [SimpleDoc]))
+-&gt; String -&gt; m (HamletMap url, [SimpleDoc])
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453667"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDMaybe&quot;</span></span><span>
+</span><span id="line-171"></span><span>        </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; HamletRT
+</span><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453673"><span class="hs-identifier hs-var">docs'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453672"><span class="hs-identifier hs-var">scope'</span></a></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span>
+</span><span id="line-172"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453678"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453678"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDCond"><span class="hs-identifier hs-type">SDCond</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span id="local-6989586621679453679"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453679"><span class="hs-identifier hs-var">docs'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-173"></span><span>        </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; HamletRT
+</span><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453679"><span class="hs-identifier hs-var">docs'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453678"><span class="hs-identifier hs-var">scope</span></a></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span>
+</span><span id="line-174"></span><span>    </span><span class="annot"><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679453680"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453680"><span class="hs-identifier hs-var">scope</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#SDCond"><span class="hs-identifier hs-type">SDCond</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span id="local-6989586621679453681"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453681"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679453682"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453682"><span class="hs-identifier hs-var">docs'</span></a></span></span><span class="hs-special">)</span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679453683"><span class="annot"><span class="annottext">[([String], [SimpleDoc])]
+</span><a href="#local-6989586621679453683"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679453684"><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453684"><span class="hs-identifier hs-var">els</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-175"></span><span>        </span><span id="local-6989586621679453685"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453685"><span class="hs-identifier hs-var">v</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var">lookup'</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453681"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453681"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453680"><span class="hs-identifier hs-var">scope</span></a></span><span>
+</span><span id="line-176"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453685"><span class="hs-identifier hs-var">v</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-177"></span><span>            </span><span class="annot"><a href="Text.Hamlet.RT.html#HDBool"><span class="hs-identifier hs-type">HDBool</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-178"></span><span>                </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679453584"><span class="hs-identifier hs-var">tempAsHtml</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[SimpleDoc] -&gt; HamletRT
+</span><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-var">HamletRT</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453682"><span class="hs-identifier hs-var">docs'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453680"><span class="hs-identifier hs-var">scope</span></a></span><span> </span><span class="annot"><span class="annottext">url -&gt; [(Text, Text)] -&gt; Text
+</span><a href="#local-6989586621679453587"><span class="hs-identifier hs-var">renderUrl</span></a></span><span>
+</span><span id="line-179"></span><span>            </span><span class="annot"><a href="Text.Hamlet.RT.html#HDBool"><span class="hs-identifier hs-type">HDBool</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">HamletMap url -&gt; SimpleDoc -&gt; m Html
+</span><a href="#local-6989586621679453588"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453680"><span class="hs-identifier hs-var">scope</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[([String], [SimpleDoc])] -&gt; [SimpleDoc] -&gt; SimpleDoc
+</span><a href="Text.Hamlet.RT.html#SDCond"><span class="hs-identifier hs-var">SDCond</span></a></span><span> </span><span class="annot"><span class="annottext">[([String], [SimpleDoc])]
+</span><a href="#local-6989586621679453683"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="annot"><span class="annottext">[SimpleDoc]
+</span><a href="#local-6989586621679453684"><span class="hs-identifier hs-var">els</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span><span>            </span><span class="annot"><span class="annottext">HamletData url
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m Html
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m Html) -&gt; String -&gt; m Html
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453681"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: expected HDBool&quot;</span></span><span>
+</span><span id="line-181"></span><span>    </span><span id="local-6989586621679453311"><span id="local-6989586621679453312"><span class="annot"><a href="#local-6989586621679453640"><span class="hs-identifier hs-type">lookup'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679453311"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletMap"><span class="hs-identifier hs-type">HamletMap</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453312"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679453311"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.RT.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453312"><span class="hs-identifier hs-type">url</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-182"></span><span>    </span><span id="local-6989586621679453640"><span class="annot"><span class="annottext">lookup' :: forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+[String] -&gt; [String] -&gt; HamletMap url -&gt; m (HamletData url)
+</span><a href="#local-6989586621679453640"><span class="hs-identifier hs-var hs-var">lookup'</span></a></span></span><span> </span><span id="local-6989586621679453697"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453697"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span id="local-6989586621679453698"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453698"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679453699"><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453699"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-183"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; HamletMap url -&gt; Maybe (HamletData url)
+forall a b. Eq a =&gt; a -&gt; [(a, b)] -&gt; Maybe b
+</span><span class="hs-identifier hs-var">lookup</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453698"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap url
+</span><a href="#local-6989586621679453699"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-184"></span><span>            </span><span class="annot"><span class="annottext">Maybe (HamletData url)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453698"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String] -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;True&quot;</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">HamletData url -&gt; m (HamletData url)
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(HamletData url -&gt; m (HamletData url))
+-&gt; HamletData url -&gt; m (HamletData url)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; HamletData url
+forall url. Bool -&gt; HamletData url
+</span><a href="Text.Hamlet.RT.html#HDBool"><span class="hs-identifier hs-var">HDBool</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-185"></span><span>            </span><span class="annot"><span class="annottext">Maybe (HamletData url)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; m (HamletData url)
+forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var">fa</span></a></span><span> </span><span class="annot"><span class="annottext">(String -&gt; m (HamletData url)) -&gt; String -&gt; m (HamletData url)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var">showName</span></a></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453697"><span class="hs-identifier hs-var">orig</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;: not found&quot;</span></span><span>
+</span><span id="line-186"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679453701"><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453701"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">HamletData url -&gt; m (HamletData url)
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">HamletData url
+</span><a href="#local-6989586621679453701"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-187"></span><span>
+</span><span id="line-188"></span><span id="local-6989586621679453313"><span id="local-6989586621679453314"><span class="annot"><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-type">fa</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679453313"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679453313"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679453314"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-189"></span><span id="fa"><span class="annot"><span class="annottext">fa :: forall (m :: * -&gt; *) a. MonadThrow m =&gt; String -&gt; m a
+</span><a href="Text.Hamlet.RT.html#fa"><span class="hs-identifier hs-var hs-var">fa</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletException -&gt; m a
+forall e a. Exception e =&gt; e -&gt; m a
+forall (m :: * -&gt; *) e a. (MonadThrow m, Exception e) =&gt; e -&gt; m a
+</span><span class="hs-identifier hs-var">throwM</span></span><span> </span><span class="annot"><span class="annottext">(HamletException -&gt; m a)
+-&gt; (String -&gt; HamletException) -&gt; String -&gt; m a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; HamletException
+</span><a href="Text.Hamlet.RT.html#HamletRenderException"><span class="hs-identifier hs-var">HamletRenderException</span></a></span><span>
+</span><span id="line-190"></span><span>
+</span><span id="line-191"></span><span class="annot"><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-type">showName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-192"></span><span id="showName"><span class="annot"><span class="annottext">showName :: [String] -&gt; String
+</span><a href="Text.Hamlet.RT.html#showName"><span class="hs-identifier hs-var hs-var">showName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; String
+forall a. [a] -&gt; [[a]] -&gt; [a]
+</span><span class="hs-identifier hs-var">intercalate</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;.&quot;</span></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String)
+-&gt; ([String] -&gt; [String]) -&gt; [String] -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; [String]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span id="local-6989586621679453286"><span class="annot"><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-type">flattenDeref'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679453286"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#Doc"><span class="hs-identifier hs-type">Doc</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Shakespeare.Base.html#Deref"><span class="hs-identifier hs-type">Deref</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679453286"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span></span><span>
+</span><span id="line-195"></span><span id="flattenDeref%27"><span class="annot"><span class="annottext">flattenDeref' :: forall (f :: * -&gt; *). MonadThrow f =&gt; Doc -&gt; Deref -&gt; f [String]
+</span><a href="Text.Hamlet.RT.html#flattenDeref%27"><span class="hs-identifier hs-var hs-var">flattenDeref'</span></a></span></span><span> </span><span id="local-6989586621679453712"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453712"><span class="hs-identifier hs-var">orig</span></a></span></span><span> </span><span id="local-6989586621679453713"><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453713"><span class="hs-identifier hs-var">deref</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-196"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Deref -&gt; Maybe [String]
+</span><a href="Text.Shakespeare.Base.html#flattenDeref"><span class="hs-identifier hs-var">flattenDeref</span></a></span><span> </span><span class="annot"><span class="annottext">Deref
+</span><a href="#local-6989586621679453713"><span class="hs-identifier hs-var">deref</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-197"></span><span>        </span><span class="annot"><span class="annottext">Maybe [String]
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">HamletException -&gt; f [String]
+forall e a. Exception e =&gt; e -&gt; f a
+forall (m :: * -&gt; *) e a. (MonadThrow m, Exception e) =&gt; e -&gt; m a
+</span><span class="hs-identifier hs-var">throwM</span></span><span> </span><span class="annot"><span class="annottext">(HamletException -&gt; f [String]) -&gt; HamletException -&gt; f [String]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; HamletException
+</span><a href="Text.Hamlet.RT.html#HamletUnsupportedDocException"><span class="hs-identifier hs-var">HamletUnsupportedDocException</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679453712"><span class="hs-identifier hs-var">orig</span></a></span><span>
+</span><span id="line-198"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679453715"><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453715"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">[String] -&gt; f [String]
+forall a. a -&gt; f a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">[String]
+</span><a href="#local-6989586621679453715"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-199"></span></pre></body></html>

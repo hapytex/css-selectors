@@ -1,0 +1,83 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Internal.Cassius</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Internal.Cassius.html#i2bMixin"><span class="hs-identifier">i2bMixin</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TL</span></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.IndentToBrace.html"><span class="hs-identifier">Text.IndentToBrace</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.IndentToBrace.html#i2b"><span class="hs-identifier">i2b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span class="annot"><a href="Text.Internal.Cassius.html#i2bMixin"><span class="hs-identifier hs-type">i2bMixin</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-9"></span><span id="i2bMixin"><span class="annot"><span class="annottext">i2bMixin :: String -&gt; String
+</span><a href="Text.Internal.Cassius.html#i2bMixin"><span class="hs-identifier hs-var hs-var">i2bMixin</span></a></span></span><span> </span><span id="local-6989586621679444690"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679444690"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">TL.unpack</span></span><span>
+</span><span id="line-11"></span><span>        </span><span class="annot"><span class="annottext">(Text -&gt; String) -&gt; Text -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679444692"><span class="hs-identifier hs-var">stripEnd</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-12"></span><span>        </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679444693"><span class="hs-identifier hs-var">stripFront</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;mixin {&quot;</span></span><span>
+</span><span id="line-13"></span><span>        </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+</span><span class="hs-identifier hs-var">TL.strip</span></span><span>
+</span><span id="line-14"></span><span>        </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Text -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">TL.pack</span></span><span>
+</span><span id="line-15"></span><span>        </span><span class="annot"><span class="annottext">(String -&gt; Text) -&gt; String -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="Text.IndentToBrace.html#i2b"><span class="hs-identifier hs-var">i2b</span></a></span><span>
+</span><span id="line-16"></span><span>        </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; String -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[String] -&gt; String
+</span><span class="hs-identifier hs-var">unlines</span></span><span>
+</span><span id="line-17"></span><span>        </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;mixin&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; [String]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; [String] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;    &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([String] -&gt; [String]) -&gt; [String] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; [String]
+</span><span class="hs-identifier hs-var">lines</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679444690"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>    </span><span id="local-6989586621679444693"><span class="annot"><span class="annottext">stripFront :: Text -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679444693"><span class="hs-identifier hs-var hs-var">stripFront</span></a></span></span><span> </span><span id="local-6989586621679444698"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444698"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679444699"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444699"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-20"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Maybe Text
+</span><span class="hs-identifier hs-var">TL.stripPrefix</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444698"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444699"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-21"></span><span>            </span><span class="annot"><span class="annottext">Maybe Text
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444699"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-22"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679444701"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444701"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444701"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-23"></span><span>    </span><span id="local-6989586621679444692"><span class="annot"><span class="annottext">stripEnd :: Text -&gt; Text -&gt; Text
+</span><a href="#local-6989586621679444692"><span class="hs-identifier hs-var hs-var">stripEnd</span></a></span></span><span> </span><span id="local-6989586621679444702"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444702"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679444703"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444703"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-24"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Maybe Text
+</span><span class="hs-identifier hs-var">TL.stripSuffix</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444702"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444703"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-25"></span><span>            </span><span class="annot"><span class="annottext">Maybe Text
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444703"><span class="hs-identifier hs-var">y</span></a></span><span>
+</span><span id="line-26"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679444705"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444705"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679444705"><span class="hs-identifier hs-var">z</span></a></span></pre></body></html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE TemplateHaskell #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# OPTIONS_GHC -fno-warn-missing-fields #-}</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- | A Shakespearean module for general text processing, introducing type-safe,</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- compile-time variable interpolation.</span><span>
+</span><span id="line-7"></span><span class="hs-comment">--</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Text templates use the same parser as for other shakespearean templates</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- which enables variable interpolation using @#{..}@.  The parser also</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- recognize the @@{..}@ and @^{..}@ syntax.</span><span>
+</span><span id="line-11"></span><span class="hs-comment">--</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- If it is necessary that your template produces the output containing one of</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- the interpolation syntax you can escape the sequence using a backslash:</span><span>
+</span><span id="line-14"></span><span class="hs-comment">--</span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- &gt; &#955;&gt; :set -XQuasiQuotes</span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- &gt; &#955;&gt; let bar = 23 :: Int in [st|#{bar}|] :: Text</span><span>
+</span><span id="line-17"></span><span class="hs-comment">--</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- produces &quot;23&quot;, but</span><span>
+</span><span id="line-19"></span><span class="hs-comment">--</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- &gt; &#955;&gt; let bar = 23 :: Int in [st|#\{bar}|] :: Text</span><span>
+</span><span id="line-21"></span><span class="hs-comment">--</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- returns &quot;#{bar}&quot;.  The escaping backslash is removed from the output.</span><span>
+</span><span id="line-23"></span><span class="hs-comment">--</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- Further reading:</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- Shakespearean templates: &lt;https://www.yesodweb.com/book/shakespearean-templates&gt;</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Shakespeare.Text</span><span>
+</span><span id="line-27"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#TextUrl"><span class="hs-identifier">TextUrl</span></a></span><span>
+</span><span id="line-28"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier">ToText</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#renderTextUrl"><span class="hs-identifier">renderTextUrl</span></a></span><span>
+</span><span id="line-30"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#stext"><span class="hs-identifier">stext</span></a></span><span>
+</span><span id="line-31"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#stextFile"><span class="hs-identifier">stextFile</span></a></span><span>
+</span><span id="line-32"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#text"><span class="hs-identifier">text</span></a></span><span>
+</span><span id="line-33"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#textFile"><span class="hs-identifier">textFile</span></a></span><span>
+</span><span id="line-34"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#textFileDebug"><span class="hs-identifier">textFileDebug</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#textFileReload"><span class="hs-identifier">textFileReload</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#st"><span class="hs-identifier">st</span></a></span><span> </span><span class="annot"><span class="hs-comment">-- | strict text</span></span><span>
+</span><span id="line-37"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#lt"><span class="hs-identifier">lt</span></a></span><span> </span><span class="annot"><span class="hs-comment">-- | lazy text, same as stext :)</span></span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#sbt"><span class="hs-identifier">sbt</span></a></span><span> </span><span class="annot"><span class="hs-comment">-- | strict text whose left edge is aligned with bar ('|')</span></span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#lbt"><span class="hs-identifier">lbt</span></a></span><span> </span><span class="hs-comment">-- | lazy text, whose left edge is aligned with bar ('|')</span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-comment">-- * Yesod code generation</span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#codegen"><span class="hs-identifier">codegen</span></a></span><span>
+</span><span id="line-42"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenSt"><span class="hs-identifier">codegenSt</span></a></span><span>
+</span><span id="line-43"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenFile"><span class="hs-identifier">codegenFile</span></a></span><span>
+</span><span id="line-44"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenFileReload"><span class="hs-identifier">codegenFileReload</span></a></span><span>
+</span><span id="line-45"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Quote</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">QuasiQuoter</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Syntax</span></span><span>
+</span><span id="line-49"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Builder</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Builder</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">fromText</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toLazyText</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">fromLazyText</span></span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Builder.Int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">decimal</span></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TS</span></span><span>
+</span><span id="line-52"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">TL</span></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Shakespeare.html"><span class="hs-identifier">Text.Shakespeare</span></a></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Int32</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Int64</span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span id="local-6989586621679455777"><span class="annot"><a href="Text.Shakespeare.Text.html#renderTextUrl"><span class="hs-identifier hs-type">renderTextUrl</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Shakespeare.html#RenderUrl"><span class="hs-identifier hs-type">RenderUrl</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679455777"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#TextUrl"><span class="hs-identifier hs-type">TextUrl</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679455777"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TL.Text</span></span></span><span>
+</span><span id="line-57"></span><span id="renderTextUrl"><span class="annot"><span class="annottext">renderTextUrl :: forall url. RenderUrl url -&gt; TextUrl url -&gt; Text
+</span><a href="Text.Shakespeare.Text.html#renderTextUrl"><span class="hs-identifier hs-var hs-var">renderTextUrl</span></a></span></span><span> </span><span id="local-6989586621679455887"><span class="annot"><span class="annottext">RenderUrl url
+</span><a href="#local-6989586621679455887"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679455888"><span class="annot"><span class="annottext">TextUrl url
+</span><a href="#local-6989586621679455888"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Text
+</span><span class="hs-identifier hs-var">toLazyText</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Text) -&gt; Builder -&gt; Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">TextUrl url
+</span><a href="#local-6989586621679455888"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="annot"><span class="annottext">RenderUrl url
+</span><a href="#local-6989586621679455887"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-keyword">type</span><span> </span><span id="TextUrl"><span class="annot"><a href="Text.Shakespeare.Text.html#TextUrl"><span class="hs-identifier hs-var">TextUrl</span></a></span></span><span> </span><span id="local-6989586621679455889"><span class="annot"><a href="#local-6989586621679455889"><span class="hs-identifier hs-type">url</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="Text.Shakespeare.html#RenderUrl"><span class="hs-identifier hs-type">RenderUrl</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679455889"><span class="hs-identifier hs-type">url</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-keyword">class</span><span> </span><span id="ToText"><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-var">ToText</span></a></span></span><span> </span><span id="local-6989586621679455787"><span class="annot"><a href="#local-6989586621679455787"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-62"></span><span>    </span><span id="toText"><span class="annot"><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-type">toText</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679455787"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-63"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455894"><span class="annot"><span class="annottext">toText :: Builder -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-64"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-special">]</span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455898"><span class="annot"><span class="annottext">toText :: [Char] -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">fromLazyText</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Builder) -&gt; ([Char] -&gt; Text) -&gt; [Char] -&gt; Builder
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Text
+</span><span class="hs-identifier hs-var">TL.pack</span></span><span>
+</span><span id="line-65"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TS.Text</span></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455903"><span class="annot"><span class="annottext">toText :: Text -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">fromText</span></span><span>
+</span><span id="line-66"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TL.Text</span></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455906"><span class="annot"><span class="annottext">toText :: Text -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Builder
+</span><span class="hs-identifier hs-var">fromLazyText</span></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int32</span></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455911"><span class="annot"><span class="annottext">toText :: Int32 -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int32 -&gt; Builder
+forall a. Integral a =&gt; a -&gt; Builder
+</span><span class="hs-identifier hs-var">decimal</span></span><span>
+</span><span id="line-69"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455916"><span class="annot"><span class="annottext">toText :: Int64 -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int64 -&gt; Builder
+forall a. Integral a =&gt; a -&gt; Builder
+</span><span class="hs-identifier hs-var">decimal</span></span><span>
+</span><span id="line-70"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#ToText"><span class="hs-identifier hs-type">ToText</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>   </span><span class="hs-keyword">where</span><span> </span><span id="local-6989586621679455921"><span class="annot"><span class="annottext">toText :: Int -&gt; Builder
+</span><a href="Text.Shakespeare.Text.html#toText"><span class="hs-identifier hs-var hs-var hs-var hs-var">toText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Builder
+forall a. Integral a =&gt; a -&gt; Builder
+</span><span class="hs-identifier hs-var">decimal</span></span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="annot"><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-type">settings</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#ShakespeareSettings"><span class="hs-identifier hs-type">ShakespeareSettings</span></a></span><span>
+</span><span id="line-73"></span><span id="settings"><span class="annot"><span class="annottext">settings :: Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var hs-var">settings</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-74"></span><span>  </span><span id="local-6989586621679455923"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455923"><span class="hs-identifier hs-var">toTExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">toText</span><span class="hs-special">|]</span><span>
+</span><span id="line-75"></span><span>  </span><span id="local-6989586621679455924"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455924"><span class="hs-identifier hs-var">wrapExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">id</span><span class="hs-special">|]</span><span>
+</span><span id="line-76"></span><span>  </span><span id="local-6989586621679455925"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455925"><span class="hs-identifier hs-var">unWrapExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">id</span><span class="hs-special">|]</span><span>
+</span><span id="line-77"></span><span>  </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(ShakespeareSettings -&gt; Q ShakespeareSettings)
+-&gt; ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="Text.Shakespeare.html#defaultShakespeareSettings"><span class="hs-identifier hs-var">defaultShakespeareSettings</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">toBuilder :: Exp
+</span><a href="Text.Shakespeare.html#toBuilder"><span class="hs-identifier hs-var">toBuilder</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455923"><span class="hs-identifier hs-var">toTExp</span></a></span><span>
+</span><span id="line-78"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrap :: Exp
+</span><a href="Text.Shakespeare.html#wrap"><span class="hs-identifier hs-var">wrap</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455924"><span class="hs-identifier hs-var">wrapExp</span></a></span><span>
+</span><span id="line-79"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">unwrap :: Exp
+</span><a href="Text.Shakespeare.html#unwrap"><span class="hs-identifier hs-var">unwrap</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455925"><span class="hs-identifier hs-var">unWrapExp</span></a></span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- | &quot;Simple text&quot; quasi-quoter. May only be used to generate expressions.</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--</span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- Generated expressions have type 'TL.Text'.</span><span>
+</span><span id="line-85"></span><span class="hs-comment">--</span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- &gt;&gt;&gt; do let x = &quot;world&quot;</span><span>
+</span><span id="line-88"></span><span class="hs-comment">--        'Data.Text.Lazy.IO.putStrLn' ['stext'|Hello, #{x}!|]</span><span>
+</span><span id="line-89"></span><span class="hs-comment">-- Hello, world!</span><span>
+</span><span id="line-90"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Text.Shakespeare.Text.html#stext"><span class="hs-identifier hs-type">stext</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-92"></span><span id="stext"><span class="annot"><span class="annottext">stext :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#stext"><span class="hs-identifier hs-var hs-var">stext</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-93"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455931"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455931"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-94"></span><span>    </span><span id="local-6989586621679455932"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455932"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-95"></span><span>    </span><span id="local-6989586621679455933"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455933"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-96"></span><span>    </span><span id="local-6989586621679455934"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455934"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFromString"><span class="hs-identifier hs-var">shakespeareFromString</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455932"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455931"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-97"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455933"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455934"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span class="annot"><a href="Text.Shakespeare.Text.html#lt"><span class="hs-identifier hs-type">lt</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#st"><span class="hs-identifier hs-type">st</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#text"><span class="hs-identifier hs-type">text</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#lbt"><span class="hs-identifier hs-type">lbt</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Shakespeare.Text.html#sbt"><span class="hs-identifier hs-type">sbt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-101"></span><span id="lt"><span class="annot"><span class="annottext">lt :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#lt"><span class="hs-identifier hs-var hs-var">lt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#stext"><span class="hs-identifier hs-var">stext</span></a></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span id="st"><span class="annot"><span class="annottext">st :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#st"><span class="hs-identifier hs-var hs-var">st</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-104"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455938"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455938"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-105"></span><span>    </span><span id="local-6989586621679455939"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455939"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-106"></span><span>    </span><span id="local-6989586621679455940"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455940"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">TL.toStrict</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-107"></span><span>    </span><span id="local-6989586621679455941"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455941"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFromString"><span class="hs-identifier hs-var">shakespeareFromString</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455939"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455938"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-108"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455940"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455941"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span id="text"><span class="annot"><span class="annottext">text :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#text"><span class="hs-identifier hs-var hs-var">text</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455942"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455942"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-112"></span><span>    </span><span id="local-6989586621679455943"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455943"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-113"></span><span>    </span><span class="annot"><span class="annottext">QuasiQuoter -&gt; [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; QuasiQuoter
+</span><a href="Text.Shakespeare.html#shakespeare"><span class="hs-identifier hs-var">shakespeare</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455943"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Char] -&gt; Q Exp) -&gt; [Char] -&gt; Q Exp
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; [Char] -&gt; [Char]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\r'</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455942"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-114"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="Text.Shakespeare.Text.html#dropBar"><span class="hs-identifier hs-type">dropBar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">TL.Text</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">TL.Text</span></span><span class="hs-special">]</span><span>
+</span><span id="line-117"></span><span id="dropBar"><span class="annot"><span class="annottext">dropBar :: [Text] -&gt; [Text]
+</span><a href="Text.Shakespeare.Text.html#dropBar"><span class="hs-identifier hs-var hs-var">dropBar</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-118"></span><span class="annot"><a href="Text.Shakespeare.Text.html#dropBar"><span class="hs-identifier hs-var">dropBar</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679455947"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679455947"><span class="hs-identifier hs-var">c</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span id="local-6989586621679455948"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679455948"><span class="hs-identifier hs-var">cx</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679455947"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Text -&gt; [Text] -&gt; [Text]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Text] -&gt; [Text]
+</span><a href="#local-6989586621679455949"><span class="hs-identifier hs-var">dropBar'</span></a></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679455948"><span class="hs-identifier hs-var">cx</span></a></span><span>
+</span><span id="line-119"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-120"></span><span>    </span><span id="local-6989586621679455949"><span class="annot"><span class="annottext">dropBar' :: [Text] -&gt; [Text]
+</span><a href="#local-6989586621679455949"><span class="hs-identifier hs-var hs-var">dropBar'</span></a></span></span><span> </span><span id="local-6989586621679455953"><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679455953"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; [Text]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">([Text] -&gt; [Text]) -&gt; [Text] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; [Text] -&gt; [Text]
+forall a. Int -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">drop</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">([Text] -&gt; [Text]) -&gt; [Text] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; [Text] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int64 -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">TL.drop</span></span><span> </span><span class="annot"><span class="annottext">Int64
+</span><span class="hs-number">1</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; (Text -&gt; Text) -&gt; Text -&gt; Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">TL.dropWhile</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'|'</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([Text] -&gt; [Text]) -&gt; [Text] -&gt; [Text]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Text] -&gt; [Text]
+forall a. [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">reverse</span></span><span> </span><span class="annot"><span class="annottext">[Text]
+</span><a href="#local-6989586621679455953"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span id="lbt"><span class="annot"><span class="annottext">lbt :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#lbt"><span class="hs-identifier hs-var hs-var">lbt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-123"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455958"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455958"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-124"></span><span>    </span><span id="local-6989586621679455959"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455959"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-125"></span><span>    </span><span id="local-6989586621679455960"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455960"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">TL.unlines</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">dropBar</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">TL.lines</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-126"></span><span>    </span><span id="local-6989586621679455961"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455961"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFromString"><span class="hs-identifier hs-var">shakespeareFromString</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455959"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455958"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-127"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455960"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455961"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-129"></span><span>
+</span><span id="line-130"></span><span id="sbt"><span class="annot"><span class="annottext">sbt :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#sbt"><span class="hs-identifier hs-var hs-var">sbt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span>
+</span><span id="line-131"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455962"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455962"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-132"></span><span>    </span><span id="local-6989586621679455963"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455963"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-133"></span><span>    </span><span id="local-6989586621679455964"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455964"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">TL.toStrict</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">TL.unlines</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">dropBar</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">TL.lines</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-134"></span><span>    </span><span id="local-6989586621679455965"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455965"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFromString"><span class="hs-identifier hs-var">shakespeareFromString</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455963"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455962"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-135"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455964"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455965"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-136"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="annot"><a href="Text.Shakespeare.Text.html#textFile"><span class="hs-identifier hs-type">textFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-139"></span><span id="textFile"><span class="annot"><span class="annottext">textFile :: [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#textFile"><span class="hs-identifier hs-var hs-var">textFile</span></a></span></span><span> </span><span id="local-6989586621679455967"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455967"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-140"></span><span>    </span><span id="local-6989586621679455968"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455968"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-141"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFile"><span class="hs-identifier hs-var">shakespeareFile</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455968"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455967"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span>
+</span><span id="line-144"></span><span class="annot"><a href="Text.Shakespeare.Text.html#textFileDebug"><span class="hs-identifier hs-type">textFileDebug</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-145"></span><span id="textFileDebug"><span class="annot"><span class="annottext">textFileDebug :: [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#textFileDebug"><span class="hs-identifier hs-var hs-var">textFileDebug</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#textFileReload"><span class="hs-identifier hs-var">textFileReload</span></a></span><span>
+</span><span id="line-146"></span><span class="hs-pragma">{-# DEPRECATED</span><span> </span><span class="hs-pragma">textFileDebug</span><span> </span><span class="hs-pragma">&quot;Please use textFileReload instead&quot;</span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-147"></span><span>
+</span><span id="line-148"></span><span class="annot"><a href="Text.Shakespeare.Text.html#textFileReload"><span class="hs-identifier hs-type">textFileReload</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-149"></span><span id="textFileReload"><span class="annot"><span class="annottext">textFileReload :: [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#textFileReload"><span class="hs-identifier hs-var hs-var">textFileReload</span></a></span></span><span> </span><span id="local-6989586621679455970"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455970"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-150"></span><span>    </span><span id="local-6989586621679455971"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455971"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-151"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFileReload"><span class="hs-identifier hs-var">shakespeareFileReload</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455971"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455970"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span class="hs-comment">-- | Like 'stext', but reads an external file at compile-time.</span><span>
+</span><span id="line-154"></span><span class="hs-comment">--</span><span>
+</span><span id="line-155"></span><span class="hs-comment">-- @since 2.0.22</span><span>
+</span><span id="line-156"></span><span class="annot"><a href="Text.Shakespeare.Text.html#stextFile"><span class="hs-identifier hs-type">stextFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-157"></span><span id="stextFile"><span class="annot"><span class="annottext">stextFile :: [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#stextFile"><span class="hs-identifier hs-var hs-var">stextFile</span></a></span></span><span> </span><span id="local-6989586621679455973"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455973"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-158"></span><span>  </span><span id="local-6989586621679455974"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455974"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#settings"><span class="hs-identifier hs-var">settings</span></a></span><span>
+</span><span id="line-159"></span><span>  </span><span class="hs-special">[|</span><span class="hs-identifier">toLazyText</span><span> </span><span class="hs-special">$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFile"><span class="hs-identifier hs-var">shakespeareFile</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455974"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455973"><span class="hs-identifier hs-var">fp</span></a></span><span class="hs-special">)</span><span class="hs-special">|]</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span class="hs-comment">-- | codegen is designed for generating Yesod code, including templates</span><span>
+</span><span id="line-162"></span><span class="hs-comment">-- So it uses different interpolation characters that won't clash with templates.</span><span>
+</span><span id="line-163"></span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenSettings"><span class="hs-identifier hs-type">codegenSettings</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#ShakespeareSettings"><span class="hs-identifier hs-type">ShakespeareSettings</span></a></span><span>
+</span><span id="line-164"></span><span id="codegenSettings"><span class="annot"><span class="annottext">codegenSettings :: Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#codegenSettings"><span class="hs-identifier hs-var hs-var">codegenSettings</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-165"></span><span>  </span><span id="local-6989586621679455976"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455976"><span class="hs-identifier hs-var">toTExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">toText</span><span class="hs-special">|]</span><span>
+</span><span id="line-166"></span><span>  </span><span id="local-6989586621679455977"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455977"><span class="hs-identifier hs-var">wrapExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">id</span><span class="hs-special">|]</span><span>
+</span><span id="line-167"></span><span>  </span><span id="local-6989586621679455978"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455978"><span class="hs-identifier hs-var">unWrapExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">id</span><span class="hs-special">|]</span><span>
+</span><span id="line-168"></span><span>  </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(ShakespeareSettings -&gt; Q ShakespeareSettings)
+-&gt; ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="Text.Shakespeare.html#defaultShakespeareSettings"><span class="hs-identifier hs-var">defaultShakespeareSettings</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">toBuilder :: Exp
+</span><a href="Text.Shakespeare.html#toBuilder"><span class="hs-identifier hs-var">toBuilder</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455976"><span class="hs-identifier hs-var">toTExp</span></a></span><span>
+</span><span id="line-169"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrap :: Exp
+</span><a href="Text.Shakespeare.html#wrap"><span class="hs-identifier hs-var">wrap</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455977"><span class="hs-identifier hs-var">wrapExp</span></a></span><span>
+</span><span id="line-170"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">unwrap :: Exp
+</span><a href="Text.Shakespeare.html#unwrap"><span class="hs-identifier hs-var">unwrap</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455978"><span class="hs-identifier hs-var">unWrapExp</span></a></span><span>
+</span><span id="line-171"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">varChar :: Char
+</span><a href="Text.Shakespeare.html#varChar"><span class="hs-identifier hs-var">varChar</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'~'</span></span><span>
+</span><span id="line-172"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">urlChar :: Char
+</span><a href="Text.Shakespeare.html#urlChar"><span class="hs-identifier hs-var">urlChar</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'*'</span></span><span>
+</span><span id="line-173"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">intChar :: Char
+</span><a href="Text.Shakespeare.html#intChar"><span class="hs-identifier hs-var">intChar</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&amp;'</span></span><span>
+</span><span id="line-174"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-comment">-- always!</span><span>
+</span><span id="line-175"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span class="hs-comment">-- | codegen is designed for generating Yesod code, including templates</span><span>
+</span><span id="line-178"></span><span class="hs-comment">-- So it uses different interpolation characters that won't clash with templates.</span><span>
+</span><span id="line-179"></span><span class="hs-comment">-- You can use the normal text quasiquoters to generate code</span><span>
+</span><span id="line-180"></span><span class="annot"><a href="Text.Shakespeare.Text.html#codegen"><span class="hs-identifier hs-type">codegen</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-181"></span><span id="codegen"><span class="annot"><span class="annottext">codegen :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#codegen"><span class="hs-identifier hs-var hs-var">codegen</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-182"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455982"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455982"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-183"></span><span>    </span><span id="local-6989586621679455983"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455983"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#codegenSettings"><span class="hs-identifier hs-var">codegenSettings</span></a></span><span>
+</span><span id="line-184"></span><span>    </span><span id="local-6989586621679455984"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455984"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-185"></span><span>    </span><span id="local-6989586621679455985"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455985"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFromString"><span class="hs-identifier hs-var">shakespeareFromString</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455983"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455982"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-186"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455984"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455985"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-187"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-188"></span><span>
+</span><span id="line-189"></span><span class="hs-comment">-- | Generates strict Text</span><span>
+</span><span id="line-190"></span><span class="hs-comment">-- codegen is designed for generating Yesod code, including templates</span><span>
+</span><span id="line-191"></span><span class="hs-comment">-- So it uses different interpolation characters that won't clash with templates.</span><span>
+</span><span id="line-192"></span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenSt"><span class="hs-identifier hs-type">codegenSt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-193"></span><span id="codegenSt"><span class="annot"><span class="annottext">codegenSt :: QuasiQuoter
+</span><a href="Text.Shakespeare.Text.html#codegenSt"><span class="hs-identifier hs-var hs-var">codegenSt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-194"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679455986"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455986"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-195"></span><span>    </span><span id="local-6989586621679455987"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455987"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#codegenSettings"><span class="hs-identifier hs-var">codegenSettings</span></a></span><span>
+</span><span id="line-196"></span><span>    </span><span id="local-6989586621679455988"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455988"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">TL.toStrict</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-197"></span><span>    </span><span id="local-6989586621679455989"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455989"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFromString"><span class="hs-identifier hs-var">shakespeareFromString</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455987"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455986"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-198"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455988"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455989"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenFileReload"><span class="hs-identifier hs-type">codegenFileReload</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-202"></span><span id="codegenFileReload"><span class="annot"><span class="annottext">codegenFileReload :: [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#codegenFileReload"><span class="hs-identifier hs-var hs-var">codegenFileReload</span></a></span></span><span> </span><span id="local-6989586621679455990"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455990"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-203"></span><span>    </span><span id="local-6989586621679455991"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455991"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#codegenSettings"><span class="hs-identifier hs-var">codegenSettings</span></a></span><span>
+</span><span id="line-204"></span><span>    </span><span id="local-6989586621679455992"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455992"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">TL.toStrict</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-205"></span><span>    </span><span id="local-6989586621679455993"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455993"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFileReload"><span class="hs-identifier hs-var">shakespeareFileReload</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455991"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455990"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-206"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455992"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455993"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-207"></span><span>
+</span><span id="line-208"></span><span class="annot"><a href="Text.Shakespeare.Text.html#codegenFile"><span class="hs-identifier hs-type">codegenFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-209"></span><span id="codegenFile"><span class="annot"><span class="annottext">codegenFile :: [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.Text.html#codegenFile"><span class="hs-identifier hs-var hs-var">codegenFile</span></a></span></span><span> </span><span id="local-6989586621679455994"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455994"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-210"></span><span>    </span><span id="local-6989586621679455995"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455995"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Shakespeare.Text.html#codegenSettings"><span class="hs-identifier hs-var">codegenSettings</span></a></span><span>
+</span><span id="line-211"></span><span>    </span><span id="local-6989586621679455996"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455996"><span class="hs-identifier hs-var">render</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[|</span><span class="hs-identifier">TL.toStrict</span><span> </span><span class="hs-operator">.</span><span> </span><span class="hs-identifier">toLazyText</span><span class="hs-special">|]</span><span>
+</span><span id="line-212"></span><span>    </span><span id="local-6989586621679455997"><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455997"><span class="hs-identifier hs-var">rendered</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFile"><span class="hs-identifier hs-var">shakespeareFile</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679455995"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">justVarInterpolation :: Bool
+</span><a href="Text.Shakespeare.html#justVarInterpolation"><span class="hs-identifier hs-var">justVarInterpolation</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679455994"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-213"></span><span>    </span><span class="annot"><span class="annottext">Exp -&gt; Q Exp
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455996"><span class="hs-identifier hs-var">render</span></a></span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-operator hs-var">`AppE`</span></span><span> </span><span class="annot"><span class="annottext">Exp
+</span><a href="#local-6989586621679455997"><span class="hs-identifier hs-var">rendered</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-214"></span></pre></body></html>

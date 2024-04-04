@@ -1,0 +1,163 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE CPP #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# OPTIONS_GHC -fno-warn-missing-fields #-}</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- | A Shakespearean module for Roy, introducing type-safe,</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- compile-time variable and url interpolation. It is exactly the same as</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- &quot;Text.Julius&quot;, except that the template is first compiled to Javascript with</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- the system tool @roy@.</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- To use this module, @roy@ must be installed on your system.</span><span>
+</span><span id="line-11"></span><span class="hs-comment">--</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- If you interpolate variables,</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- the template is first wrapped with a function containing javascript variables representing shakespeare variables,</span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- then compiled with @roy@,</span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- and then the value of the variables are applied to the function.</span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- This means that in production the template can be compiled</span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- once at compile time and there will be no dependency in your production</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- system on @roy@. </span><span>
+</span><span id="line-19"></span><span class="hs-comment">--</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- Your code:</span><span>
+</span><span id="line-21"></span><span class="hs-comment">--</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- &gt; let b = 1</span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- &gt; console.log(#{a} + b)</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- Final Result:</span><span>
+</span><span id="line-26"></span><span class="hs-comment">--</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- &gt; ;(function(shakespeare_var_a){</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- &gt;   var b = 1;</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- &gt;   console.log(shakespeare_var_a + b);</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- &gt; })(#{a});</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- Further reading:</span><span>
+</span><span id="line-33"></span><span class="hs-comment">--</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- 1. Shakespearean templates: &lt;https://www.yesodweb.com/book/shakespearean-templates&gt;</span><span>
+</span><span id="line-35"></span><span class="hs-comment">--</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- 2. Roy: &lt;http://roy.brianmckenna.org/&gt;</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Roy</span><span>
+</span><span id="line-38"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Functions</span></span><span>
+</span><span id="line-39"></span><span>      </span><span class="annot"><span class="hs-comment">-- ** Template-Reading Functions</span></span><span>
+</span><span id="line-40"></span><span>      </span><span class="hs-comment">-- | These QuasiQuoter and Template Haskell methods return values of</span><span>
+</span><span id="line-41"></span><span>      </span><span class="hs-comment">-- type @'JavascriptUrl' url@. See the Yesod book for details.</span><span>
+</span><span id="line-42"></span><span>      </span><span class="annot"><a href="Text.Roy.html#roy"><span class="hs-identifier">roy</span></a></span><span>
+</span><span id="line-43"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Roy.html#royFile"><span class="hs-identifier">royFile</span></a></span><span>
+</span><span id="line-44"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Roy.html#royFileReload"><span class="hs-identifier">royFileReload</span></a></span><span class="hs-cpp">
+
+#ifdef TEST_EXPORT
+</span><span>    </span><span class="hs-special">,</span><span> </span><span class="hs-identifier">roySettings</span><span class="hs-cpp">
+#endif
+</span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Quote</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">QuasiQuoter</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Syntax</span></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Shakespeare.html"><span class="hs-identifier">Text.Shakespeare</span></a></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Julius.html"><span class="hs-identifier">Text.Julius</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-comment">-- | The Roy language compiles down to Javascript.</span><span>
+</span><span id="line-57"></span><span class="hs-comment">-- We do this compilation once at compile time to avoid needing to do it during the request.</span><span>
+</span><span id="line-58"></span><span class="hs-comment">-- We call this a preConversion because other shakespeare modules like Lucius use Haskell to compile during the request instead rather than a system call.</span><span>
+</span><span id="line-59"></span><span class="annot"><a href="Text.Roy.html#roySettings"><span class="hs-identifier hs-type">roySettings</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#ShakespeareSettings"><span class="hs-identifier hs-type">ShakespeareSettings</span></a></span><span>
+</span><span id="line-60"></span><span id="roySettings"><span class="annot"><span class="annottext">roySettings :: Q ShakespeareSettings
+</span><a href="Text.Roy.html#roySettings"><span class="hs-identifier hs-var hs-var">roySettings</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>  </span><span id="local-6989586621679447663"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447663"><span class="hs-identifier hs-var">jsettings</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Julius.html#javascriptSettings"><span class="hs-identifier hs-var">javascriptSettings</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(ShakespeareSettings -&gt; Q ShakespeareSettings)
+-&gt; ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447663"><span class="hs-identifier hs-var">jsettings</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">varChar :: Char
+</span><a href="Text.Shakespeare.html#varChar"><span class="hs-identifier hs-var">varChar</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">preConversion :: Maybe PreConvert
+</span><a href="Text.Shakespeare.html#preConversion"><span class="hs-identifier hs-var">preConversion</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PreConvert -&gt; Maybe PreConvert
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#PreConvert"><span class="hs-identifier hs-type">PreConvert</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-64"></span><span>      </span><span class="annot"><span class="annottext">preConvert :: PreConversion
+</span><a href="Text.Shakespeare.html#preConvert"><span class="hs-identifier hs-var">preConvert</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [[Char]] -&gt; PreConversion
+</span><a href="Text.Shakespeare.html#ReadProcess"><span class="hs-identifier hs-var">ReadProcess</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;roy&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;--stdio&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;--browser&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-65"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">preEscapeIgnoreBalanced :: [Char]
+</span><a href="Text.Shakespeare.html#preEscapeIgnoreBalanced"><span class="hs-identifier hs-var">preEscapeIgnoreBalanced</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;'\&quot;&quot;</span></span><span>
+</span><span id="line-66"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">preEscapeIgnoreLine :: [Char]
+</span><a href="Text.Shakespeare.html#preEscapeIgnoreLine"><span class="hs-identifier hs-var">preEscapeIgnoreLine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;//&quot;</span></span><span>
+</span><span id="line-67"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertion :: Maybe WrapInsertion
+</span><a href="Text.Shakespeare.html#wrapInsertion"><span class="hs-identifier hs-var">wrapInsertion</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">WrapInsertion -&gt; Maybe WrapInsertion
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#WrapInsertion"><span class="hs-identifier hs-type">WrapInsertion</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-68"></span><span>        </span><span class="annot"><span class="annottext">wrapInsertionIndent :: Maybe [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionIndent"><span class="hs-identifier hs-var">wrapInsertionIndent</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Maybe [Char]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;  &quot;</span></span><span>
+</span><span id="line-69"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionStartBegin :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionStartBegin"><span class="hs-identifier hs-var">wrapInsertionStartBegin</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;(\\&quot;</span></span><span>
+</span><span id="line-70"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionSeparator :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionSeparator"><span class="hs-identifier hs-var">wrapInsertionSeparator</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot; &quot;</span></span><span>
+</span><span id="line-71"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionStartClose :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionStartClose"><span class="hs-identifier hs-var">wrapInsertionStartClose</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot; -&gt;\n&quot;</span></span><span>
+</span><span id="line-72"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionEnd :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionEnd"><span class="hs-identifier hs-var">wrapInsertionEnd</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;)&quot;</span></span><span>
+</span><span id="line-73"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionAddParens :: Bool
+</span><a href="Text.Shakespeare.html#wrapInsertionAddParens"><span class="hs-identifier hs-var">wrapInsertionAddParens</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-74"></span><span>      </span><span class="hs-special">}</span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-76"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="annot"><span class="hs-comment">-- | Read inline, quasiquoted Roy.</span></span><span>
+</span><span id="line-79"></span><span class="annot"><a href="Text.Roy.html#roy"><span class="hs-identifier hs-type">roy</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-80"></span><span id="roy"><span class="annot"><span class="annottext">roy :: QuasiQuoter
+</span><a href="Text.Roy.html#roy"><span class="hs-identifier hs-var hs-var">roy</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679447681"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679447681"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-81"></span><span>    </span><span id="local-6989586621679447682"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447682"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Roy.html#roySettings"><span class="hs-identifier hs-var">roySettings</span></a></span><span>
+</span><span id="line-82"></span><span>    </span><span class="annot"><span class="annottext">QuasiQuoter -&gt; [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; QuasiQuoter
+</span><a href="Text.Shakespeare.html#shakespeare"><span class="hs-identifier hs-var">shakespeare</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447682"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679447681"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-83"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- | Read in a Roy template file. This function reads the file once, at</span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- compile time.</span><span>
+</span><span id="line-87"></span><span class="annot"><a href="Text.Roy.html#royFile"><span class="hs-identifier hs-type">royFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-88"></span><span id="royFile"><span class="annot"><span class="annottext">royFile :: [Char] -&gt; Q Exp
+</span><a href="Text.Roy.html#royFile"><span class="hs-identifier hs-var hs-var">royFile</span></a></span></span><span> </span><span id="local-6989586621679447685"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679447685"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-89"></span><span>    </span><span id="local-6989586621679447686"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447686"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Roy.html#roySettings"><span class="hs-identifier hs-var">roySettings</span></a></span><span>
+</span><span id="line-90"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFile"><span class="hs-identifier hs-var">shakespeareFile</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447686"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679447685"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span class="hs-comment">-- | Read in a Roy template file. This impure function uses</span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- unsafePerformIO to re-read the file on every call, allowing for rapid</span><span>
+</span><span id="line-94"></span><span class="hs-comment">-- iteration.</span><span>
+</span><span id="line-95"></span><span class="annot"><a href="Text.Roy.html#royFileReload"><span class="hs-identifier hs-type">royFileReload</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-96"></span><span id="royFileReload"><span class="annot"><span class="annottext">royFileReload :: [Char] -&gt; Q Exp
+</span><a href="Text.Roy.html#royFileReload"><span class="hs-identifier hs-var hs-var">royFileReload</span></a></span></span><span> </span><span id="local-6989586621679447688"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679447688"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-97"></span><span>    </span><span id="local-6989586621679447689"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447689"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Roy.html#roySettings"><span class="hs-identifier hs-var">roySettings</span></a></span><span>
+</span><span id="line-98"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFileReload"><span class="hs-identifier hs-var">shakespeareFileReload</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679447689"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679447688"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-99"></span></pre></body></html>

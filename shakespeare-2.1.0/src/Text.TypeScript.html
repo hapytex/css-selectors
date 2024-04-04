@@ -1,0 +1,268 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE CPP #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# OPTIONS_GHC -fno-warn-missing-fields #-}</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- | A Shakespearean module for TypeScript, introducing type-safe,</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- compile-time variable and url interpolation. It is exactly the same as</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- &quot;Text.Julius&quot;, except that the template is first compiled to Javascript with</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- the system tool @tsc@.</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- To use this module, @tsc@ must be installed on your system.</span><span>
+</span><span id="line-11"></span><span class="hs-comment">--</span><span>
+</span><span id="line-12"></span><span class="hs-comment">-- If you interpolate variables,</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- the template is first wrapped with a function containing javascript variables representing shakespeare variables,</span><span>
+</span><span id="line-14"></span><span class="hs-comment">-- then compiled with @tsc@,</span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- and then the value of the variables are applied to the function.</span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- This means that in production the template can be compiled</span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- once at compile time and there will be no dependency in your production</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- system on @tsc@. </span><span>
+</span><span id="line-19"></span><span class="hs-comment">--</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- Your code:</span><span>
+</span><span id="line-21"></span><span class="hs-comment">--</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- &gt; var b = 1</span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- &gt; console.log(#{a} + b)</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- Final Result:</span><span>
+</span><span id="line-26"></span><span class="hs-comment">--</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- &gt; ;(function(shakespeare_var_a){</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- &gt;   var b = 1;</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- &gt;   console.log(shakespeare_var_a + b);</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- &gt; })(#{a});</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--</span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- Important Warnings! This integration is not ideal.</span><span>
+</span><span id="line-34"></span><span class="hs-comment">--</span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- Due to the function wrapper, all type declarations must be in separate .d.ts files.</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- However, if you don't interpolate variables, no function wrapper will be</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- created, and you can make type declarations in the same file.</span><span>
+</span><span id="line-38"></span><span class="hs-comment">--</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- This does not work cross-platform!</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--</span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- Unfortunately tsc does not support stdin and stdout.</span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- So a hack of writing to temporary files using the mktemp</span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- command is used. This works on my version of Linux, but not for windows</span><span>
+</span><span id="line-44"></span><span class="hs-comment">-- unless perhaps you install a mktemp utility, which I have not tested.</span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- Please vote up this bug: &lt;http://typescript.codeplex.com/workitem/600&gt;</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--</span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- Making this work on Windows would not be very difficult, it will just require a new</span><span>
+</span><span id="line-48"></span><span class="hs-comment">-- package with a dependency on a package like temporary.</span><span>
+</span><span id="line-49"></span><span class="hs-comment">--</span><span>
+</span><span id="line-50"></span><span class="hs-comment">-- Further reading:</span><span>
+</span><span id="line-51"></span><span class="hs-comment">--</span><span>
+</span><span id="line-52"></span><span class="hs-comment">-- 1. Shakespearean templates: &lt;https://www.yesodweb.com/book/shakespearean-templates&gt;</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- 2. TypeScript: &lt;https://www.typescriptlang.org/&gt;</span><span>
+</span><span id="line-55"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.TypeScript</span><span>
+</span><span id="line-56"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Functions</span></span><span>
+</span><span id="line-57"></span><span>      </span><span class="annot"><span class="hs-comment">-- ** Template-Reading Functions</span></span><span>
+</span><span id="line-58"></span><span>      </span><span class="hs-comment">-- | These QuasiQuoter and Template Haskell methods return values of</span><span>
+</span><span id="line-59"></span><span>      </span><span class="hs-comment">-- type @'JavascriptUrl' url@. See the Yesod book for details.</span><span>
+</span><span id="line-60"></span><span>      </span><span class="annot"><a href="Text.TypeScript.html#tsc"><span class="hs-identifier">tsc</span></a></span><span>
+</span><span id="line-61"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.TypeScript.html#tscJSX"><span class="hs-identifier">tscJSX</span></a></span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.TypeScript.html#typeScriptFile"><span class="hs-identifier">typeScriptFile</span></a></span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.TypeScript.html#typeScriptJSXFile"><span class="hs-identifier">typeScriptJSXFile</span></a></span><span>
+</span><span id="line-64"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.TypeScript.html#typeScriptFileReload"><span class="hs-identifier">typeScriptFileReload</span></a></span><span>
+</span><span id="line-65"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.TypeScript.html#typeScriptJSXFileReload"><span class="hs-identifier">typeScriptJSXFileReload</span></a></span><span class="hs-cpp">
+
+#ifdef TEST_EXPORT
+</span><span>    </span><span class="hs-special">,</span><span> </span><span class="hs-identifier">typeScriptSettings</span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="hs-identifier">typeScriptJSXSettings</span><span class="hs-cpp">
+#endif
+</span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Quote</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">QuasiQuoter</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Syntax</span></span><span>
+</span><span id="line-75"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Shakespeare.html"><span class="hs-identifier">Text.Shakespeare</span></a></span><span>
+</span><span id="line-76"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Julius.html"><span class="hs-identifier">Text.Julius</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- | The TypeScript language compiles down to Javascript.</span><span>
+</span><span id="line-79"></span><span class="hs-comment">-- We do this compilation once at compile time to avoid needing to do it during the request.</span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- We call this a preConversion because other shakespeare modules like Lucius use Haskell to compile during the request instead rather than a system call.</span><span>
+</span><span id="line-81"></span><span class="annot"><a href="Text.TypeScript.html#typeScriptSettings"><span class="hs-identifier hs-type">typeScriptSettings</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#ShakespeareSettings"><span class="hs-identifier hs-type">ShakespeareSettings</span></a></span><span>
+</span><span id="line-82"></span><span id="typeScriptSettings"><span class="annot"><span class="annottext">typeScriptSettings :: Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptSettings"><span class="hs-identifier hs-var hs-var">typeScriptSettings</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-83"></span><span>  </span><span id="local-6989586621679456033"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456033"><span class="hs-identifier hs-var">jsettings</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.Julius.html#javascriptSettings"><span class="hs-identifier hs-var">javascriptSettings</span></a></span><span>
+</span><span id="line-84"></span><span>  </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(ShakespeareSettings -&gt; Q ShakespeareSettings)
+-&gt; ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456033"><span class="hs-identifier hs-var">jsettings</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">varChar :: Char
+</span><a href="Text.Shakespeare.html#varChar"><span class="hs-identifier hs-var">varChar</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'#'</span></span><span>
+</span><span id="line-85"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">preConversion :: Maybe PreConvert
+</span><a href="Text.Shakespeare.html#preConversion"><span class="hs-identifier hs-var">preConversion</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PreConvert -&gt; Maybe PreConvert
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#PreConvert"><span class="hs-identifier hs-type">PreConvert</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-86"></span><span>      </span><span class="annot"><span class="annottext">preConvert :: PreConversion
+</span><a href="Text.Shakespeare.html#preConvert"><span class="hs-identifier hs-var">preConvert</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [[Char]] -&gt; PreConversion
+</span><a href="Text.Shakespeare.html#ReadProcess"><span class="hs-identifier hs-var">ReadProcess</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;sh&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;-c&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;TMP_IN=$(mktemp XXXXXXXXXX.ts); TMP_OUT=$(mktemp XXXXXXXXXX.js); cat /dev/stdin &gt; ${TMP_IN} &amp;&amp; tsc --out ${TMP_OUT} ${TMP_IN} &amp;&amp; cat ${TMP_OUT}; rm ${TMP_IN} &amp;&amp; rm ${TMP_OUT}&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-87"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">preEscapeIgnoreBalanced :: [Char]
+</span><a href="Text.Shakespeare.html#preEscapeIgnoreBalanced"><span class="hs-identifier hs-var">preEscapeIgnoreBalanced</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;'\&quot;&quot;</span></span><span>
+</span><span id="line-88"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">preEscapeIgnoreLine :: [Char]
+</span><a href="Text.Shakespeare.html#preEscapeIgnoreLine"><span class="hs-identifier hs-var">preEscapeIgnoreLine</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;//&quot;</span></span><span>
+</span><span id="line-89"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertion :: Maybe WrapInsertion
+</span><a href="Text.Shakespeare.html#wrapInsertion"><span class="hs-identifier hs-var">wrapInsertion</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">WrapInsertion -&gt; Maybe WrapInsertion
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#WrapInsertion"><span class="hs-identifier hs-type">WrapInsertion</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span>
+</span><span id="line-90"></span><span>        </span><span class="annot"><span class="annottext">wrapInsertionIndent :: Maybe [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionIndent"><span class="hs-identifier hs-var">wrapInsertionIndent</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe [Char]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-91"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionStartBegin :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionStartBegin"><span class="hs-identifier hs-var">wrapInsertionStartBegin</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;;(function(&quot;</span></span><span>
+</span><span id="line-92"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionSeparator :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionSeparator"><span class="hs-identifier hs-var">wrapInsertionSeparator</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;, &quot;</span></span><span>
+</span><span id="line-93"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionStartClose :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionStartClose"><span class="hs-identifier hs-var">wrapInsertionStartClose</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;){&quot;</span></span><span>
+</span><span id="line-94"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionEnd :: [Char]
+</span><a href="Text.Shakespeare.html#wrapInsertionEnd"><span class="hs-identifier hs-var">wrapInsertionEnd</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;})&quot;</span></span><span>
+</span><span id="line-95"></span><span>      </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">wrapInsertionAddParens :: Bool
+</span><a href="Text.Shakespeare.html#wrapInsertionAddParens"><span class="hs-identifier hs-var">wrapInsertionAddParens</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-96"></span><span>      </span><span class="hs-special">}</span><span>
+</span><span id="line-97"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-98"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="annot"><span class="hs-comment">-- | Identical to 'typeScriptSettings' but uses jsx when compiling TypeScript</span></span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Text.TypeScript.html#typeScriptJSXSettings"><span class="hs-identifier hs-type">typeScriptJSXSettings</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Text.Shakespeare.html#ShakespeareSettings"><span class="hs-identifier hs-type">ShakespeareSettings</span></a></span><span>
+</span><span id="line-103"></span><span id="typeScriptJSXSettings"><span class="annot"><span class="annottext">typeScriptJSXSettings :: Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptJSXSettings"><span class="hs-identifier hs-var hs-var">typeScriptJSXSettings</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-104"></span><span>    </span><span id="local-6989586621679456051"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456051"><span class="hs-identifier hs-var">tsSettings</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptSettings"><span class="hs-identifier hs-var">typeScriptSettings</span></a></span><span>
+</span><span id="line-105"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679456052"><span class="annot"><span class="annottext">rp :: PreConversion
+</span><a href="#local-6989586621679456052"><span class="hs-identifier hs-var hs-var">rp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [[Char]] -&gt; PreConversion
+</span><a href="Text.Shakespeare.html#ReadProcess"><span class="hs-identifier hs-var">ReadProcess</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;sh&quot;</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;-c&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;TMP_IN=$(mktemp XXXXXXXXXX.tsx); TMP_OUT=$(mktemp XXXXXXXXXX.js); cat /dev/stdin &gt; ${TMP_IN} &amp;&amp; tsc --module amd --jsx react --out ${TMP_OUT} ${TMP_IN} &amp;&amp; cat ${TMP_OUT}; rm ${TMP_IN} &amp;&amp; rm ${TMP_OUT}&quot;</span></span><span class="hs-special">]</span><span>
+</span><span id="line-106"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a. a -&gt; Q a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(ShakespeareSettings -&gt; Q ShakespeareSettings)
+-&gt; ShakespeareSettings -&gt; Q ShakespeareSettings
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456051"><span class="hs-identifier hs-var">tsSettings</span></a></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-107"></span><span>        </span><span class="annot"><span class="annottext">preConversion :: Maybe PreConvert
+</span><a href="Text.Shakespeare.html#preConversion"><span class="hs-identifier hs-var">preConversion</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(PreConvert -&gt; PreConvert) -&gt; Maybe PreConvert -&gt; Maybe PreConvert
+forall a b. (a -&gt; b) -&gt; Maybe a -&gt; Maybe b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679456053"><span class="annot"><span class="annottext">PreConvert
+</span><a href="#local-6989586621679456053"><span class="hs-identifier hs-var">pc</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">PreConvert
+</span><a href="#local-6989586621679456053"><span class="hs-identifier hs-var">pc</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">preConvert :: PreConversion
+</span><a href="Text.Shakespeare.html#preConvert"><span class="hs-identifier hs-var">preConvert</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PreConversion
+</span><a href="#local-6989586621679456052"><span class="hs-identifier hs-var">rp</span></a></span><span> </span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; Maybe PreConvert
+</span><a href="Text.Shakespeare.html#preConversion"><span class="hs-identifier hs-var">preConversion</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456051"><span class="hs-identifier hs-var">tsSettings</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="annot"><span class="hs-comment">-- | Read inline, quasiquoted TypeScript</span></span><span>
+</span><span id="line-112"></span><span class="annot"><a href="Text.TypeScript.html#tsc"><span class="hs-identifier hs-type">tsc</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-113"></span><span id="tsc"><span class="annot"><span class="annottext">tsc :: QuasiQuoter
+</span><a href="Text.TypeScript.html#tsc"><span class="hs-identifier hs-var hs-var">tsc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679456055"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456055"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-114"></span><span>    </span><span id="local-6989586621679456056"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456056"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptSettings"><span class="hs-identifier hs-var">typeScriptSettings</span></a></span><span>
+</span><span id="line-115"></span><span>    </span><span class="annot"><span class="annottext">QuasiQuoter -&gt; [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; QuasiQuoter
+</span><a href="Text.Shakespeare.html#shakespeare"><span class="hs-identifier hs-var">shakespeare</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456056"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456055"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-116"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span class="annot"><span class="hs-comment">-- | Read inline, quasiquoted TypeScript with jsx</span></span><span>
+</span><span id="line-119"></span><span class="annot"><a href="Text.TypeScript.html#tscJSX"><span class="hs-identifier hs-type">tscJSX</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-120"></span><span id="tscJSX"><span class="annot"><span class="annottext">tscJSX :: QuasiQuoter
+</span><a href="Text.TypeScript.html#tscJSX"><span class="hs-identifier hs-var hs-var">tscJSX</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679456058"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456058"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-121"></span><span>    </span><span id="local-6989586621679456059"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456059"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptJSXSettings"><span class="hs-identifier hs-var">typeScriptJSXSettings</span></a></span><span>
+</span><span id="line-122"></span><span>    </span><span class="annot"><span class="annottext">QuasiQuoter -&gt; [Char] -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; QuasiQuoter
+</span><a href="Text.Shakespeare.html#shakespeare"><span class="hs-identifier hs-var">shakespeare</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456059"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456058"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-123"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- | Read in a TypeScript template file. This function reads the file once, at</span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- compile time.</span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Text.TypeScript.html#typeScriptFile"><span class="hs-identifier hs-type">typeScriptFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-128"></span><span id="typeScriptFile"><span class="annot"><span class="annottext">typeScriptFile :: [Char] -&gt; Q Exp
+</span><a href="Text.TypeScript.html#typeScriptFile"><span class="hs-identifier hs-var hs-var">typeScriptFile</span></a></span></span><span> </span><span id="local-6989586621679456061"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456061"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-129"></span><span>    </span><span id="local-6989586621679456062"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456062"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptSettings"><span class="hs-identifier hs-var">typeScriptSettings</span></a></span><span>
+</span><span id="line-130"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFile"><span class="hs-identifier hs-var">shakespeareFile</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456062"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456061"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-131"></span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- | Read in a TypeScript template file with jsx. This function reads the file</span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- once, at compile time.</span><span>
+</span><span id="line-134"></span><span class="annot"><a href="Text.TypeScript.html#typeScriptJSXFile"><span class="hs-identifier hs-type">typeScriptJSXFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-135"></span><span id="typeScriptJSXFile"><span class="annot"><span class="annottext">typeScriptJSXFile :: [Char] -&gt; Q Exp
+</span><a href="Text.TypeScript.html#typeScriptJSXFile"><span class="hs-identifier hs-var hs-var">typeScriptJSXFile</span></a></span></span><span> </span><span id="local-6989586621679456064"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456064"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-136"></span><span>    </span><span id="local-6989586621679456065"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456065"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptJSXSettings"><span class="hs-identifier hs-var">typeScriptJSXSettings</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFile"><span class="hs-identifier hs-var">shakespeareFile</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456065"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456064"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span class="hs-comment">-- | Read in a TypeScript template file. This impure function uses</span><span>
+</span><span id="line-142"></span><span class="hs-comment">-- unsafePerformIO to re-read the file on every call, allowing for rapid</span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- iteration.</span><span>
+</span><span id="line-144"></span><span class="annot"><a href="Text.TypeScript.html#typeScriptFileReload"><span class="hs-identifier hs-type">typeScriptFileReload</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-145"></span><span id="typeScriptFileReload"><span class="annot"><span class="annottext">typeScriptFileReload :: [Char] -&gt; Q Exp
+</span><a href="Text.TypeScript.html#typeScriptFileReload"><span class="hs-identifier hs-var hs-var">typeScriptFileReload</span></a></span></span><span> </span><span id="local-6989586621679456066"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456066"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-146"></span><span>    </span><span id="local-6989586621679456067"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456067"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptSettings"><span class="hs-identifier hs-var">typeScriptSettings</span></a></span><span>
+</span><span id="line-147"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFileReload"><span class="hs-identifier hs-var">shakespeareFileReload</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456067"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456066"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-148"></span><span>
+</span><span id="line-149"></span><span>
+</span><span id="line-150"></span><span class="hs-comment">-- | Read in a TypeScript with jsx template file. This impure function uses</span><span>
+</span><span id="line-151"></span><span class="hs-comment">-- unsafePerformIO to re-read the file on every call, allowing for rapid</span><span>
+</span><span id="line-152"></span><span class="hs-comment">-- iteration.</span><span>
+</span><span id="line-153"></span><span class="annot"><a href="Text.TypeScript.html#typeScriptJSXFileReload"><span class="hs-identifier hs-type">typeScriptJSXFileReload</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span><span>
+</span><span id="line-154"></span><span id="typeScriptJSXFileReload"><span class="annot"><span class="annottext">typeScriptJSXFileReload :: [Char] -&gt; Q Exp
+</span><a href="Text.TypeScript.html#typeScriptJSXFileReload"><span class="hs-identifier hs-var hs-var">typeScriptJSXFileReload</span></a></span></span><span> </span><span id="local-6989586621679456069"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456069"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-155"></span><span>    </span><span id="local-6989586621679456070"><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456070"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q ShakespeareSettings
+</span><a href="Text.TypeScript.html#typeScriptJSXSettings"><span class="hs-identifier hs-var">typeScriptJSXSettings</span></a></span><span>
+</span><span id="line-156"></span><span>    </span><span class="annot"><span class="annottext">ShakespeareSettings -&gt; [Char] -&gt; Q Exp
+</span><a href="Text.Shakespeare.html#shakespeareFileReload"><span class="hs-identifier hs-var">shakespeareFileReload</span></a></span><span> </span><span class="annot"><span class="annottext">ShakespeareSettings
+</span><a href="#local-6989586621679456070"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679456069"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-157"></span></pre></body></html>

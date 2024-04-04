@@ -1,0 +1,308 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE EmptyDataDecls #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE FlexibleInstances #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE GADTs #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE TypeSynonymInstances #-}</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- | Module for parsing and rendering Hamlet templates at runtime, not compile</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- time. This uses the same Hamlet parsing as compile-time Hamlet, but has some</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- limitations, such as:</span><span>
+</span><span id="line-8"></span><span class="hs-comment">--</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- * No compile-time checking of validity</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- * Can't apply functions at runtime</span><span>
+</span><span id="line-12"></span><span class="hs-comment">--</span><span>
+</span><span id="line-13"></span><span class="hs-comment">-- * No URL rendering</span><span>
+</span><span id="line-14"></span><span class="hs-comment">--</span><span>
+</span><span id="line-15"></span><span class="hs-comment">-- &gt; {-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-16"></span><span class="hs-comment">-- &gt; import Text.Hamlet.Runtime</span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- &gt; import qualified Data.Map as Map</span><span>
+</span><span id="line-18"></span><span class="hs-comment">-- &gt; import Text.Blaze.Html.Renderer.String (renderHtml)</span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- &gt;</span><span>
+</span><span id="line-20"></span><span class="hs-comment">-- &gt; main :: IO ()</span><span>
+</span><span id="line-21"></span><span class="hs-comment">-- &gt; main = do</span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- &gt;     template &lt;- parseHamletTemplate defaultHamletSettings $ unlines</span><span>
+</span><span id="line-23"></span><span class="hs-comment">-- &gt;         [ &quot;&lt;p&gt;Hello, #{name}&quot;</span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- &gt;         , &quot;$if hungry&quot;</span><span>
+</span><span id="line-25"></span><span class="hs-comment">-- &gt;         , &quot;  &lt;p&gt;Available food:&quot;</span><span>
+</span><span id="line-26"></span><span class="hs-comment">-- &gt;         , &quot;  &lt;ul&gt;&quot;</span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- &gt;         , &quot;    $forall food &lt;- foods&quot;</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- &gt;         , &quot;      &lt;li&gt;#{food}&quot;</span><span>
+</span><span id="line-29"></span><span class="hs-comment">-- &gt;         ]</span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- &gt;     let hamletDataMap = Map.fromList</span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- &gt;             [ (&quot;name&quot;, &quot;Michael&quot;)</span><span>
+</span><span id="line-32"></span><span class="hs-comment">-- &gt;             , (&quot;hungry&quot;, toHamletData True) -- always True</span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- &gt;             , (&quot;foods&quot;, toHamletData</span><span>
+</span><span id="line-34"></span><span class="hs-comment">-- &gt;                 [ &quot;Apples&quot;</span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- &gt;                 , &quot;Bananas&quot;</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- &gt;                 , &quot;Carrots&quot;</span><span>
+</span><span id="line-37"></span><span class="hs-comment">-- &gt;                 ])</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- &gt;             ]</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-- &gt;     html &lt;- renderHamletTemplate template hamletDataMap</span><span>
+</span><span id="line-40"></span><span class="hs-comment">-- &gt;     putStrLn $ renderHtml html</span><span>
+</span><span id="line-41"></span><span class="hs-comment">--</span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-43"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Text.Hamlet.Runtime</span><span>
+</span><span id="line-44"></span><span>    </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier">HamletTemplate</span></a></span><span>
+</span><span id="line-45"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#HamletSettings"><span class="hs-identifier">HamletSettings</span></a></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#defaultHamletSettings"><span class="hs-identifier">defaultHamletSettings</span></a></span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier">HamletData</span></a></span><span>
+</span><span id="line-48"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier">ToHamletData</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#parseHamletTemplate"><span class="hs-identifier">parseHamletTemplate</span></a></span><span>
+</span><span id="line-50"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#readHamletTemplateFile"><span class="hs-identifier">readHamletTemplateFile</span></a></span><span>
+</span><span id="line-51"></span><span>    </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#renderHamletTemplate"><span class="hs-identifier">renderHamletTemplate</span></a></span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(***)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Catch</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">MonadThrow</span></span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Text.Hamlet.html"><span class="hs-identifier">Text.Hamlet</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Parse.html#HamletSettings"><span class="hs-identifier">HamletSettings</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#defaultHamletSettings"><span class="hs-identifier">defaultHamletSettings</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html"><span class="hs-identifier">Text.Hamlet.RT</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">RT</span></span><span>
+</span><span id="line-58"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Map</span></span><span class="hs-special">)</span><span>
+</span><span id="line-59"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-60"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-61"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.String</span></span><span>
+</span><span id="line-62"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Blaze.Html</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Html</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toHtml</span></span><span class="hs-special">)</span><span>
+</span><span id="line-63"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">liftM</span></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.IO.Class</span></span><span>
+</span><span id="line-65"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Encoding</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">decodeUtf8With</span></span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Encoding.Error</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">lenientDecode</span></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">S</span></span><span>
+</span><span id="line-68"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- Just to skip a dependency for GHC &lt; 7.10</span><span>
+</span><span id="line-71"></span><span class="hs-keyword">data</span><span> </span><span id="Void"><span class="annot"><a href="Text.Hamlet.Runtime.html#Void"><span class="hs-identifier hs-var">Void</span></a></span></span><span>
+</span><span id="line-72"></span><span id="local-6989586621679454763"><span class="annot"><a href="Text.Hamlet.Runtime.html#absurd"><span class="hs-identifier hs-type">absurd</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#Void"><span class="hs-identifier hs-type">Void</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679454763"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-73"></span><span id="absurd"><span class="annot"><span class="annottext">absurd :: forall a. Void -&gt; a
+</span><a href="Text.Hamlet.Runtime.html#absurd"><span class="hs-identifier hs-var hs-var">absurd</span></a></span></span><span> </span><span class="annot"><span class="annottext">Void
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; a
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;absurd&quot;</span></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- | A parsed Hamlet template. See 'parseHamletTemplate' and</span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- 'readHamletTemplateFile'.</span><span>
+</span><span id="line-77"></span><span class="hs-comment">--</span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-79"></span><span class="hs-keyword">newtype</span><span> </span><span id="HamletTemplate"><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-var">HamletTemplate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="HamletTemplate"><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-var">HamletTemplate</span></a></span></span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletRT"><span class="hs-identifier hs-type">RT.HamletRT</span></a></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- | A piece of data that can be embedded and passed to a Hamlet template (via</span><span>
+</span><span id="line-82"></span><span class="hs-comment">-- 'renderHamletTemplate').</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--</span><span>
+</span><span id="line-84"></span><span class="hs-comment">-- This supplies an 'IsString' instance, so with @OverloadedStrings@ it will</span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- support literal strings, which are converted to HTML via 'toHtml'. For other</span><span>
+</span><span id="line-86"></span><span class="hs-comment">-- datatypes, use 'toHamletData'.</span><span>
+</span><span id="line-87"></span><span class="hs-comment">--</span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-89"></span><span class="hs-keyword">newtype</span><span> </span><span id="HamletData"><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="HamletData"><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="unHamletData"><span class="annot"><span class="annottext">HamletData -&gt; HamletData Void
+</span><a href="Text.Hamlet.Runtime.html#unHamletData"><span class="hs-identifier hs-var hs-var">unHamletData</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Text.Hamlet.RT.html#HamletData"><span class="hs-identifier hs-type">RT.HamletData</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#Void"><span class="hs-identifier hs-type">Void</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-90"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IsString</span></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-91"></span><span>    </span><span id="local-6989586621679454856"><span class="annot"><span class="annottext">fromString :: [Char] -&gt; HamletData
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromString</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletData Void -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span><span> </span><span class="annot"><span class="annottext">(HamletData Void -&gt; HamletData)
+-&gt; ([Char] -&gt; HamletData Void) -&gt; [Char] -&gt; HamletData
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Html -&gt; HamletData Void
+forall url. Html -&gt; HamletData url
+</span><a href="Text.Hamlet.RT.html#HDHtml"><span class="hs-identifier hs-var">RT.HDHtml</span></a></span><span> </span><span class="annot"><span class="annottext">(Html -&gt; HamletData Void)
+-&gt; ([Char] -&gt; Html) -&gt; [Char] -&gt; HamletData Void
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Html
+forall a. IsString a =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">fromString</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- | Data which can be passed to a Hamlet template.</span><span>
+</span><span id="line-94"></span><span class="hs-comment">--</span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-96"></span><span class="hs-keyword">class</span><span> </span><span id="ToHamletData"><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-var">ToHamletData</span></a></span></span><span> </span><span id="local-6989586621679454779"><span class="annot"><a href="#local-6989586621679454779"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-97"></span><span>    </span><span id="toHamletData"><span class="annot"><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-type">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679454779"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span>
+</span><span id="line-98"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-type">ToHamletData</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-99"></span><span>    </span><span id="local-6989586621679454862"><span class="annot"><span class="annottext">toHamletData :: HamletData -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var hs-var hs-var hs-var">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletData -&gt; HamletData
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-100"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679454782"><span class="annot"><a href="#local-6989586621679454782"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">~</span></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-type">ToHamletData</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679454782"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-101"></span><span>    </span><span id="local-6989586621679454868"><span class="annot"><span class="annottext">toHamletData :: [a] -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var hs-var hs-var hs-var">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletData Void -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span><span> </span><span class="annot"><span class="annottext">(HamletData Void -&gt; HamletData)
+-&gt; ([a] -&gt; HamletData Void) -&gt; [a] -&gt; HamletData
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[HamletMap Void] -&gt; HamletData Void
+forall url. [HamletMap url] -&gt; HamletData url
+</span><a href="Text.Hamlet.RT.html#HDList"><span class="hs-identifier hs-var">RT.HDList</span></a></span><span> </span><span class="annot"><span class="annottext">([HamletMap Void] -&gt; HamletData Void)
+-&gt; ([a] -&gt; [HamletMap Void]) -&gt; [a] -&gt; HamletData Void
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; HamletMap Void) -&gt; [a] -&gt; [HamletMap Void]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679454870"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679454870"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData -&gt; HamletData Void
+</span><a href="Text.Hamlet.Runtime.html#unHamletData"><span class="hs-identifier hs-var">unHamletData</span></a></span><span> </span><span class="annot"><span class="annottext">a
+HamletData
+</span><a href="#local-6989586621679454870"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679454788"><span class="annot"><a href="#local-6989586621679454788"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">~</span></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-type">ToHamletData</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679454788"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-103"></span><span>    </span><span id="local-6989586621679454877"><span class="annot"><span class="annottext">toHamletData :: Maybe a -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var hs-var hs-var hs-var">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletData Void -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span><span> </span><span class="annot"><span class="annottext">(HamletData Void -&gt; HamletData)
+-&gt; (Maybe a -&gt; HamletData Void) -&gt; Maybe a -&gt; HamletData
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Maybe (HamletMap Void) -&gt; HamletData Void
+forall url. Maybe (HamletMap url) -&gt; HamletData url
+</span><a href="Text.Hamlet.RT.html#HDMaybe"><span class="hs-identifier hs-var">RT.HDMaybe</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe (HamletMap Void) -&gt; HamletData Void)
+-&gt; (Maybe a -&gt; Maybe (HamletMap Void))
+-&gt; Maybe a
+-&gt; HamletData Void
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; HamletMap Void) -&gt; Maybe a -&gt; Maybe (HamletMap Void)
+forall a b. (a -&gt; b) -&gt; Maybe a -&gt; Maybe b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679454879"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679454879"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">HamletData -&gt; HamletData Void
+</span><a href="Text.Hamlet.Runtime.html#unHamletData"><span class="hs-identifier hs-var">unHamletData</span></a></span><span> </span><span class="annot"><span class="annottext">a
+HamletData
+</span><a href="#local-6989586621679454879"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-type">ToHamletData</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-105"></span><span>    </span><span id="local-6989586621679454886"><span class="annot"><span class="annottext">toHamletData :: Text -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var hs-var hs-var hs-var">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Html -&gt; HamletData
+forall a. ToHamletData a =&gt; a -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var">toHamletData</span></a></span><span> </span><span class="annot"><span class="annottext">(Html -&gt; HamletData) -&gt; (Text -&gt; Html) -&gt; Text -&gt; HamletData
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Html
+forall a. ToMarkup a =&gt; a -&gt; Html
+</span><span class="hs-identifier hs-var">toHtml</span></span><span>
+</span><span id="line-106"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-type">ToHamletData</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Html</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-107"></span><span>    </span><span id="local-6989586621679454888"><span class="annot"><span class="annottext">toHamletData :: Html -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var hs-var hs-var hs-var">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletData Void -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span><span> </span><span class="annot"><span class="annottext">(HamletData Void -&gt; HamletData)
+-&gt; (Html -&gt; HamletData Void) -&gt; Html -&gt; HamletData
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Html -&gt; HamletData Void
+forall url. Html -&gt; HamletData url
+</span><a href="Text.Hamlet.RT.html#HDHtml"><span class="hs-identifier hs-var">RT.HDHtml</span></a></span><span>
+</span><span id="line-108"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#ToHamletData"><span class="hs-identifier hs-type">ToHamletData</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-109"></span><span>    </span><span id="local-6989586621679454891"><span class="annot"><span class="annottext">toHamletData :: Bool -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#toHamletData"><span class="hs-identifier hs-var hs-var hs-var hs-var">toHamletData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletData Void -&gt; HamletData
+</span><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-var">HamletData</span></a></span><span> </span><span class="annot"><span class="annottext">(HamletData Void -&gt; HamletData)
+-&gt; (Bool -&gt; HamletData Void) -&gt; Bool -&gt; HamletData
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; HamletData Void
+forall url. Bool -&gt; HamletData url
+</span><a href="Text.Hamlet.RT.html#HDBool"><span class="hs-identifier hs-var">RT.HDBool</span></a></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-comment">-- | Parse an in-memory Hamlet template. This operation may fail if the</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- template is not parsable.</span><span>
+</span><span id="line-113"></span><span class="hs-comment">--</span><span>
+</span><span id="line-114"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-115"></span><span id="local-6989586621679454795"><span class="annot"><a href="Text.Hamlet.Runtime.html#parseHamletTemplate"><span class="hs-identifier hs-type">parseHamletTemplate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679454795"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#HamletSettings"><span class="hs-identifier hs-type">HamletSettings</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679454795"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-type">HamletTemplate</span></a></span></span><span>
+</span><span id="line-116"></span><span id="parseHamletTemplate"><span class="annot"><span class="annottext">parseHamletTemplate :: forall (m :: * -&gt; *).
+MonadThrow m =&gt;
+HamletSettings -&gt; [Char] -&gt; m HamletTemplate
+</span><a href="Text.Hamlet.Runtime.html#parseHamletTemplate"><span class="hs-identifier hs-var hs-var">parseHamletTemplate</span></a></span></span><span> </span><span id="local-6989586621679454898"><span class="annot"><span class="annottext">HamletSettings
+</span><a href="#local-6989586621679454898"><span class="hs-identifier hs-var">set</span></a></span></span><span> </span><span id="local-6989586621679454899"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679454899"><span class="hs-identifier hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">HamletRT -&gt; HamletTemplate
+</span><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-var">HamletTemplate</span></a></span><span> </span><span class="annot"><span class="annottext">(HamletRT -&gt; HamletTemplate) -&gt; m HamletRT -&gt; m HamletTemplate
+forall (m :: * -&gt; *) a1 r. Monad m =&gt; (a1 -&gt; r) -&gt; m a1 -&gt; m r
+</span><span class="hs-operator hs-var">`liftM`</span></span><span> </span><span class="annot"><span class="annottext">HamletSettings -&gt; [Char] -&gt; m HamletRT
+forall (m :: * -&gt; *).
+MonadThrow m =&gt;
+HamletSettings -&gt; [Char] -&gt; m HamletRT
+</span><a href="Text.Hamlet.RT.html#parseHamletRT"><span class="hs-identifier hs-var">RT.parseHamletRT</span></a></span><span> </span><span class="annot"><span class="annottext">HamletSettings
+</span><a href="#local-6989586621679454898"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679454899"><span class="hs-identifier hs-var">str</span></a></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span class="hs-comment">-- | Same as 'parseHamletTemplate', but reads from a file. The file is assumed</span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- to be UTF-8 encoded (same assumption as compile-time Hamlet).</span><span>
+</span><span id="line-120"></span><span class="hs-comment">--</span><span>
+</span><span id="line-121"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-122"></span><span id="local-6989586621679454806"><span class="annot"><a href="Text.Hamlet.Runtime.html#readHamletTemplateFile"><span class="hs-identifier hs-type">readHamletTemplateFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679454806"><span class="hs-identifier hs-type">m</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadIO</span></span><span> </span><span class="annot"><a href="#local-6989586621679454806"><span class="hs-identifier hs-type">m</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Parse.html#HamletSettings"><span class="hs-identifier hs-type">HamletSettings</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679454806"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-type">HamletTemplate</span></a></span></span><span>
+</span><span id="line-123"></span><span id="readHamletTemplateFile"><span class="annot"><span class="annottext">readHamletTemplateFile :: forall (m :: * -&gt; *).
+(MonadThrow m, MonadIO m) =&gt;
+HamletSettings -&gt; [Char] -&gt; m HamletTemplate
+</span><a href="Text.Hamlet.Runtime.html#readHamletTemplateFile"><span class="hs-identifier hs-var hs-var">readHamletTemplateFile</span></a></span></span><span> </span><span id="local-6989586621679454908"><span class="annot"><span class="annottext">HamletSettings
+</span><a href="#local-6989586621679454908"><span class="hs-identifier hs-var">set</span></a></span></span><span> </span><span id="local-6989586621679454909"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679454909"><span class="hs-identifier hs-var">fp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-124"></span><span>    </span><span id="local-6989586621679454910"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679454910"><span class="hs-identifier hs-var">bs</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO ByteString -&gt; m ByteString
+forall a. IO a -&gt; m a
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><span class="hs-identifier hs-var">liftIO</span></span><span> </span><span class="annot"><span class="annottext">(IO ByteString -&gt; m ByteString) -&gt; IO ByteString -&gt; m ByteString
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">S.readFile</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679454909"><span class="hs-identifier hs-var">fp</span></a></span><span>
+</span><span id="line-125"></span><span>    </span><span class="annot"><span class="annottext">HamletSettings -&gt; [Char] -&gt; m HamletTemplate
+forall (m :: * -&gt; *).
+MonadThrow m =&gt;
+HamletSettings -&gt; [Char] -&gt; m HamletTemplate
+</span><a href="Text.Hamlet.Runtime.html#parseHamletTemplate"><span class="hs-identifier hs-var">parseHamletTemplate</span></a></span><span> </span><span class="annot"><span class="annottext">HamletSettings
+</span><a href="#local-6989586621679454908"><span class="hs-identifier hs-var">set</span></a></span><span> </span><span class="annot"><span class="annottext">([Char] -&gt; m HamletTemplate) -&gt; [Char] -&gt; m HamletTemplate
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Char]
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; [Char]) -&gt; Text -&gt; [Char]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">OnDecodeError -&gt; ByteString -&gt; Text
+</span><span class="hs-identifier hs-var">decodeUtf8With</span></span><span> </span><span class="annot"><span class="annottext">OnDecodeError
+</span><span class="hs-identifier hs-var">lenientDecode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679454910"><span class="hs-identifier hs-var">bs</span></a></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="hs-comment">-- | Render a runtime Hamlet template, together with a 'Map' of variables to</span><span>
+</span><span id="line-128"></span><span class="hs-comment">-- pass in, into an 'Html' value. This can fail if the template references a</span><span>
+</span><span id="line-129"></span><span class="hs-comment">-- variable that is not present in the @Map@.</span><span>
+</span><span id="line-130"></span><span class="hs-comment">--</span><span>
+</span><span id="line-131"></span><span class="hs-comment">-- @since 2.0.6</span><span>
+</span><span id="line-132"></span><span id="local-6989586621679454816"><span class="annot"><a href="Text.Hamlet.Runtime.html#renderHamletTemplate"><span class="hs-identifier hs-type">renderHamletTemplate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MonadThrow</span></span><span> </span><span class="annot"><a href="#local-6989586621679454816"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-type">HamletTemplate</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletData"><span class="hs-identifier hs-type">HamletData</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679454816"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Html</span></span></span><span>
+</span><span id="line-133"></span><span id="renderHamletTemplate"><span class="annot"><span class="annottext">renderHamletTemplate :: forall (m :: * -&gt; *).
+MonadThrow m =&gt;
+HamletTemplate -&gt; Map Text HamletData -&gt; m Html
+</span><a href="Text.Hamlet.Runtime.html#renderHamletTemplate"><span class="hs-identifier hs-var hs-var">renderHamletTemplate</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Text.Hamlet.Runtime.html#HamletTemplate"><span class="hs-identifier hs-type">HamletTemplate</span></a></span><span> </span><span id="local-6989586621679454920"><span class="annot"><span class="annottext">HamletRT
+</span><a href="#local-6989586621679454920"><span class="hs-identifier hs-var">rt</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679454921"><span class="annot"><span class="annottext">Map Text HamletData
+</span><a href="#local-6989586621679454921"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-134"></span><span>    </span><span class="annot"><span class="annottext">Bool
+-&gt; HamletRT
+-&gt; HamletMap Void
+-&gt; (Void -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+forall (m :: * -&gt; *) url.
+MonadThrow m =&gt;
+Bool
+-&gt; HamletRT
+-&gt; HamletMap url
+-&gt; (url -&gt; [(Text, Text)] -&gt; Text)
+-&gt; m Html
+</span><a href="Text.Hamlet.RT.html#renderHamletRT%27"><span class="hs-identifier hs-var">RT.renderHamletRT'</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">HamletRT
+</span><a href="#local-6989586621679454920"><span class="hs-identifier hs-var">rt</span></a></span><span> </span><span class="annot"><span class="annottext">HamletMap Void
+</span><a href="#local-6989586621679454923"><span class="hs-identifier hs-var">m'</span></a></span><span> </span><span class="annot"><span class="annottext">Void -&gt; [(Text, Text)] -&gt; Text
+forall {p} {a}. Void -&gt; p -&gt; a
+</span><a href="#local-6989586621679454924"><span class="hs-identifier hs-var">renderUrl</span></a></span><span>
+</span><span id="line-135"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-136"></span><span>    </span><span id="local-6989586621679454923"><span class="annot"><span class="annottext">m' :: HamletMap Void
+</span><a href="#local-6989586621679454923"><span class="hs-identifier hs-var hs-var">m'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Text, HamletData) -&gt; ([[Char]], HamletData Void))
+-&gt; [(Text, HamletData)] -&gt; HamletMap Void
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char] -&gt; [[Char]]
+forall a. a -&gt; [a]
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">([Char] -&gt; [[Char]]) -&gt; (Text -&gt; [Char]) -&gt; Text -&gt; [[Char]]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; [Char]
+</span><span class="hs-identifier hs-var">T.unpack</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; [[Char]])
+-&gt; (HamletData -&gt; HamletData Void)
+-&gt; (Text, HamletData)
+-&gt; ([[Char]], HamletData Void)
+forall b c b' c'. (b -&gt; c) -&gt; (b' -&gt; c') -&gt; (b, b') -&gt; (c, c')
+forall (a :: * -&gt; * -&gt; *) b c b' c'.
+Arrow a =&gt;
+a b c -&gt; a b' c' -&gt; a (b, b') (c, c')
+</span><span class="hs-operator hs-var">***</span></span><span> </span><span class="annot"><span class="annottext">HamletData -&gt; HamletData Void
+</span><a href="Text.Hamlet.Runtime.html#unHamletData"><span class="hs-identifier hs-var">unHamletData</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([(Text, HamletData)] -&gt; HamletMap Void)
+-&gt; [(Text, HamletData)] -&gt; HamletMap Void
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Map Text HamletData -&gt; [(Text, HamletData)]
+forall k a. Map k a -&gt; [(k, a)]
+</span><span class="hs-identifier hs-var">Map.toList</span></span><span> </span><span class="annot"><span class="annottext">Map Text HamletData
+</span><a href="#local-6989586621679454921"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-137"></span><span>    </span><span id="local-6989586621679454924"><span class="annot"><span class="annottext">renderUrl :: Void -&gt; p -&gt; a
+</span><a href="#local-6989586621679454924"><span class="hs-identifier hs-var hs-var">renderUrl</span></a></span></span><span> </span><span id="local-6989586621679454926"><span class="annot"><span class="annottext">Void
+</span><a href="#local-6989586621679454926"><span class="hs-identifier hs-var">url</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Void -&gt; a
+forall a. Void -&gt; a
+</span><a href="Text.Hamlet.Runtime.html#absurd"><span class="hs-identifier hs-var">absurd</span></a></span><span> </span><span class="annot"><span class="annottext">Void
+</span><a href="#local-6989586621679454926"><span class="hs-identifier hs-var">url</span></a></span><span>
+</span><span id="line-138"></span></pre></body></html>

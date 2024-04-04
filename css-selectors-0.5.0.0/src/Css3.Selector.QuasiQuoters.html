@@ -1,0 +1,147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE TemplateHaskellQuotes #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- Module      : Css3.Selector.QuasiQuoters</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- Description : A module that defines a quasiquoter to parse a string to a css selector.</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Maintainer  : hapytexeu+gh@gmail.com</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Stability   : experimental</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Portability : POSIX</span><span>
+</span><span id="line-9"></span><span class="hs-comment">--</span><span>
+</span><span id="line-10"></span><span class="hs-comment">-- A module that defines a quasiquoter to parse a string to a css selector.</span><span>
+</span><span id="line-11"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Css3.Selector.QuasiQuoters</span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#csssel"><span class="hs-identifier">csssel</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#cssselFile"><span class="hs-identifier">cssselFile</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#parseCss"><span class="hs-identifier">parseCss</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Css3.Selector.Core.html"><span class="hs-identifier">Css3.Selector.Core</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Css3.Selector.Core.html#SelectorGroup"><span class="hs-identifier">SelectorGroup</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Css3.Selector.Core.html#toPattern"><span class="hs-identifier">toPattern</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Css3.Selector.Lexer.html"><span class="hs-identifier">Css3.Selector.Lexer</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Css3.Selector.Lexer.html#alexScanTokens"><span class="hs-identifier">alexScanTokens</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Css3.Selector.Parser.html"><span class="hs-identifier">Css3.Selector.Parser</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Css3.Selector.Parser.html#cssselector"><span class="hs-identifier">cssselector</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Data</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Data</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">cast</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">pack</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">unpack</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Quote</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">QuasiQuoter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">QuasiQuoter</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">quoteDec</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">quoteExp</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">quotePat</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">quoteType</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">quoteFile</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Syntax</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Exp</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">AppE</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">VarE</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Q</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Type</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ConT</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">dataToExpQ</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">lift</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">reportWarning</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><span class="hs-comment">-- | Parse the string to a 'SelectorGroup'.</span></span><span>
+</span><span id="line-27"></span><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#parseCss"><span class="hs-identifier hs-type">parseCss</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-28"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The string to be parsed to a 'SelectorGroup'</span></span><span>
+</span><span id="line-29"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-30"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The selectorgroup that is the equivalent of the given 'String'.</span></span><span>
+</span><span id="line-31"></span><span>  </span><span class="annot"><a href="Css3.Selector.Core.html#SelectorGroup"><span class="hs-identifier hs-type">SelectorGroup</span></a></span><span>
+</span><span id="line-32"></span><span id="parseCss"><span class="annot"><span class="annottext">parseCss :: String -&gt; SelectorGroup
+</span><a href="Css3.Selector.QuasiQuoters.html#parseCss"><span class="hs-identifier hs-var hs-var">parseCss</span></a></span></span><span> </span><span id="local-6989586621679162804"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679162804"><span class="hs-identifier hs-var">st</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Either String [TokenLoc] -&gt; SelectorGroup
+</span><a href="#local-6989586621679162805"><span class="hs-identifier hs-var">al</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Either String [TokenLoc]
+</span><a href="Css3.Selector.Lexer.html#alexScanTokens"><span class="hs-identifier hs-var">alexScanTokens</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679162806"><span class="hs-identifier hs-var">st'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-34"></span><span>    </span><span id="local-6989586621679162806"><span class="annot"><span class="annottext">st' :: String
+</span><a href="#local-6989586621679162806"><span class="hs-identifier hs-var hs-var">st'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Bool) -&gt; String -&gt; String
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\r'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679162804"><span class="hs-identifier hs-var">st</span></a></span><span>
+</span><span id="line-35"></span><span>    </span><span id="local-6989586621679162805"><span class="annot"><span class="annottext">al :: Either String [TokenLoc] -&gt; SelectorGroup
+</span><a href="#local-6989586621679162805"><span class="hs-identifier hs-var hs-var">al</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679162812"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679162812"><span class="hs-identifier hs-var">er</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; SelectorGroup
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679162812"><span class="hs-identifier hs-var">er</span></a></span><span>
+</span><span id="line-36"></span><span>    </span><span class="annot"><a href="#local-6989586621679162805"><span class="hs-identifier hs-var">al</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679162814"><span class="annot"><span class="annottext">[TokenLoc]
+</span><a href="#local-6989586621679162814"><span class="hs-identifier hs-var">val</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[TokenLoc] -&gt; SelectorGroup
+</span><a href="Css3.Selector.Parser.html#cssselector"><span class="hs-identifier hs-var">cssselector</span></a></span><span> </span><span class="annot"><span class="annottext">[TokenLoc]
+</span><a href="#local-6989586621679162814"><span class="hs-identifier hs-var">val</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span id="local-6989586621679162747"><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#liftDataWithText"><span class="hs-identifier hs-type">liftDataWithText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Data</span></span><span> </span><span class="annot"><a href="#local-6989586621679162747"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679162747"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Exp</span></span></span><span>
+</span><span id="line-39"></span><span id="liftDataWithText"><span class="annot"><span class="annottext">liftDataWithText :: forall a. Data a =&gt; a -&gt; Q Exp
+</span><a href="Css3.Selector.QuasiQuoters.html#liftDataWithText"><span class="hs-identifier hs-var hs-var">liftDataWithText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(forall b. Data b =&gt; b -&gt; Maybe (Q Exp)) -&gt; a -&gt; Q Exp
+forall (m :: * -&gt; *) a.
+(Quote m, Data a) =&gt;
+(forall b. Data b =&gt; b -&gt; Maybe (m Exp)) -&gt; a -&gt; m Exp
+</span><span class="hs-identifier hs-var">dataToExpQ</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Exp -&gt; Exp -&gt; Exp
+</span><span class="hs-identifier hs-var">AppE</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Exp
+</span><span class="hs-identifier hs-var">VarE</span></span><span> </span><span class="hs-special">'</span><span class="hs-identifier">pack</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Exp -&gt; Exp) -&gt; Q Exp -&gt; Q Exp
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Q Exp -&gt; Q Exp) -&gt; (Text -&gt; Q Exp) -&gt; Text -&gt; Q Exp
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Q Exp
+forall t (m :: * -&gt; *). (Lift t, Quote m) =&gt; t -&gt; m Exp
+forall (m :: * -&gt; *). Quote m =&gt; String -&gt; m Exp
+</span><span class="hs-identifier hs-var">lift</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Q Exp) -&gt; (Text -&gt; String) -&gt; Text -&gt; Q Exp
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">unpack</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Q Exp) -&gt; Maybe Text -&gt; Maybe (Q Exp)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Maybe Text -&gt; Maybe (Q Exp))
+-&gt; (b -&gt; Maybe Text) -&gt; b -&gt; Maybe (Q Exp)
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">b -&gt; Maybe Text
+forall a b. (Typeable a, Typeable b) =&gt; a -&gt; Maybe b
+</span><span class="hs-identifier hs-var">cast</span></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-comment">-- | A quasiquoter that can be used to construct a 'SelectorGroup' for the given</span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- css selector. In case the css selector is invalid. A compiler error will be</span><span>
+</span><span id="line-43"></span><span class="hs-comment">-- thrown (at compile time).</span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#csssel"><span class="hs-identifier hs-type">csssel</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-45"></span><span id="csssel"><span class="annot"><span class="annottext">csssel :: QuasiQuoter
+</span><a href="Css3.Selector.QuasiQuoters.html#csssel"><span class="hs-identifier hs-var hs-var">csssel</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-46"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">quoteExp :: String -&gt; Q Exp
+</span><span class="hs-identifier hs-var">quoteExp</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SelectorGroup -&gt; Q Exp
+forall a. Data a =&gt; a -&gt; Q Exp
+</span><a href="Css3.Selector.QuasiQuoters.html#liftDataWithText"><span class="hs-identifier hs-var">liftDataWithText</span></a></span><span> </span><span class="annot"><span class="annottext">(SelectorGroup -&gt; Q Exp)
+-&gt; (String -&gt; SelectorGroup) -&gt; String -&gt; Q Exp
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; SelectorGroup
+</span><a href="Css3.Selector.QuasiQuoters.html#parseCss"><span class="hs-identifier hs-var">parseCss</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-48"></span><span>      </span><span class="annot"><span class="annottext">quotePat :: String -&gt; Q Pat
+</span><span class="hs-identifier hs-var">quotePat</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Pat -&gt; Q Pat
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Pat -&gt; Q Pat) -&gt; (String -&gt; Pat) -&gt; String -&gt; Q Pat
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">SelectorGroup -&gt; Pat
+forall a. ToCssSelector a =&gt; a -&gt; Pat
+</span><a href="Css3.Selector.Core.html#toPattern"><span class="hs-identifier hs-var">toPattern</span></a></span><span> </span><span class="annot"><span class="annottext">(SelectorGroup -&gt; Pat)
+-&gt; (String -&gt; SelectorGroup) -&gt; String -&gt; Pat
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; SelectorGroup
+</span><a href="Css3.Selector.QuasiQuoters.html#parseCss"><span class="hs-identifier hs-var">parseCss</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-49"></span><span>      </span><span class="annot"><span class="annottext">quoteType :: String -&gt; Q Type
+</span><span class="hs-identifier hs-var">quoteType</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Q Type -&gt; String -&gt; Q Type
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Q ()
+</span><span class="hs-identifier hs-var">reportWarning</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The type of the quasiquoter will always use the SelectorGroup type.&quot;</span></span><span> </span><span class="annot"><span class="annottext">Q () -&gt; Q Type -&gt; Q Type
+forall a b. Q a -&gt; Q b -&gt; Q b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Type -&gt; Q Type
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Name -&gt; Type
+</span><span class="hs-identifier hs-var">ConT</span></span><span> </span><span class="hs-special">''</span><span class="hs-identifier">SelectorGroup</span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-50"></span><span>      </span><span class="annot"><span class="annottext">quoteDec :: String -&gt; Q [Dec]
+</span><span class="hs-identifier hs-var">quoteDec</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Q [Dec] -&gt; String -&gt; Q [Dec]
+forall a b. a -&gt; b -&gt; a
+</span><span class="hs-identifier hs-var">const</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Q ()
+</span><span class="hs-identifier hs-var">reportWarning</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The use of this quasiquoter will not make any declarations.&quot;</span></span><span> </span><span class="annot"><span class="annottext">Q () -&gt; Q [Dec] -&gt; Q [Dec]
+forall a b. Q a -&gt; Q b -&gt; Q b
+forall (m :: * -&gt; *) a b. Monad m =&gt; m a -&gt; m b -&gt; m b
+</span><span class="hs-operator hs-var">&gt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">[Dec] -&gt; Q [Dec]
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span>    </span><span class="hs-special">}</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- | A quasiquoter that takes the content from the file, and then runs the</span><span>
+</span><span id="line-54"></span><span class="hs-comment">-- content of that file as a 'csssel' quasiquote.</span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Css3.Selector.QuasiQuoters.html#cssselFile"><span class="hs-identifier hs-type">cssselFile</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">QuasiQuoter</span></span><span>
+</span><span id="line-56"></span><span id="cssselFile"><span class="annot"><span class="annottext">cssselFile :: QuasiQuoter
+</span><a href="Css3.Selector.QuasiQuoters.html#cssselFile"><span class="hs-identifier hs-var hs-var">cssselFile</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">QuasiQuoter -&gt; QuasiQuoter
+</span><span class="hs-identifier hs-var">quoteFile</span></span><span> </span><span class="annot"><span class="annottext">QuasiQuoter
+</span><a href="Css3.Selector.QuasiQuoters.html#csssel"><span class="hs-identifier hs-var">csssel</span></a></span><span>
+</span><span id="line-57"></span></pre></body></html>

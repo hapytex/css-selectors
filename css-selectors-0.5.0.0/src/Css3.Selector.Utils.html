@@ -1,0 +1,463 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE CPP #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE Safe #-}</span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- Module      : Css3.Selector.Utils</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Description : A set of utility methods to encode and decode strings.</span><span>
+</span><span id="line-7"></span><span class="hs-comment">-- Maintainer  : hapytexeu+gh@gmail.com</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Stability   : experimental</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Portability : POSIX</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- A module to encode and decode css selector strings. These are used in the parser and renderer to parse and render css selector strings.</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Css3.Selector.Utils</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Identifiers</span></span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#readIdentifier"><span class="hs-identifier">readIdentifier</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#encodeIdentifier"><span class="hs-identifier">encodeIdentifier</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#isValidIdentifier"><span class="hs-identifier">isValidIdentifier</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#toIdentifier"><span class="hs-identifier">toIdentifier</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Css strings</span></span><span>
+</span><span id="line-20"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#readCssString"><span class="hs-identifier">readCssString</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#encodeString"><span class="hs-identifier">encodeString</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-22"></span><span>    </span><span class="annot"><a href="Css3.Selector.Utils.html#encodeText"><span class="hs-identifier">encodeText</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Arrow</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">first</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Char</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">chr</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">digitToInt</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">intToDigit</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">isAsciiLower</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">isAsciiUpper</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">isHexDigit</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ord</span></span><span class="hs-special">)</span><span class="hs-cpp">
+#if __GLASGOW_HASKELL__ &lt; 803
+</span><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Data.Semigroup</span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-operator">&lt;&gt;</span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-cpp">
+#endif
+</span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">cons</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">pack</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">singleton</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">snoc</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span id="local-6989586621679148818"><span class="annot"><a href="Css3.Selector.Utils.html#_initLast"><span class="hs-identifier hs-type">_initLast</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679148818"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><a href="#local-6989586621679148818"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679148818"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-35"></span><span id="_initLast"><span class="annot"><span class="annottext">_initLast :: forall a. [a] -&gt; Maybe ([a], a)
+</span><a href="Css3.Selector.Utils.html#_initLast"><span class="hs-identifier hs-var hs-var">_initLast</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe ([a], a)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-36"></span><span class="annot"><a href="Css3.Selector.Utils.html#_initLast"><span class="hs-identifier hs-var">_initLast</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679148877"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148877"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148878"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679148878"><span class="hs-keyword hs-var">as</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([a], a) -&gt; Maybe ([a], a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[a] -&gt; a -&gt; ([a], a)
+forall {a}. [a] -&gt; a -&gt; ([a], a)
+</span><a href="#local-6989586621679148879"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679148878"><span class="hs-keyword hs-var">as</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148877"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>    </span><span id="local-6989586621679148879"><span class="annot"><span class="annottext">go :: [a] -&gt; a -&gt; ([a], a)
+</span><a href="#local-6989586621679148879"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span id="local-6989586621679148882"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148882"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148882"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>    </span><span class="annot"><a href="#local-6989586621679148879"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679148883"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148883"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148884"><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679148884"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679148885"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148885"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([a] -&gt; [a]) -&gt; ([a], a) -&gt; ([a], a)
+forall b c d. (b -&gt; c) -&gt; (b, d) -&gt; (c, d)
+forall (a :: * -&gt; * -&gt; *) b c d.
+Arrow a =&gt;
+a b c -&gt; a (b, d) (c, d)
+</span><span class="hs-identifier hs-var">first</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148885"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; [a] -&gt; [a]
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[a] -&gt; a -&gt; ([a], a)
+</span><a href="#local-6989586621679148879"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">[a]
+</span><a href="#local-6989586621679148884"><span class="hs-identifier hs-var">ys</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679148883"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="annot"><a href="Css3.Selector.Utils.html#_isQuote"><span class="hs-identifier hs-type">_isQuote</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-42"></span><span id="_isQuote"><span class="annot"><span class="annottext">_isQuote :: Char -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#_isQuote"><span class="hs-identifier hs-var hs-var">_isQuote</span></a></span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'&quot;'</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-43"></span><span class="annot"><a href="Css3.Selector.Utils.html#_isQuote"><span class="hs-identifier hs-var">_isQuote</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\''</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Css3.Selector.Utils.html#_isQuote"><span class="hs-identifier hs-var">_isQuote</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- | Parses a css string literal to a string that ontains the content of that</span><span>
+</span><span id="line-47"></span><span class="hs-comment">-- string literal.</span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Css3.Selector.Utils.html#readCssString"><span class="hs-identifier hs-type">readCssString</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-49"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The string that contains the string literal in the css selector.</span></span><span>
+</span><span id="line-50"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-51"></span><span>  </span><span class="annot"><span class="hs-comment">-- | A string that contains the content of the string literal.</span></span><span>
+</span><span id="line-52"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-53"></span><span id="readCssString"><span class="annot"><span class="annottext">readCssString :: String -&gt; String
+</span><a href="Css3.Selector.Utils.html#readCssString"><span class="hs-identifier hs-var hs-var">readCssString</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679148887"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148887"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148888"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148888"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#_isQuote"><span class="hs-identifier hs-var">_isQuote</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148887"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148889"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-54"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-55"></span><span>    </span><span id="local-6989586621679148889"><span class="annot"><span class="annottext">f :: String
+</span><a href="#local-6989586621679148889"><span class="hs-identifier hs-var hs-var">f</span></a></span></span><span>
+</span><span id="line-56"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679148890"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148890"><span class="hs-identifier hs-var">vs</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679148891"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148891"><span class="hs-identifier hs-var">c'</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; Maybe (String, Char)
+forall a. [a] -&gt; Maybe ([a], a)
+</span><a href="Css3.Selector.Utils.html#_initLast"><span class="hs-identifier hs-var">_initLast</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148888"><span class="hs-identifier hs-var">xs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+</span><a href="#local-6989586621679148892"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148891"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148890"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-57"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The string literal should contain at least two quotation marks.&quot;</span></span><span>
+</span><span id="line-58"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-59"></span><span>        </span><span id="local-6989586621679148892"><span class="annot"><span class="annottext">g :: Char -&gt; String -&gt; String
+</span><a href="#local-6989586621679148892"><span class="hs-identifier hs-var hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679148895"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148895"><span class="hs-identifier hs-var">c'</span></a></span></span><span> </span><span id="local-6989586621679148896"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148896"><span class="hs-identifier hs-var">vs</span></a></span></span><span>
+</span><span id="line-60"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148887"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148895"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#_readCssString"><span class="hs-identifier hs-var">_readCssString</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148887"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148896"><span class="hs-identifier hs-var">vs</span></a></span><span>
+</span><span id="line-61"></span><span>          </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The start and end quotation mark should be the same.&quot;</span></span><span>
+</span><span id="line-62"></span><span class="annot"><a href="Css3.Selector.Utils.html#readCssString"><span class="hs-identifier hs-var">readCssString</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The string should start with an \&quot; or ' and end with the same quotation.&quot;</span></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Css3.Selector.Utils.html#_readCssString"><span class="hs-identifier hs-type">_readCssString</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-65"></span><span id="_readCssString"><span class="annot"><span class="annottext">_readCssString :: Char -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#_readCssString"><span class="hs-identifier hs-var hs-var">_readCssString</span></a></span></span><span> </span><span id="local-6989586621679148899"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148899"><span class="hs-identifier hs-var">c'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-67"></span><span>    </span><span id="local-6989586621679148900"><span class="annot"><span class="annottext">go :: String -&gt; String
+</span><a href="#local-6989586621679148900"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\n'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148907"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148907"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148907"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-69"></span><span>    </span><span class="annot"><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148908"><span class="annot"><span class="annottext">ca :: String
+</span><a href="#local-6989586621679148908"><span class="hs-identifier hs-var">ca</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679148909"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148909"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148910"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148910"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148909"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148899"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148909"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148910"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-71"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679148911"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148911"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679148912"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148912"><span class="hs-identifier hs-var">ys</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; (Char, String)
+</span><a href="Css3.Selector.Utils.html#_parseEscape"><span class="hs-identifier hs-var">_parseEscape</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148908"><span class="hs-identifier hs-var">ca</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148911"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148912"><span class="hs-identifier hs-var">ys</span></a></span><span>
+</span><span id="line-72"></span><span>    </span><span class="annot"><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679148914"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148914"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148915"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148915"><span class="hs-identifier hs-var">xs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148914"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148899"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The string can not contain a &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148914"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;, you should escape it.&quot;</span></span><span>
+</span><span id="line-74"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148914"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148900"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148915"><span class="hs-identifier hs-var">xs</span></a></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="annot"><span class="hs-comment">-- | Parse a given css identifier to the content of the identifier.</span></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Css3.Selector.Utils.html#readIdentifier"><span class="hs-identifier hs-type">readIdentifier</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-78"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The given css identifier to parse.</span></span><span>
+</span><span id="line-79"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-80"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The result of the parsing: the content of the identifier.</span></span><span>
+</span><span id="line-81"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-82"></span><span id="readIdentifier"><span class="annot"><span class="annottext">readIdentifier :: String -&gt; String
+</span><a href="Css3.Selector.Utils.html#readIdentifier"><span class="hs-identifier hs-var hs-var">readIdentifier</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#_readCssString"><span class="hs-identifier hs-var">_readCssString</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Css3.Selector.Utils.html#_notEncode"><span class="hs-identifier hs-type">_notEncode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-85"></span><span id="_notEncode"><span class="annot"><span class="annottext">_notEncode :: Char -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#_notEncode"><span class="hs-identifier hs-var hs-var">_notEncode</span></a></span></span><span> </span><span id="local-6989586621679148918"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148918"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isAsciiLower</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148918"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">||</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isAsciiUpper</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148918"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="hs-comment">-- | Convert a string to a css selector string literal. This is done by putting</span><span>
+</span><span id="line-88"></span><span class="hs-comment">-- quotes around the content, and escaping certain characters.</span><span>
+</span><span id="line-89"></span><span class="annot"><a href="Css3.Selector.Utils.html#encodeString"><span class="hs-identifier hs-type">encodeString</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-90"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The type of quotes that should be put around the content (should be @'@ or @&quot;@).</span></span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-92"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The string that should be converted to a css selector string literal.</span></span><span>
+</span><span id="line-93"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-94"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The corresponding css selector string literal.</span></span><span>
+</span><span id="line-95"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-96"></span><span id="encodeString"><span class="annot"><span class="annottext">encodeString :: Char -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#encodeString"><span class="hs-identifier hs-var hs-var">encodeString</span></a></span></span><span> </span><span id="local-6989586621679148920"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148920"><span class="hs-identifier hs-var">c'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148920"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(String -&gt; String) -&gt; (String -&gt; String) -&gt; String -&gt; String
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148922"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-98"></span><span>    </span><span id="local-6989586621679148922"><span class="annot"><span class="annottext">go :: String -&gt; String
+</span><a href="#local-6989586621679148922"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148920"><span class="hs-identifier hs-var">c'</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-99"></span><span>    </span><span class="annot"><a href="#local-6989586621679148922"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679148923"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148923"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148924"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148924"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#_notEncode"><span class="hs-identifier hs-var">_notEncode</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148923"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148923"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148922"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148924"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-101"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#_showHex"><span class="hs-identifier hs-var">_showHex</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Int
+</span><span class="hs-identifier hs-var">ord</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148923"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; String
+</span><a href="#local-6989586621679148922"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148924"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-- | Convert a string to a css selector string literal. This is done by putting</span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- quotes around the content, and escaping certain characters.</span><span>
+</span><span id="line-105"></span><span class="annot"><a href="Css3.Selector.Utils.html#encodeText"><span class="hs-identifier hs-type">encodeText</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The type of quotes that should be put around the content (should be @'@ or @&quot;@).</span></span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-108"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The string that should be converted to a css selector string literal.</span></span><span>
+</span><span id="line-109"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-110"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The corresponding css selector string literal.</span></span><span>
+</span><span id="line-111"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-112"></span><span id="encodeText"><span class="annot"><span class="annottext">encodeText :: Char -&gt; Text -&gt; Text
+</span><a href="Css3.Selector.Utils.html#encodeText"><span class="hs-identifier hs-var hs-var">encodeText</span></a></span></span><span> </span><span id="local-6989586621679148926"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148926"><span class="hs-identifier hs-var">c'</span></a></span></span><span> </span><span id="local-6989586621679148927"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679148927"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">cons</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148926"><span class="hs-identifier hs-var">c'</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Char -&gt; Text
+</span><span class="hs-identifier hs-var">snoc</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Char -&gt; Text) -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.concatMap</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text
+</span><a href="Css3.Selector.Utils.html#_encodeCharacter"><span class="hs-identifier hs-var">_encodeCharacter</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679148927"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148926"><span class="hs-identifier hs-var">c'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="annot"><a href="Css3.Selector.Utils.html#_encodeCharacter"><span class="hs-identifier hs-type">_encodeCharacter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-115"></span><span id="_encodeCharacter"><span class="annot"><span class="annottext">_encodeCharacter :: Char -&gt; Text
+</span><a href="Css3.Selector.Utils.html#_encodeCharacter"><span class="hs-identifier hs-var hs-var">_encodeCharacter</span></a></span></span><span> </span><span id="local-6989586621679148930"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148930"><span class="hs-identifier hs-var">c</span></a></span></span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#_notEncode"><span class="hs-identifier hs-var">_notEncode</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148930"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text
+</span><span class="hs-identifier hs-var">singleton</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148930"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">cons</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">pack</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#_showHex"><span class="hs-identifier hs-var">_showHex</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Int
+</span><span class="hs-identifier hs-var">ord</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148930"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-118"></span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- | Encode a given identifier to its css selector equivalent by escaping</span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- certain characters.</span><span>
+</span><span id="line-121"></span><span class="annot"><a href="Css3.Selector.Utils.html#encodeIdentifier"><span class="hs-identifier hs-type">encodeIdentifier</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-122"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The identifier to encode.</span></span><span>
+</span><span id="line-123"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-124"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The encoded identifier.</span></span><span>
+</span><span id="line-125"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-126"></span><span id="encodeIdentifier"><span class="annot"><span class="annottext">encodeIdentifier :: Text -&gt; Text
+</span><a href="Css3.Selector.Utils.html#encodeIdentifier"><span class="hs-identifier hs-var hs-var">encodeIdentifier</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Text) -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">T.concatMap</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Text
+</span><a href="Css3.Selector.Utils.html#_encodeCharacter"><span class="hs-identifier hs-var">_encodeCharacter</span></a></span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span class="annot"><a href="Css3.Selector.Utils.html#_showHex"><span class="hs-identifier hs-type">_showHex</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ShowS</span></span><span>
+</span><span id="line-129"></span><span id="_showHex"><span class="annot"><span class="annottext">_showHex :: Int -&gt; String -&gt; String
+</span><a href="Css3.Selector.Utils.html#_showHex"><span class="hs-identifier hs-var hs-var">_showHex</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; String -&gt; String
+forall {t}. (Eq t, Num t) =&gt; t -&gt; Int -&gt; String -&gt; String
+</span><a href="#local-6989586621679148932"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-131"></span><span>    </span><span id="local-6989586621679148932"><span class="annot"><span class="annottext">go :: t -&gt; Int -&gt; String -&gt; String
+</span><a href="#local-6989586621679148932"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679148939"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148939"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148939"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-132"></span><span>    </span><span class="annot"><a href="#local-6989586621679148932"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679148940"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679148940"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679148941"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148941"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679148942"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148942"><span class="hs-identifier hs-var">rs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t -&gt; Int -&gt; String -&gt; String
+</span><a href="#local-6989586621679148932"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679148940"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148943"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Char
+</span><span class="hs-identifier hs-var">intToDigit</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148944"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; String -&gt; String
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148942"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-134"></span><span>        </span><span class="hs-glyph">~</span><span class="hs-special">(</span><span id="local-6989586621679148943"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148943"><span class="hs-identifier hs-var">q</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679148944"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148944"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; (Int, Int)
+forall a. Integral a =&gt; a -&gt; a -&gt; (a, a)
+</span><span class="hs-identifier hs-var">quotRem</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148941"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">16</span></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span class="annot"><a href="Css3.Selector.Utils.html#_parseEscape"><span class="hs-identifier hs-type">_parseEscape</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-137"></span><span id="_parseEscape"><span class="annot"><span class="annottext">_parseEscape :: String -&gt; (Char, String)
+</span><a href="Css3.Selector.Utils.html#_parseEscape"><span class="hs-identifier hs-var hs-var">_parseEscape</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; String -&gt; (Char, String)
+forall {t}. (Eq t, Num t) =&gt; t -&gt; Int -&gt; String -&gt; (Char, String)
+</span><a href="#local-6989586621679148957"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-138"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-139"></span><span>    </span><span id="local-6989586621679148957"><span class="annot"><span class="annottext">go :: t -&gt; Int -&gt; String -&gt; (Char, String)
+</span><a href="#local-6989586621679148957"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">0</span></span><span> </span><span id="local-6989586621679148967"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148967"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679148968"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148968"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; String -&gt; (Char, String)
+forall {b}. Int -&gt; b -&gt; (Char, b)
+</span><a href="#local-6989586621679148969"><span class="hs-identifier hs-var">yield</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148967"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148968"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-140"></span><span>    </span><span class="annot"><a href="#local-6989586621679148957"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679148970"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148970"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; String -&gt; (Char, String)
+forall {b}. Int -&gt; b -&gt; (Char, b)
+</span><a href="#local-6989586621679148969"><span class="hs-identifier hs-var">yield</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148970"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-141"></span><span>    </span><span class="annot"><a href="#local-6989586621679148957"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679148971"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679148971"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679148972"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148972"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679148973"><span class="annot"><span class="annottext">ca :: String
+</span><a href="#local-6989586621679148973"><span class="hs-identifier hs-var">ca</span></a></span></span><span class="hs-glyph">@</span><span class="hs-special">(</span><span id="local-6989586621679148974"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148974"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679148975"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148975"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isHexDigit</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148974"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t -&gt; Int -&gt; String -&gt; (Char, String)
+</span><a href="#local-6989586621679148957"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679148971"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">t -&gt; t -&gt; t
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">t
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">16</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148972"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+</span><span class="hs-identifier hs-var">digitToInt</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679148974"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148975"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-143"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; String -&gt; (Char, String)
+forall {b}. Int -&gt; b -&gt; (Char, b)
+</span><a href="#local-6989586621679148969"><span class="hs-identifier hs-var">yield</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148972"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148973"><span class="hs-identifier hs-var">ca</span></a></span><span>
+</span><span id="line-144"></span><span>    </span><span id="local-6989586621679148969"><span class="annot"><span class="annottext">yield :: Int -&gt; b -&gt; (Char, b)
+</span><a href="#local-6989586621679148969"><span class="hs-identifier hs-var hs-var">yield</span></a></span></span><span> </span><span id="local-6989586621679148978"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148978"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679148979"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679148979"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Char
+</span><span class="hs-identifier hs-var">chr</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679148978"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679148979"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>
+</span><span id="line-146"></span><span class="annot"><span class="hs-comment">-- | Check if the given identifier is a valid css selector identifier.</span></span><span>
+</span><span id="line-147"></span><span class="annot"><a href="Css3.Selector.Utils.html#isValidIdentifier"><span class="hs-identifier hs-type">isValidIdentifier</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-148"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The given identifier to check.</span></span><span>
+</span><span id="line-149"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-150"></span><span>  </span><span class="annot"><span class="hs-comment">-- | 'True' if the given identifier is valid, 'False' otherwise.</span></span><span>
+</span><span id="line-151"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-152"></span><span id="isValidIdentifier"><span class="annot"><span class="annottext">isValidIdentifier :: String -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#isValidIdentifier"><span class="hs-identifier hs-var hs-var">isValidIdentifier</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; (String -&gt; Bool) -&gt; String -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool
+forall a. [a] -&gt; Bool
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Bool
+</span><span class="hs-identifier hs-var">null</span></span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span class="hs-comment">-- | Convert the given string to a given object by first checking if it is a</span><span>
+</span><span id="line-155"></span><span class="hs-comment">-- valid identifier, and if not raising an error. If it is a valid identifier,</span><span>
+</span><span id="line-156"></span><span class="hs-comment">-- the string is packed, and wrapped in the given function.</span><span>
+</span><span id="line-157"></span><span id="local-6989586621679148843"><span class="annot"><a href="Css3.Selector.Utils.html#toIdentifier"><span class="hs-identifier hs-type">toIdentifier</span></a></span><span> </span><span class="hs-glyph">::</span><span>
+</span><span id="line-158"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The given function to wrap the 'Text' identifier to an object.</span></span><span>
+</span><span id="line-159"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679148843"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-160"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The string to validate, and wrap into the given function.</span></span><span>
+</span><span id="line-161"></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-162"></span><span>  </span><span class="annot"><span class="hs-comment">-- | The identifier object to return if the identifier is valid.</span></span><span>
+</span><span id="line-163"></span><span>  </span><span class="annot"><a href="#local-6989586621679148843"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-164"></span><span id="toIdentifier"><span class="annot"><span class="annottext">toIdentifier :: forall a. (Text -&gt; a) -&gt; String -&gt; a
+</span><a href="Css3.Selector.Utils.html#toIdentifier"><span class="hs-identifier hs-var hs-var">toIdentifier</span></a></span></span><span> </span><span id="local-6989586621679148990"><span class="annot"><span class="annottext">Text -&gt; a
+</span><a href="#local-6989586621679148990"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679148991"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148991"><span class="hs-identifier hs-var">ident</span></a></span></span><span>
+</span><span id="line-165"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">String -&gt; Bool
+</span><a href="Css3.Selector.Utils.html#isValidIdentifier"><span class="hs-identifier hs-var">isValidIdentifier</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148991"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; a
+</span><a href="#local-6989586621679148990"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Text
+</span><span class="hs-identifier hs-var">pack</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148991"><span class="hs-identifier hs-var">ident</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-166"></span><span>  </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; a
+forall a. HasCallStack =&gt; String -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;The identifier \&quot;&quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679148991"><span class="hs-identifier hs-var">ident</span></a></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\&quot; is not a valid identifier.&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-167"></span></pre></body></html>
