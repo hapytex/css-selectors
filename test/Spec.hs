@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 
-import Css3.Selector
-import Css3.Selector.Utils(encodeString, readCssString)
+import Css4.Selector
+import Css4.Selector.Utils(encodeString, readCssString)
 
 import Data.Binary(Binary, encode, decode)
 import Data.Function(on)

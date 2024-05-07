@@ -36,9 +36,15 @@ library
     , Css3.Selector.Core
     , Css3.Selector.QuasiQuoters
     , Css3.Selector.Utils
+    , Css4.Selector
+    , Css4.Selector.Core
+    , Css4.Selector.QuasiQuoters
+    , Css4.Selector.Utils
   other-modules:
        Css3.Selector.Lexer
      , Css3.Selector.Parser
+     , Css4.Selector.Lexer
+     , Css4.Selector.Parser
   build-depends:
       base >=4.7 && <5
     , aeson >=1.0
